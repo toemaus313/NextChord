@@ -26,6 +26,7 @@ class SongRepository {
       notes: song.notes,
       createdAt: song.createdAt.millisecondsSinceEpoch,
       updatedAt: song.updatedAt.millisecondsSinceEpoch,
+      isDeleted: song.isDeleted,
     );
   }
 
@@ -52,6 +53,7 @@ class SongRepository {
       notes: model.notes,
       createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
+      isDeleted: model.isDeleted,
     );
   }
 
@@ -195,6 +197,34 @@ class SongRepository {
       return songs.map((song) => song.key).toSet();
     } catch (e) {
       throw SongRepositoryException('Failed to fetch keys: $e');
+    }
+  }
+
+  /// Get all deleted songs
+  Future<List<Song>> getDeletedSongs() async {
+    try {
+      final models = await _db.songsDao.getDeletedSongs();
+      return models.map(_modelToSong).toList();
+    } catch (e) {
+      throw SongRepositoryException('Failed to fetch deleted songs: $e');
+    }
+  }
+
+  /// Restore a deleted song by ID
+  Future<void> restoreSong(String id) async {
+    try {
+      await _db.songsDao.restoreSong(id);
+    } catch (e) {
+      throw SongRepositoryException('Failed to restore song: $e');
+    }
+  }
+
+  /// Permanently delete a song by ID (hard delete)
+  Future<void> permanentlyDeleteSong(String id) async {
+    try {
+      await _db.songsDao.permanentlyDeleteSong(id);
+    } catch (e) {
+      throw SongRepositoryException('Failed to permanently delete song: $e');
     }
   }
 }

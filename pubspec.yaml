@@ -15,9 +15,9 @@ dependencies:
   provider: ^6.0.0
   
   # Local Database
-  drift: ^2.13.0
-  drift_flutter: ^0.2.7
+  drift: ^2.16.0
   sqlite3_flutter_libs: ^0.5.0
+  sqlite3: ^2.3.0
   
   # MIDI
   flutter_midi_command: ^0.5.3
@@ -26,8 +26,10 @@ dependencies:
   just_audio: ^0.9.0
   
   # File Handling
-  file_picker: ^5.3.0
+  file_selector: ^0.9.0
+  file_picker: ^8.0.0
   path_provider: ^2.0.0
+  path: ^1.8.3
   shared_preferences: ^2.2.0
   
   # JSON serialization
@@ -37,6 +39,10 @@ dependencies:
   intl: ^0.18.0
   uuid: ^3.0.0
   equatable: ^2.0.5
+  
+  # HTTP & Web Scraping
+  http: ^1.1.0
+  html: ^0.15.4
 
 dev_dependencies:
   flutter_test:
@@ -46,7 +52,7 @@ dev_dependencies:
   
   # Code generation
   build_runner: ^2.4.0
-  drift_dev: ^2.13.0
+  drift_dev: ^2.16.0
 
 flutter:
   uses-material-design: true

@@ -1,4 +1,0 @@
-
-module flutter_midi_command.__Swift {
-  exclude header "flutter_midi_command-Swift.h"
-}

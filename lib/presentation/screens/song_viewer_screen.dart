@@ -12,10 +12,14 @@ import 'song_editor_screen.dart';
 /// Displays lyrics/chords with adjustable font size and theme toggle
 class SongViewerScreen extends StatefulWidget {
   final Song song;
+  final bool Function()? shouldHideSidebar;
+  final VoidCallback? onSongEdit;
 
   const SongViewerScreen({
     Key? key,
     required this.song,
+    this.shouldHideSidebar,
+    this.onSongEdit,
   }) : super(key: key);
 
   @override
@@ -41,14 +45,18 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   }
 
   /// Reload the song from the database to get fresh data
-  Future<void> _reloadSong() async {
+  /// Returns true if song was reloaded, false if song was deleted
+  Future<bool> _reloadSong() async {
     final repository = context.read<SongRepository>();
     final updatedSong = await repository.getSongById(_currentSong.id);
     if (updatedSong != null && mounted) {
       setState(() {
         _currentSong = updatedSong;
       });
+      return true;
     }
+    // Song was deleted
+    return false;
   }
 
   /// Extract duration from song metadata
@@ -78,7 +86,15 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       body: SafeArea(
         child: GestureDetector(
           onTap: () {
-            // Toggle controls visibility on tap
+            // If sidebar check callback is provided, check if sidebar should be hidden
+            if (widget.shouldHideSidebar != null) {
+              final sidebarWasHidden = widget.shouldHideSidebar!();
+              if (sidebarWasHidden) {
+                // Sidebar was hidden, don't toggle controls
+                return;
+              }
+            }
+            // Otherwise, toggle controls visibility
             setState(() {
               _showControls = !_showControls;
             });
@@ -142,6 +158,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     size: 28,
                   ),
                   onPressed: () async {
+                    // Notify home screen that song is being edited
+                    widget.onSongEdit?.call();
+                    
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -149,12 +168,21 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                             SongEditorScreen(song: _currentSong),
                       ),
                     );
-                    // If song was updated, reload it and notify library to refresh
-                    if (result == true && mounted) {
-                      await _reloadSong();
-                      // Also notify the library screen that data changed
-                      if (mounted) {
+                    
+                    // Handle the return from editor
+                    if (mounted) {
+                      if (result == 'deleted') {
+                        // Song was deleted - pop all the way back to home screen
+                        // with special value to indicate deletion
+                        Navigator.of(context).pop('deleted');
+                      } else if (result == true) {
+                        // Song was updated, reload it
+                        await _reloadSong();
+                        // Also notify the library screen that data changed
                         Navigator.of(context).pop(true);
+                      } else {
+                        // Editor was closed without saving, just pop back
+                        Navigator.of(context).pop();
                       }
                     }
                   },
@@ -173,6 +201,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     final isDarkMode = themeProvider.isDarkMode;
 
     return Container(
+      width: double.infinity, // Ensure full width
       padding: const EdgeInsets.fromLTRB(60, 16, 16, 16),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
@@ -221,6 +250,13 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                   'Transpose: ${_transposeSteps > 0 ? '+' : ''}$_transposeSteps',
                   textColor,
                 ),
+              // Tags
+              if (_currentSong.tags.isNotEmpty) ...[
+                for (final tag in _currentSong.tags.take(3)) // Show max 3 tags
+                  _buildTagChip(tag, textColor),
+                if (_currentSong.tags.length > 3)
+                  _buildInfoChip('+${_currentSong.tags.length - 3} more', textColor),
+              ],
             ],
           ),
         ],
@@ -244,6 +280,27 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagChip(String tag, Color textColor) {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.blue.shade800 : Colors.blue.shade200,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade800,
         ),
       ),
     );

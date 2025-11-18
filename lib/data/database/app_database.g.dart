@@ -87,6 +87,16 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
   late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -101,7 +111,8 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
         audioFilePath,
         notes,
         createdAt,
-        updatedAt
+        updatedAt,
+        isDeleted
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -180,6 +191,10 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
     return context;
   }
 
@@ -215,6 +230,8 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
     );
   }
 
@@ -238,6 +255,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
   final String? notes;
   final int createdAt;
   final int updatedAt;
+  final bool isDeleted;
   const SongModel(
       {required this.id,
       required this.title,
@@ -251,7 +269,8 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       this.audioFilePath,
       this.notes,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.isDeleted});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -272,6 +291,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -293,6 +313,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -313,6 +334,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -332,6 +354,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -348,7 +371,8 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           Value<String?> audioFilePath = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           int? createdAt,
-          int? updatedAt}) =>
+          int? updatedAt,
+          bool? isDeleted}) =>
       SongModel(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -364,6 +388,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
         notes: notes.present ? notes.value : this.notes,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
   SongModel copyWithCompanion(SongsCompanion data) {
     return SongModel(
@@ -384,6 +409,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -402,14 +428,28 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           ..write('audioFilePath: $audioFilePath, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, artist, body, key, capo, bpm,
-      timeSignature, tags, audioFilePath, notes, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      title,
+      artist,
+      body,
+      key,
+      capo,
+      bpm,
+      timeSignature,
+      tags,
+      audioFilePath,
+      notes,
+      createdAt,
+      updatedAt,
+      isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -426,7 +466,8 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           other.audioFilePath == this.audioFilePath &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
 }
 
 class SongsCompanion extends UpdateCompanion<SongModel> {
@@ -443,6 +484,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
   final Value<String?> notes;
   final Value<int> createdAt;
   final Value<int> updatedAt;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const SongsCompanion({
     this.id = const Value.absent(),
@@ -458,6 +500,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SongsCompanion.insert({
@@ -474,6 +517,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     this.notes = const Value.absent(),
     required int createdAt,
     required int updatedAt,
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -495,6 +539,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     Expression<String>? notes,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -511,6 +556,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -529,6 +575,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       Value<String?>? notes,
       Value<int>? createdAt,
       Value<int>? updatedAt,
+      Value<bool>? isDeleted,
       Value<int>? rowid}) {
     return SongsCompanion(
       id: id ?? this.id,
@@ -544,6 +591,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -590,6 +638,9 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -612,6 +663,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -987,6 +1039,7 @@ typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
   Value<String?> notes,
   required int createdAt,
   required int updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 typedef $$SongsTableUpdateCompanionBuilder = SongsCompanion Function({
@@ -1003,6 +1056,7 @@ typedef $$SongsTableUpdateCompanionBuilder = SongsCompanion Function({
   Value<String?> notes,
   Value<int> createdAt,
   Value<int> updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 
@@ -1052,6 +1106,9 @@ class $$SongsTableFilterComposer extends Composer<_$AppDatabase, $SongsTable> {
 
   ColumnFilters<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
 }
 
 class $$SongsTableOrderingComposer
@@ -1103,6 +1160,9 @@ class $$SongsTableOrderingComposer
 
   ColumnOrderings<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 }
 
 class $$SongsTableAnnotationComposer
@@ -1152,6 +1212,9 @@ class $$SongsTableAnnotationComposer
 
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$SongsTableTableManager extends RootTableManager<
@@ -1190,6 +1253,7 @@ class $$SongsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SongsCompanion(
@@ -1206,6 +1270,7 @@ class $$SongsTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1222,6 +1287,7 @@ class $$SongsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             required int createdAt,
             required int updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SongsCompanion.insert(
@@ -1238,6 +1304,7 @@ class $$SongsTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

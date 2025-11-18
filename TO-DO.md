@@ -1,6 +1,5 @@
-- Files not saving reliably
 - Paste-to-import
-- Import from UG Official
+- Import from UG Official - copy/paste from tabs
 - Import chord-over-lyric
 - switch between ChordPro and CoL 
 - Autoscroll based on time

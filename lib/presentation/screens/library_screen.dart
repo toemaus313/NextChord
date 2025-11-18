@@ -67,7 +67,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         icon: const Icon(Icons.clear, color: Colors.white70),
                         onPressed: () {
                           _searchController.clear();
-                          context.read<SongProvider>().searchSongs('');
+                          context.read<SongProvider>().clearSearch();
                         },
                       )
                     : null,
@@ -128,7 +128,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Search bar
+          // Search bar with add button
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -141,27 +141,56 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ],
             ),
-            child: SearchBar(
-              controller: _searchController,
-              hintText: 'Search songs or artists...',
-              leading: const Icon(Icons.search),
-              trailing: [
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      context.read<SongProvider>().searchSongs('');
+            child: Row(
+              children: [
+                // Search bar takes most of the space
+                Expanded(
+                  child: SearchBar(
+                    controller: _searchController,
+                    hintText: 'Search songs or artists...',
+                    leading: const Icon(Icons.search),
+                    trailing: [
+                      if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            context.read<SongProvider>().clearSearch();
+                          },
+                        ),
+                    ],
+                    onChanged: (query) {
+                      context.read<SongProvider>().searchSongs(query);
                     },
+                    elevation: WidgetStateProperty.all(0),
+                    backgroundColor: WidgetStateProperty.all(
+                      colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    ),
                   ),
+                ),
+                const SizedBox(width: 12),
+                // Add song button
+                IconButton.filled(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SongEditorScreen(),
+                      ),
+                    );
+                    if (result == true && context.mounted) {
+                      // Refresh the song list after adding
+                      context.read<SongProvider>().loadSongs();
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Add New Song',
+                  style: IconButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                  ),
+                ),
               ],
-              onChanged: (query) {
-                context.read<SongProvider>().searchSongs(query);
-              },
-              elevation: WidgetStateProperty.all(0),
-              backgroundColor: WidgetStateProperty.all(
-                colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              ),
             ),
           ),
           // Song list
@@ -328,102 +357,313 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildSongItem(Song song, bool inSidebar) {
-    if (inSidebar) {
-      // Compact list item for sidebar
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            if (widget.onSongSelected != null) {
-              widget.onSongSelected!(song);
-            }
-          },
-          onLongPress: () {
-            _showSongOptions(context, song);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        song.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+    return Consumer<SongProvider>(
+      builder: (context, provider, child) {
+        final isSelected = provider.selectedSongIds.contains(song.id);
+        final hasSelections = provider.hasSelectedSongs;
+        
+        if (inSidebar) {
+          // Compact list item for sidebar
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (provider.selectionMode) {
+                  provider.toggleSongSelection(song.id);
+                } else if (widget.onSongSelected != null) {
+                  widget.onSongSelected!(song);
+                }
+              },
+              onLongPress: () {
+                if (hasSelections) {
+                  _showBulkOptions(context);
+                } else {
+                  _showSongOptions(context, song);
+                }
+              },
+              onSecondaryTap: () {
+                // Right-click for desktop users
+                if (hasSelections) {
+                  _showBulkOptions(context);
+                } else {
+                  _showSongOptions(context, song);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withValues(alpha: 0.1) : null,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        song.key,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Selection checkbox
+                    if (provider.selectionMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Checkbox(
+                          value: isSelected,
+                          onChanged: (value) {
+                            provider.toggleSongSelection(song.id);
+                          },
+                          fillColor: WidgetStateProperty.all(Colors.white),
+                          checkColor: Colors.black,
                         ),
+                      ),
+                    // Song content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  song.title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  song.key,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            song.artist,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  song.artist,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
-      // Full song list tile for full screen mode
-      return SongListTile(
-        song: song,
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SongViewerScreen(song: song),
+              ),
             ),
           );
-          if (result == true && context.mounted) {
-            context.read<SongProvider>().loadSongs();
-          }
-        },
-        onLongPress: () {
-          _showSongOptions(context, song);
-        },
-      );
-    }
+        } else {
+          // Full song list tile for full screen mode
+          return SongListTile(
+            song: song,
+            onTap: () async {
+              if (provider.selectionMode) {
+                provider.toggleSongSelection(song.id);
+              } else {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongViewerScreen(song: song),
+                  ),
+                );
+                if (result == true && context.mounted) {
+                  context.read<SongProvider>().loadSongs();
+                }
+              }
+            },
+            onLongPress: () {
+              if (hasSelections) {
+                _showBulkOptions(context);
+              } else {
+                _showSongOptions(context, song);
+              }
+            },
+          );
+        }
+      },
+    );
+  }
+
+  /// Show bulk operations menu for selected songs
+  void _showBulkOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Consumer<SongProvider>(
+          builder: (context, provider, child) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with selection count
+                  ListTile(
+                    title: Text('${provider.selectedSongIds.length} songs selected'),
+                    subtitle: const Text('Choose an action to perform on all selected songs'),
+                  ),
+                  const Divider(),
+                  // Delete option
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _confirmBulkDelete(context);
+                    },
+                  ),
+                  // Tag option
+                  ListTile(
+                    leading: const Icon(Icons.tag),
+                    title: const Text('Add Tags...'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showTagDialog(context);
+                    },
+                  ),
+                  // Add to setlist option (placeholder)
+                  ListTile(
+                    leading: const Icon(Icons.playlist_add),
+                    title: const Text('Add to Setlist...'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Setlists feature coming soon!')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Show dialog to add tags to selected songs
+  void _showTagDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Tags'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter tags separated by commas:'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'e.g., rock, favorite, practice',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final tagText = controller.text.trim();
+                if (tagText.isEmpty) return;
+                
+                final tags = tagText
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .where((tag) => tag.isNotEmpty)
+                    .toList();
+                
+                Navigator.pop(context);
+                try {
+                  await context.read<SongProvider>().addTagsToSelectedSongs(tags);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Added ${tags.length} tag(s) to ${context.read<SongProvider>().selectedSongIds.length} songs')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to add tags: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Add Tags'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Confirm bulk deletion of selected songs
+  void _confirmBulkDelete(BuildContext context) {
+    final provider = context.read<SongProvider>();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Songs'),
+          content: Text('Are you sure you want to delete ${provider.selectedSongIds.length} selected songs?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await provider.deleteSelectedSongs();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${provider.selectedSongIds.length} songs deleted')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to delete songs: $e')),
+                    );
+                  }
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Show options menu for a song (edit, delete, etc.)

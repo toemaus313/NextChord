@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
+import '../../services/import/ultimate_guitar_import_service.dart';
+import '../providers/song_provider.dart';
 
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
@@ -184,11 +186,13 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         Navigator.of(context).pop(true); // Return true to indicate success
       }
     } catch (e) {
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving song: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -269,6 +273,143 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     }
   }
 
+  /// Import from Ultimate Guitar URL
+  Future<void> _importFromUltimateGuitar() async {
+    final urlController = TextEditingController();
+    
+    // Show dialog to get URL
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import from Ultimate Guitar'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Paste the Ultimate Guitar tab URL:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Example:\nhttps://tabs.ultimate-guitar.com/tab/artist/song-chords-123456',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                hintText: 'Paste URL here',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.link),
+              ),
+              autofocus: true,
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final url = urlController.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(context, url);
+              }
+            },
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (url == null || url.isEmpty) return;
+
+    // Show loading indicator
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Importing from Ultimate Guitar...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    try {
+      final importService = UltimateGuitarImportService();
+      final result = await importService.importFromUrl(url);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (result.success) {
+        // Populate form fields
+        setState(() {
+          _titleController.text = result.title ?? '';
+          _artistController.text = result.artist ?? '';
+          _bodyController.text = result.chordProContent ?? '';
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully imported: ${result.title}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Import Failed'),
+              content: Text(result.errorMessage ?? 'Unknown error'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// Pick an audio file
   Future<void> _pickAudioFile() async {
     try {
@@ -312,6 +453,64 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     });
   }
 
+  /// Delete the current song
+  Future<void> _deleteSong() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Song'),
+        content: Text(
+          'Are you sure you want to delete "${_titleController.text}"?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final repository = context.read<SongRepository>();
+      await repository.deleteSong(widget.song!.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Song deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Refresh the song provider to ensure UI updates
+        if (mounted) {
+          await context.read<SongProvider>().loadSongs();
+        }
+        // Return a special value to indicate deletion occurred
+        Navigator.of(context).pop('deleted');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.song != null;
@@ -321,6 +520,21 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Song' : 'Create Song'),
         actions: [
+          // Delete button (only show when editing)
+          if (isEditing)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _deleteSong,
+              tooltip: 'Delete Song',
+              color: Colors.red,
+            ),
+          // Import from Ultimate Guitar button
+          if (!isEditing)
+            IconButton(
+              icon: const Icon(Icons.cloud_download),
+              onPressed: _importFromUltimateGuitar,
+              tooltip: 'Import from Ultimate Guitar',
+            ),
           // Import ChordPro file button
           if (!isEditing)
             IconButton(
@@ -328,6 +542,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               onPressed: _importChordProFile,
               tooltip: 'Import ChordPro File',
             ),
+          // Save button or loading indicator
           if (_isSaving)
             const Center(
               child: Padding(
@@ -396,7 +611,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 // Key dropdown
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedKey,
+                    initialValue: _selectedKey,
                     decoration: const InputDecoration(
                       labelText: 'Key',
                       border: OutlineInputBorder(),
@@ -422,7 +637,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 // Capo spinner
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _selectedCapo,
+                    initialValue: _selectedCapo,
                     decoration: const InputDecoration(
                       labelText: 'Capo',
                       border: OutlineInputBorder(),
@@ -481,7 +696,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 // Time Signature dropdown
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedTimeSignature,
+                    initialValue: _selectedTimeSignature,
                     decoration: const InputDecoration(
                       labelText: 'Time Signature',
                       border: OutlineInputBorder(),
@@ -659,28 +874,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Save button
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _saveSong,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.save),
-              label: Text(_isSaving
-                  ? 'Saving...'
-                  : (isEditing ? 'Update Song' : 'Create Song')),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
             const SizedBox(height: 16),

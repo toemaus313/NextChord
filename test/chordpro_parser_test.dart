@@ -4,7 +4,7 @@ import 'package:nextchord/core/utils/chordpro_parser.dart';
 void main() {
   group('ChordPro Metadata Extraction', () {
     test('Parse basic metadata from ChordPro file', () {
-      final chordProText = '''
+      const chordProText = '''
 {title:New Sensation}
 {subtitle:INXS}
 {key:E}
@@ -21,7 +21,7 @@ void main() {
     });
 
     test('Handle missing metadata gracefully', () {
-      final chordProText = '[C]Simple song with no metadata';
+      const chordProText = '[C]Simple song with no metadata';
       final metadata = ChordProParser.extractMetadata(chordProText);
 
       expect(metadata.title, isNull);
@@ -79,7 +79,7 @@ void main() {
     });
 
     test('Transpose entire ChordPro text', () {
-      final original = '[C]Amazing [G]grace, how [Am]sweet the [F]sound';
+      const original = '[C]Amazing [G]grace, how [Am]sweet the [F]sound';
       final transposed = ChordProParser.transposeChordProText(original, 2);
       expect(transposed, '[D]Amazing [A]grace, how [Bm]sweet the [G]sound');
     });
@@ -87,7 +87,7 @@ void main() {
 
   group('Structured Data Parsing', () {
     test('Parse section headers', () {
-      final chordProText = '''
+      const chordProText = '''
 {verse: Verse 1}
 [C]This is verse one
 
@@ -106,7 +106,7 @@ void main() {
     });
 
     test('Parse lyrics with chords', () {
-      final chordProText = '[C]Amazing [G]grace';
+      const chordProText = '[C]Amazing [G]grace';
       final lines = ChordProParser.parseToStructuredData(chordProText);
 
       final lyricsLine = lines.first;
@@ -120,7 +120,7 @@ void main() {
     });
 
     test('Parse comments', () {
-      final chordProText = '''
+      const chordProText = '''
 # This is a comment
 [C]Lyrics here
 # Another comment
@@ -136,7 +136,7 @@ void main() {
     });
 
     test('Parse tablature sections', () {
-      final chordProText = '''
+      const chordProText = '''
 {sot}
 e|--0--2--3--|
 B|--1--3--5--|
@@ -152,7 +152,7 @@ B|--1--3--5--|
     });
 
     test('Handle empty lines', () {
-      final chordProText = '''
+      const chordProText = '''
 [C]First line
 
 [G]Third line
@@ -165,7 +165,7 @@ B|--1--3--5--|
 
   group('Render Back to ChordPro', () {
     test('Round-trip conversion', () {
-      final original = '''
+      const original = '''
 {title:Test Song}
 {verse: Verse 1}
 [C]Amazing [G]grace
@@ -185,14 +185,14 @@ B|--1--3--5--|
 
   group('Extract Chords', () {
     test('Extract all chords from text', () {
-      final text = '[C]Amazing [G]grace, how [Am]sweet the [F]sound';
+      const text = '[C]Amazing [G]grace, how [Am]sweet the [F]sound';
       final chords = ChordProParser.extractChords(text);
 
       expect(chords, ['C', 'G', 'Am', 'F']);
     });
 
     test('Extract complex chords', () {
-      final text = '[Cmaj7]Test [Dm7b5]chords [G#9]here';
+      const text = '[Cmaj7]Test [Dm7b5]chords [G#9]here';
       final chords = ChordProParser.extractChords(text);
 
       expect(chords, ['Cmaj7', 'Dm7b5', 'G#9']);

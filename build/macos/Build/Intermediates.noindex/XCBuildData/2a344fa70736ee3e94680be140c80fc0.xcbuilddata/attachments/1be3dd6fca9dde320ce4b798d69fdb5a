@@ -1,4 +1,0 @@
-
-module sqlite3_flutter_libs.__Swift {
-  exclude header "sqlite3_flutter_libs-Swift.h"
-}

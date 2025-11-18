@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 part 'app_database.g.dart';
 
@@ -21,6 +24,7 @@ class Songs extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get createdAt => integer()(); // Stored as epoch milliseconds
   IntColumn get updatedAt => integer()(); // Stored as epoch milliseconds
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))(); // Soft delete flag
 
   @override
   Set<Column> get primaryKey => {id};
@@ -46,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// Get the DAO for Songs
   late final songsDao = SongsDao(this);
@@ -63,6 +67,10 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         // Handle schema migrations here when you update the database
+        if (from <= 1 && to >= 2) {
+          // Add isDeleted column to songs table
+          await m.addColumn(songs, songs.isDeleted);
+        }
       },
     );
   }
@@ -76,6 +84,7 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
   /// Get all songs ordered by created date (newest first)
   Future<List<SongModel>> getAllSongs() {
     return (select(songs)
+          ..where((tbl) => tbl.isDeleted.equals(false))
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
@@ -85,7 +94,9 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
 
   /// Get a single song by ID
   Future<SongModel?> getSongById(String id) {
-    return (select(songs)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+    return (select(songs)
+          ..where((tbl) => tbl.id.equals(id) & tbl.isDeleted.equals(false)))
+        .getSingleOrNull();
   }
 
   /// Search songs by title or artist
@@ -93,8 +104,9 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
     final lowerQuery = query.toLowerCase();
     return (select(songs)
           ..where((tbl) =>
-              tbl.title.lower().like('%$lowerQuery%') |
-              tbl.artist.lower().like('%$lowerQuery%'))
+              (tbl.title.lower().like('%$lowerQuery%') |
+              tbl.artist.lower().like('%$lowerQuery%')) &
+              tbl.isDeleted.equals(false))
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
@@ -105,7 +117,7 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
   /// Get songs by key
   Future<List<SongModel>> getSongsByKey(String key) {
     return (select(songs)
-          ..where((tbl) => tbl.key.equals(key))
+          ..where((tbl) => tbl.key.equals(key) & tbl.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm(expression: t.title)]))
         .get();
   }
@@ -147,8 +159,39 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
     );
   }
 
-  /// Delete a song by ID
+  /// Soft delete a song by ID (marks as deleted instead of removing)
   Future<void> deleteSong(String id) async {
+    await (update(songs)..where((tbl) => tbl.id.equals(id))).write(
+      SongsCompanion(
+        isDeleted: const Value(true),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  /// Get all deleted songs
+  Future<List<SongModel>> getDeletedSongs() {
+    return (select(songs)
+          ..where((tbl) => tbl.isDeleted.equals(true))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)
+          ]))
+        .get();
+  }
+
+  /// Restore a deleted song by ID
+  Future<void> restoreSong(String id) async {
+    await (update(songs)..where((tbl) => tbl.id.equals(id))).write(
+      SongsCompanion(
+        isDeleted: const Value(false),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  /// Permanently delete a song by ID (hard delete)
+  Future<void> permanentlyDeleteSong(String id) async {
     await (delete(songs)..where((tbl) => tbl.id.equals(id))).go();
   }
 
@@ -197,6 +240,10 @@ class SetlistsDao extends DatabaseAccessor<AppDatabase>
 }
 
 /// Opens the database connection
-QueryExecutor _openConnection() {
-  return driftDatabase(name: 'nextchord_db');
+LazyDatabase _openConnection() {
+  return LazyDatabase(() async {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
+    return NativeDatabase(file);
+  });
 }

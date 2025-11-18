@@ -15,6 +15,7 @@ class Song extends Equatable {
   final String? notes; // User notes about the song
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isDeleted; // Soft delete flag
 
   const Song({
     required this.id,
@@ -30,6 +31,7 @@ class Song extends Equatable {
     this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.isDeleted = false,
   });
 
   /// Create a copy of this song with optional field replacements
@@ -47,6 +49,7 @@ class Song extends Equatable {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isDeleted,
   }) {
     return Song(
       id: id ?? this.id,
@@ -62,6 +65,7 @@ class Song extends Equatable {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 
@@ -80,6 +84,7 @@ class Song extends Equatable {
         notes,
         createdAt,
         updatedAt,
+        isDeleted,
       ];
 }
 

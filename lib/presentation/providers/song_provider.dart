@@ -15,6 +15,8 @@ class SongProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String _searchQuery = '';
+  bool _selectionMode = false;
+  final Set<String> _selectedSongIds = {};
 
   // Getters
   List<Song> get songs => _filteredSongs;
@@ -23,6 +25,11 @@ class SongProvider extends ChangeNotifier {
   bool get hasError => _errorMessage != null;
   bool get isEmpty => _songs.isEmpty && !_isLoading;
   String get searchQuery => _searchQuery;
+  bool get selectionMode => _selectionMode;
+  Set<String> get selectedSongIds => Set.unmodifiable(_selectedSongIds);
+  List<Song> get selectedSongs => _songs.where((song) => _selectedSongIds.contains(song.id)).toList();
+  bool get isAllSelected => _filteredSongs.isNotEmpty && _selectedSongIds.length == _filteredSongs.length;
+  bool get hasSelectedSongs => _selectedSongIds.isNotEmpty;
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
@@ -53,7 +60,6 @@ class SongProvider extends ChangeNotifier {
   void searchSongs(String query) {
     _searchQuery = query.trim();
     _applySearch();
-    notifyListeners();
   }
 
   /// Apply current search query to filter songs
@@ -65,9 +71,17 @@ class SongProvider extends ChangeNotifier {
       _filteredSongs = _songs.where((song) {
         final titleMatch = song.title.toLowerCase().contains(lowerQuery);
         final artistMatch = song.artist.toLowerCase().contains(lowerQuery);
-        return titleMatch || artistMatch;
+        final tagMatch = song.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
+        return titleMatch || artistMatch || tagMatch;
       }).toList();
     }
+  }
+
+  /// Clear search query and show all songs
+  void clearSearch() {
+    _searchQuery = '';
+    _filteredSongs = List.from(_songs);
+    notifyListeners();
   }
 
   /// Clear any error message
@@ -127,5 +141,130 @@ class SongProvider extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+  }
+
+  /// Load deleted songs
+  Future<void> loadDeletedSongs() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _songs = await _repository.getDeletedSongs();
+      _applySearch();
+      _errorMessage = null;
+    } on SongRepositoryException catch (e) {
+      _errorMessage = e.message;
+      _songs = [];
+      _filteredSongs = [];
+    } catch (e) {
+      _errorMessage = 'An unexpected error occurred: $e';
+      _songs = [];
+      _filteredSongs = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Restore a deleted song
+  Future<void> restoreSong(String id) async {
+    try {
+      await _repository.restoreSong(id);
+      await loadDeletedSongs(); // Refresh the deleted list
+    } catch (e) {
+      _errorMessage = 'Failed to restore song: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Permanently delete a song
+  Future<void> permanentlyDeleteSong(String id) async {
+    try {
+      await _repository.permanentlyDeleteSong(id);
+      await loadDeletedSongs(); // Refresh the deleted list
+    } catch (e) {
+      _errorMessage = 'Failed to permanently delete song: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Toggle selection mode on/off
+  void toggleSelectionMode() {
+    _selectionMode = !_selectionMode;
+    if (!_selectionMode) {
+      _selectedSongIds.clear();
+    }
+    notifyListeners();
+  }
+
+  /// Toggle selection of a specific song
+  void toggleSongSelection(String songId) {
+    if (_selectedSongIds.contains(songId)) {
+      _selectedSongIds.remove(songId);
+    } else {
+      _selectedSongIds.add(songId);
+    }
+    notifyListeners();
+  }
+
+  /// Select all songs in the current filtered list
+  void selectAll() {
+    _selectedSongIds.clear();
+    for (final song in _filteredSongs) {
+      _selectedSongIds.add(song.id);
+    }
+    notifyListeners();
+  }
+
+  /// Deselect all songs
+  void deselectAll() {
+    _selectedSongIds.clear();
+    notifyListeners();
+  }
+
+  /// Toggle select all/deselect all
+  void toggleSelectAll() {
+    if (isAllSelected) {
+      deselectAll();
+    } else {
+      selectAll();
+    }
+  }
+
+  /// Delete all selected songs
+  Future<void> deleteSelectedSongs() async {
+    final songsToDelete = selectedSongs;
+    for (final song in songsToDelete) {
+      try {
+        await _repository.deleteSong(song.id);
+      } catch (e) {
+        _errorMessage = 'Failed to delete song "${song.title}": $e';
+        notifyListeners();
+        rethrow;
+      }
+    }
+    _selectedSongIds.clear();
+    await loadSongs();
+  }
+
+  /// Add tags to all selected songs
+  Future<void> addTagsToSelectedSongs(List<String> tags) async {
+    final songsToUpdate = selectedSongs;
+    for (final song in songsToUpdate) {
+      try {
+        final updatedSong = song.copyWith(
+          tags: {...song.tags, ...tags}.toList(),
+        );
+        await _repository.updateSong(updatedSong);
+      } catch (e) {
+        _errorMessage = 'Failed to update song "${song.title}": $e';
+        notifyListeners();
+        rethrow;
+      }
+    }
+    await loadSongs();
   }
 }
