@@ -200,15 +200,21 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                       if (result == 'deleted') {
                         // Song was deleted - pop all the way back to home screen
                         // with special value to indicate deletion
-                        Navigator.of(context).pop('deleted');
+                        if (context.mounted) {
+                          Navigator.of(context).pop('deleted');
+                        }
                       } else if (result == true) {
                         // Song was updated, reload it
                         await _reloadSong();
                         // Also notify the library screen that data changed
-                        Navigator.of(context).pop(true);
+                        if (context.mounted) {
+                          Navigator.of(context).pop(true);
+                        }
                       } else {
                         // Editor was closed without saving, just pop back
-                        Navigator.of(context).pop();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
                       }
                     }
                   },
@@ -353,7 +359,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             color: Colors.grey.withValues(alpha: 0.5),
           ),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
@@ -361,7 +367,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               size: 14,
               color: Colors.grey,
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Text(
               'Edit',
               style: TextStyle(

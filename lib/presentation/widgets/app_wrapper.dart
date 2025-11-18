@@ -8,13 +8,13 @@ class AppWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return const Stack(
       children: [
         // Main app content
-        const HomeScreen(),
+        HomeScreen(),
         
         // Global sidebar overlay
-        const GlobalSidebar(),
+        GlobalSidebar(),
       ],
     );
   }

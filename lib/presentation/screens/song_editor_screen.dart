@@ -497,15 +497,16 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Song deleted successfully'),
-            backgroundColor: Colors.green,
           ),
         );
-        // Refresh the song provider to ensure UI updates
-        if (mounted) {
+        // Refresh the song list in the provider
+        if (context.mounted) {
           await context.read<SongProvider>().loadSongs();
         }
         // Return a special value to indicate deletion occurred
-        Navigator.of(context).pop('deleted');
+        if (mounted) {
+          Navigator.of(context).pop('deleted');
+        }
       }
     } catch (e) {
       if (mounted) {
