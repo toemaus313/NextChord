@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/flutter_midi_command-primary.dia",
+    "emit-module-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/flutter_midi_command-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/flutter_midi_command-primary-emit-module.dia",
+    "pch" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/flutter_midi_command-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/flutter_midi_command-primary.swiftdeps"
+  },
+  "/Users/tommy/.pub-cache/hosted/pub.dev/flutter_midi_command-0.5.3/macos/Classes/SwiftFlutterMidiCommandPlugin.swift" : {
+    "const-values" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.swiftconstvalues",
+    "dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.d",
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.o",
+    "llvm-bc" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.bc",
+    "object" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.o",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin.swiftdeps",
+    "swiftmodule" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/flutter_midi_command.build/Objects-normal/arm64/SwiftFlutterMidiCommandPlugin~partial.swiftmodule"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "" : {
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/universal_ble-primary.dia",
+    "emit-module-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/universal_ble-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/universal_ble-primary-emit-module.dia",
+    "pch" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/universal_ble-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/universal_ble-primary.swiftdeps"
+  },
+  "/Users/tommy/.pub-cache/hosted/pub.dev/universal_ble-0.9.11/darwin/Classes/UniversalBle.g.swift" : {
+    "const-values" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.swiftconstvalues",
+    "dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.d",
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.o",
+    "llvm-bc" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.bc",
+    "object" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.o",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g.swiftdeps",
+    "swiftmodule" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBle.g~partial.swiftmodule"
+  },
+  "/Users/tommy/.pub-cache/hosted/pub.dev/universal_ble-0.9.11/darwin/Classes/UniversalBleHelper.swift" : {
+    "const-values" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.swiftconstvalues",
+    "dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.d",
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.o",
+    "llvm-bc" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.bc",
+    "object" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.o",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper.swiftdeps",
+    "swiftmodule" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBleHelper~partial.swiftmodule"
+  },
+  "/Users/tommy/.pub-cache/hosted/pub.dev/universal_ble-0.9.11/darwin/Classes/UniversalBlePlugin.swift" : {
+    "const-values" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.swiftconstvalues",
+    "dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.d",
+    "diagnostics" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.dia",
+    "index-unit-output-path" : "/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.o",
+    "llvm-bc" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.bc",
+    "object" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.o",
+    "swift-dependencies" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin.swiftdeps",
+    "swiftmodule" : "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/universal_ble.build/Objects-normal/arm64/UniversalBlePlugin~partial.swiftmodule"
+  }
+}

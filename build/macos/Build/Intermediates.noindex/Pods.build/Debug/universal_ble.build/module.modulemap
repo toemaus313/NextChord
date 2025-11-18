@@ -1,0 +1,11 @@
+framework module universal_ble {
+  umbrella header "universal_ble-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module universal_ble.Swift {
+  header "universal_ble-Swift.h"
+  requires objc
+}

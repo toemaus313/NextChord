@@ -1,0 +1,23 @@
+{
+  "version": 0,
+  "use-external-names": false,
+  "case-sensitive": false,
+  "roots": [{
+    "type": "directory",
+    "name": "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Products/Debug/sqlite3_flutter_libs/sqlite3_flutter_libs.framework/Modules",
+    "contents": [{
+      "type": "file",
+      "name": "module.modulemap",
+      "external-contents": "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/sqlite3_flutter_libs.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    "type": "directory",
+    "name": "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Products/Debug/sqlite3_flutter_libs/sqlite3_flutter_libs.framework/Headers",
+    "contents": [{
+      "type": "file",
+      "name": "sqlite3_flutter_libs-Swift.h",
+      "external-contents": "/Users/tommy/CascadeProjects/NextChord/build/macos/Build/Intermediates.noindex/Pods.build/Debug/sqlite3_flutter_libs.build/unextended-interface-header.h",
+    }]
+  }]
+}

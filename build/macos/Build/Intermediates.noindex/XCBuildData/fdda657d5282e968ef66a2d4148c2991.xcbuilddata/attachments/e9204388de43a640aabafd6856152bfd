@@ -1,0 +1,5 @@
+
+module sqlite3_flutter_libs.Swift {
+  header "sqlite3_flutter_libs-Swift.h"
+  requires objc
+}

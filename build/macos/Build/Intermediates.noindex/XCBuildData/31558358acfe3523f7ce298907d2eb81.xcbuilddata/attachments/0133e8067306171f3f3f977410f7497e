@@ -1,0 +1,5 @@
+
+module flutter_midi_command.Swift {
+  header "flutter_midi_command-Swift.h"
+  requires objc
+}

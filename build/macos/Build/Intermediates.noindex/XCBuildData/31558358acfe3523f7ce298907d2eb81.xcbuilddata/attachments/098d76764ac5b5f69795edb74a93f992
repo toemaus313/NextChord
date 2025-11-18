@@ -1,0 +1,5 @@
+
+module universal_ble.Swift {
+  header "universal_ble-Swift.h"
+  requires objc
+}

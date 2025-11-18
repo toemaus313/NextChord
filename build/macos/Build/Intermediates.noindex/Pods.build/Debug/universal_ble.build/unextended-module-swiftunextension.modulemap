@@ -1,0 +1,4 @@
+
+module universal_ble.__Swift {
+  exclude header "universal_ble-Swift.h"
+}

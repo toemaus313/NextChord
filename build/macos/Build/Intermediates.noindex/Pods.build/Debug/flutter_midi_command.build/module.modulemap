@@ -1,0 +1,11 @@
+framework module flutter_midi_command {
+  umbrella header "flutter_midi_command-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module flutter_midi_command.Swift {
+  header "flutter_midi_command-Swift.h"
+  requires objc
+}
