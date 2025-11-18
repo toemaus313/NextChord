@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
-import 'song_editor_screen.dart';
+import '../providers/global_sidebar_provider.dart';
+import '../widgets/tag_edit_dialog.dart';
 import 'song_viewer_screen.dart';
+import 'song_editor_screen.dart';
 import '../../domain/entities/song.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,36 +17,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  bool _isSidebarVisible = true;
-  int? _expandedSection; // null means all collapsed, 0-3 for each section
+    with WidgetsBindingObserver {
+  int? _expandedSection = 0; // null means all collapsed, 0-3 for each section (0 = Songs)
   bool _showingSongList = false;
   String _songListTitle = 'All Songs';
-  late AnimationController _sidebarController;
-  late Animation<double> _sidebarAnimation;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _sidebarController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-      value: 1.0,
-    );
-    _sidebarAnimation = CurvedAnimation(
-      parent: _sidebarController,
-      curve: Curves.easeInOut,
-    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && mounted) {
-      // App resumed, refresh songs if we're showing the song list or sidebar
-      if (_showingSongList || _isSidebarVisible) {
+      // App resumed, refresh songs if we're showing the song list
+      if (_showingSongList) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.read<SongProvider>().loadSongs();
         });
@@ -63,28 +54,11 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _sidebarController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _toggleSidebar() {
-    setState(() {
-      _isSidebarVisible = !_isSidebarVisible;
-    });
-    
-    // Animate the sidebar
-    if (_isSidebarVisible) {
-      _sidebarController.forward();
-      // Refresh songs when opening sidebar to ensure list is up-to-date
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<SongProvider>().loadSongs();
-      });
-    } else {
-      _sidebarController.reverse();
-    }
-  }
-
+  
   void _onSongSelected(Song song) async {
     // Navigate to song viewer and capture the result
     final result = await Navigator.push(
@@ -92,25 +66,14 @@ class _HomeScreenState extends State<HomeScreen>
       MaterialPageRoute(
         builder: (context) => SongViewerScreen(
           song: song,
-          shouldHideSidebar: () {
-            if (_isSidebarVisible) {
-              _toggleSidebar();
-              return true; // Sidebar was hidden
-            }
-            return false; // Sidebar was already hidden
-          },
         ),
       ),
     );
     
     // Handle return from song viewer
     if (mounted && result == 'deleted') {
-      // Song was deleted, refresh the song list and ensure sidebar is visible
+      // Song was deleted, refresh the song list
       await context.read<SongProvider>().loadSongs();
-      setState(() {
-        _isSidebarVisible = true;
-        _sidebarController.forward();
-      });
     }
   }
 
@@ -172,25 +135,14 @@ class _HomeScreenState extends State<HomeScreen>
                       MaterialPageRoute(
                         builder: (context) => SongViewerScreen(
                           song: song,
-                          shouldHideSidebar: () {
-                            if (_isSidebarVisible) {
-                              _toggleSidebar();
-                              return true; // Sidebar was hidden
-                            }
-                            return false; // Sidebar was already hidden
-                          },
                         ),
                       ),
                     );
                     
                     // Handle return from song viewer
                     if (mounted && result == 'deleted') {
-                      // Song was deleted, refresh the song list and ensure sidebar is visible
+                      // Song was deleted, refresh the song list
                       await context.read<SongProvider>().loadSongs();
-                      setState(() {
-                        _isSidebarVisible = true;
-                        _sidebarController.forward();
-                      });
                     }
                   },
                 ),
@@ -199,10 +151,6 @@ class _HomeScreenState extends State<HomeScreen>
                   title: const Text('Edit'),
                   onTap: () async {
                     Navigator.pop(context);
-                    // Close sidebar before opening editor
-                    if (_isSidebarVisible) {
-                      _toggleSidebar();
-                    }
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -211,13 +159,17 @@ class _HomeScreenState extends State<HomeScreen>
                     );
                     // Handle the return
                     if (context.mounted && result == 'deleted') {
-                      // Song was deleted, refresh the song list and ensure sidebar is visible
+                      // Song was deleted, refresh the song list
                       await context.read<SongProvider>().loadSongs();
-                      setState(() {
-                        _isSidebarVisible = true;
-                        _sidebarController.forward();
-                      });
                     }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tag),
+                  title: const Text('Edit Tags'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showSingleSongTagDialog(context, song);
                   },
                 ),
                 ListTile(
@@ -393,125 +345,11 @@ class _HomeScreenState extends State<HomeScreen>
     final isDarkMode = themeProvider.isDarkMode;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Main content area (full screen)
-          _buildMainContent(theme, isDarkMode),
-
-          // Floating Sidebar
-          AnimatedBuilder(
-            animation: _sidebarAnimation,
-            builder: (context, child) {
-              if (_sidebarAnimation.value == 0) return const SizedBox();
-
-              return Positioned(
-                left: 16,
-                top: 16,
-                bottom: 16,
-                child: Transform.translate(
-                  offset: Offset(-320 * (1 - _sidebarAnimation.value), 0),
-                  child: _buildSidebar(isDarkMode),
-                ),
-              );
-            },
-          ),
-
-          // Toggle button (always visible)
-          Positioned(
-            top: 16,
-            left: _isSidebarVisible
-                ? 352
-                : 16, // Adjust position based on sidebar
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              child: FloatingActionButton.small(
-                onPressed: _toggleSidebar,
-                backgroundColor: const Color(0xFF0468cc),
-                child: Icon(
-                  _isSidebarVisible ? Icons.chevron_left : Icons.menu,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: _buildMainContent(theme, isDarkMode),
     );
   }
 
-  Widget _buildSidebar(bool isDarkMode) {
-    return Container(
-      width: 320,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0468cc),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(4, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // Sidebar header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.library_music,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Library',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.chevron_left,
-                    color: Colors.white,
-                  ),
-                  onPressed: _toggleSidebar,
-                  tooltip: 'Hide sidebar',
-                ),
-              ],
-            ),
-          ),
-          // Collapsible sections or song list
-          Expanded(
-            child: _showingSongList
-                ? _buildSongListPage()
-                : SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _buildSongsSection(),
-                        _buildSetlistsSection(),
-                        _buildToolsSection(),
-                        _buildSettingsSection(),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   Widget _buildSectionHeader({
     required String title,
     required IconData icon,
@@ -577,53 +415,6 @@ class _HomeScreenState extends State<HomeScreen>
             color: Colors.white.withValues(alpha: 0.05),
             child: Column(
               children: [
-                // Search bar in sidebar
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Consumer<SongProvider>(
-                    builder: (context, provider, child) {
-                      // Sync controller with provider state
-                      if (_searchController.text != provider.searchQuery) {
-                        _searchController.text = provider.searchQuery;
-                      }
-                      
-                      return TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search songs...',
-                          hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
-                          prefixIcon: Icon(Icons.search,
-                              color: Colors.white.withValues(alpha: 0.7), size: 18),
-                          suffixIcon: provider.searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(Icons.clear,
-                                      color: Colors.white.withValues(alpha: 0.7), size: 18),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    provider.clearSearch();
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.1),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                        ),
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
-                        onChanged: (value) {
-                          provider.searchSongs(value);
-                        },
-                      );
-                    },
-                  ),
-                ),
                 _buildFilterOption(Icons.library_music, 'All Songs'),
                 Divider(
                   height: 1,
@@ -740,13 +531,29 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             child: Consumer<SongProvider>(
               builder: (context, provider, child) {
+                // Sync controller with provider state
+                if (_searchController.text != provider.searchQuery) {
+                  _searchController.text = provider.searchQuery;
+                }
+                
                 return TextField(
+                  controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Song, tag or artist',
                     hintStyle: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
                     prefixIcon: Icon(Icons.search,
                         color: Colors.white.withValues(alpha: 0.7), size: 18),
+                    suffixIcon: provider.searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear,
+                                color: Colors.white.withValues(alpha: 0.7), size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              provider.clearSearch();
+                            },
+                          )
+                        : null,
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.1),
                     border: OutlineInputBorder(
@@ -957,6 +764,59 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
+                  // Tags on the right side
+                  if (song.tags.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Icon(
+                          Icons.tag,
+                          color: Colors.white.withValues(alpha: 0.5),
+                          size: 12,
+                        ),
+                        const SizedBox(height: 2),
+                        Wrap(
+                          spacing: 2,
+                          runSpacing: 1,
+                          direction: Axis.vertical,
+                          children: song.tags.take(2).map((tag) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Text(
+                              tag,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )).toList(),
+                        ),
+                        if (song.tags.length > 2)
+                          Text(
+                            '+${song.tags.length - 2}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              fontSize: 8,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   // Chevron icon (only when not in selection mode)
                   if (!isSelectionMode)
                     Icon(
@@ -1002,7 +862,7 @@ class _HomeScreenState extends State<HomeScreen>
                   // Tag option
                   ListTile(
                     leading: const Icon(Icons.tag),
-                    title: const Text('Add Tags...'),
+                    title: const Text('Edit Tags'),
                     onTap: () {
                       Navigator.pop(context);
                       _showTagDialog(context);
@@ -1028,64 +888,81 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// Show dialog to add tags to selected songs
-  void _showTagDialog(BuildContext context) {
-    final controller = TextEditingController();
+  /// Show dialog to edit tags for a single song
+  void _showSingleSongTagDialog(BuildContext context, Song song) {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Tags'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Enter tags separated by commas:'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: 'e.g., rock, favorite, practice',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final tagText = controller.text.trim();
-                if (tagText.isEmpty) return;
-                
-                final tags = tagText
-                    .split(',')
-                    .map((tag) => tag.trim())
-                    .where((tag) => tag.isNotEmpty)
-                    .toList();
-                
-                Navigator.pop(context);
-                try {
-                  await context.read<SongProvider>().addTagsToSelectedSongs(tags);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added ${tags.length} tag(s) to ${context.read<SongProvider>().selectedSongIds.length} songs')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to add tags: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Add Tags'),
-            ),
-          ],
+        return TagEditDialog(
+          title: 'Edit Tags - ${song.title}',
+          initialTags: Set<String>.from(song.tags),
+          onTagsUpdated: (newTags) async {
+            try {
+              await context.read<SongProvider>().updateSongTags(song.id, newTags);
+              
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Updated tags for "${song.title}"')),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to update tags: $e')),
+                );
+              }
+            }
+          },
+        );
+      },
+    );
+  }
+
+  /// Show dialog to edit tags for selected songs
+  void _showTagDialog(BuildContext context) {
+    final provider = context.read<SongProvider>();
+    final currentTags = <String>{};
+    
+    // Get current tags from selected songs
+    for (final song in provider.selectedSongs) {
+      currentTags.addAll(song.tags);
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return TagEditDialog(
+          title: 'Edit Tags',
+          initialTags: currentTags,
+          onTagsUpdated: (newTags) async {
+            try {
+              // Determine tags to add and remove
+              final tagsToAdd = newTags.where((tag) => !currentTags.contains(tag)).toList();
+              final tagsToRemove = currentTags.where((tag) => !newTags.contains(tag)).toList();
+              
+              // Remove tags first
+              if (tagsToRemove.isNotEmpty) {
+                await provider.removeTagsFromSelectedSongs(tagsToRemove);
+              }
+              // Add new tags
+              if (tagsToAdd.isNotEmpty) {
+                await provider.addTagsToSelectedSongs(tagsToAdd);
+              }
+              
+              if (context.mounted) {
+                final totalChanges = tagsToAdd.length + tagsToRemove.length;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Updated $totalChanges tag(s) on ${provider.selectedSongIds.length} songs')),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to update tags: $e')),
+                );
+              }
+            }
+          },
         );
       },
     );
@@ -1367,13 +1244,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMainContent(ThemeData theme, bool isDarkMode) {
     // Always show welcome screen now since we navigate to song viewer
     // Welcome screen when no song is selected
-    return GestureDetector(
-      onTap: () {
-        if (_isSidebarVisible) {
-          _toggleSidebar();
-        }
-      },
-      child: Container(
+    return Container(
         color: isDarkMode ? Colors.grey[900] : Colors.white,
         child: Center(
           child: Column(
@@ -1402,24 +1273,23 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const SizedBox(height: 32),
-              if (!_isSidebarVisible)
-                ElevatedButton.icon(
-                  onPressed: _toggleSidebar,
-                  icon: const Icon(Icons.menu),
-                  label: const Text('Open Library'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0468cc),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+              ElevatedButton.icon(
+                onPressed: () => context.read<GlobalSidebarProvider>().toggleSidebar(),
+                icon: const Icon(Icons.menu),
+                label: const Text('Open Library'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0468cc),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
             ],
           ),
         ),

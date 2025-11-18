@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 
@@ -17,6 +18,7 @@ class SongProvider extends ChangeNotifier {
   String _searchQuery = '';
   bool _selectionMode = false;
   final Set<String> _selectedSongIds = {};
+  Timer? _searchTimer;
 
   // Getters
   List<Song> get songs => _filteredSongs;
@@ -55,11 +57,15 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
-  /// Search songs by title or artist
+  /// Search songs by title or artist with debouncing
   /// If query is empty, shows all songs
   void searchSongs(String query) {
-    _searchQuery = query.trim();
-    _applySearch();
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 300), () {
+      _searchQuery = query.trim();
+      _applySearch();
+      notifyListeners();
+    });
   }
 
   /// Apply current search query to filter songs
@@ -81,6 +87,7 @@ class SongProvider extends ChangeNotifier {
   void clearSearch() {
     _searchQuery = '';
     _filteredSongs = List.from(_songs);
+    // Preserve selections when clearing search
     notifyListeners();
   }
 
@@ -250,6 +257,21 @@ class SongProvider extends ChangeNotifier {
     await loadSongs();
   }
 
+  /// Get all unique tags from all songs plus default tags
+  Set<String> get allTags {
+    final defaultTags = {
+      'Pop', 'Rock', 'Country', 'Latin', 'R&B', 'Blues',
+      'Classical', 'Metal', 'Punk', 'Indie', 'Alternative', 'Jazz',
+      'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'
+    };
+    final allTags = <String>{};
+    allTags.addAll(defaultTags);
+    for (final song in _songs) {
+      allTags.addAll(song.tags);
+    }
+    return allTags;
+  }
+
   /// Add tags to all selected songs
   Future<void> addTagsToSelectedSongs(List<String> tags) async {
     final songsToUpdate = selectedSongs;
@@ -266,5 +288,44 @@ class SongProvider extends ChangeNotifier {
       }
     }
     await loadSongs();
+  }
+
+  /// Update tags for a specific song
+  Future<void> updateSongTags(String songId, List<String> newTags) async {
+    try {
+      final song = _songs.firstWhere((s) => s.id == songId);
+      final updatedSong = song.copyWith(tags: newTags);
+      await _repository.updateSong(updatedSong);
+      await loadSongs();
+    } catch (e) {
+      _errorMessage = 'Failed to update song tags: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Remove tags from all selected songs
+  Future<void> removeTagsFromSelectedSongs(List<String> tags) async {
+    final songsToUpdate = selectedSongs;
+    for (final song in songsToUpdate) {
+      try {
+        final updatedSong = song.copyWith(
+          tags: song.tags.where((tag) => !tags.contains(tag)).toList(),
+        );
+        await _repository.updateSong(updatedSong);
+      } catch (e) {
+        _errorMessage = 'Failed to update song "${song.title}": $e';
+        notifyListeners();
+        rethrow;
+      }
+    }
+    await loadSongs();
+  }
+
+  /// Dispose of the provider and clean up resources
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
   }
 }

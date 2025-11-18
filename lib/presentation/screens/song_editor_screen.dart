@@ -8,6 +8,7 @@ import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../../services/import/ultimate_guitar_import_service.dart';
 import '../providers/song_provider.dart';
+import '../widgets/tag_edit_dialog.dart';
 
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
@@ -26,7 +27,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   final _bodyController = TextEditingController();
   final _bpmController = TextEditingController();
   final _durationController = TextEditingController();
-  final _tagInputController = TextEditingController();
 
   String _selectedKey = 'C';
   int _selectedCapo = 0;
@@ -91,7 +91,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     _bodyController.dispose();
     _bpmController.dispose();
     _durationController.dispose();
-    _tagInputController.dispose();
     super.dispose();
   }
 
@@ -435,22 +434,31 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     }
   }
 
-  /// Add a tag to the list
-  void _addTag() {
-    final tag = _tagInputController.text.trim();
-    if (tag.isNotEmpty && !_tags.contains(tag)) {
-      setState(() {
-        _tags.add(tag);
-        _tagInputController.clear();
-      });
+  /// Get color for a tag based on whether it's an instrument tag
+  (Color, Color) _getTagColors(String tag, BuildContext context) {
+    const instrumentTags = {'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'};
+    
+    if (instrumentTags.contains(tag)) {
+      return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
+    } else {
+      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
     }
   }
 
-  /// Remove a tag from the list
-  void _removeTag(String tag) {
-    setState(() {
-      _tags.remove(tag);
-    });
+  /// Open the Edit Tags dialog
+  Future<void> _openTagsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => TagEditDialog(
+        title: 'Edit Tags',
+        initialTags: _tags.toSet(),
+        onTagsUpdated: (updatedTags) {
+          setState(() {
+            _tags = updatedTags;
+          });
+        },
+      ),
+    );
   }
 
   /// Delete the current song
@@ -753,43 +761,46 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Tags',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _tagInputController,
-                            decoration: const InputDecoration(
-                              hintText: 'Add a tag',
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                            textCapitalization: TextCapitalization.words,
-                            onSubmitted: (_) => _addTag(),
-                          ),
+                        Text(
+                          'Tags',
+                          style: theme.textTheme.titleMedium,
                         ),
-                        const SizedBox(width: 8),
+                        const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.add),
-                          onPressed: _addTag,
-                          tooltip: 'Add tag',
+                          onPressed: _openTagsDialog,
+                          tooltip: 'Edit tags',
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     if (_tags.isNotEmpty)
                       Wrap(
-                        spacing: 8,
+                        spacing: 6,
                         runSpacing: 4,
                         children: _tags.map((tag) {
-                          return Chip(
-                            label: Text(tag),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            onDeleted: () => _removeTag(tag),
+                          final (bgColor, textColor) = _getTagColors(tag, context);
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: textColor.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              tag,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textColor,
+                              ),
+                            ),
                           );
                         }).toList(),
                       )

@@ -4,7 +4,8 @@ import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
 import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/theme_provider.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/providers/global_sidebar_provider.dart';
+import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,9 @@ class NextChordApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
         ),
+        ChangeNotifierProvider(
+          create: (_) => GlobalSidebarProvider(),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -48,7 +52,7 @@ class NextChordApp extends StatelessWidget {
             darkTheme: themeProvider.darkTheme,
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const HomeScreen(),
+            home: const AppWrapper(),
           );
         },
       ),

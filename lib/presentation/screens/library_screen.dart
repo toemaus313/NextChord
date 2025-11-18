@@ -49,44 +49,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (widget.inSidebar) {
       return Column(
         children: [
-          // Search bar for sidebar
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
-            ),
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Search songs...',
-                hintStyle: const TextStyle(color: Colors.white60),
-                prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white70),
-                        onPressed: () {
-                          _searchController.clear();
-                          context.read<SongProvider>().clearSearch();
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              onChanged: (query) {
-                context.read<SongProvider>().searchSongs(query);
-              },
-            ),
-          ),
           Expanded(
             child: _buildSongList(inSidebar: true),
           ),
@@ -128,7 +90,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Scaffold(
       body: Column(
         children: [
-          // Search bar with add button
+          // Header with add button only
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -142,33 +104,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ],
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Search bar takes most of the space
-                Expanded(
-                  child: SearchBar(
-                    controller: _searchController,
-                    hintText: 'Search songs or artists...',
-                    leading: const Icon(Icons.search),
-                    trailing: [
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            context.read<SongProvider>().clearSearch();
-                          },
-                        ),
-                    ],
-                    onChanged: (query) {
-                      context.read<SongProvider>().searchSongs(query);
-                    },
-                    elevation: WidgetStateProperty.all(0),
-                    backgroundColor: WidgetStateProperty.all(
-                      colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 // Add song button
                 IconButton.filled(
                   onPressed: () async {

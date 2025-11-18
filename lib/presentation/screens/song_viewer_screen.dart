@@ -5,20 +5,20 @@ import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
+import '../providers/global_sidebar_provider.dart';
 import '../widgets/chord_renderer.dart';
+import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
 
 /// Full-screen song viewer for live performance
 /// Displays lyrics/chords with adjustable font size and theme toggle
 class SongViewerScreen extends StatefulWidget {
   final Song song;
-  final bool Function()? shouldHideSidebar;
   final VoidCallback? onSongEdit;
 
   const SongViewerScreen({
     Key? key,
     required this.song,
-    this.shouldHideSidebar,
     this.onSongEdit,
   }) : super(key: key);
 
@@ -65,6 +65,37 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     return metadata.duration;
   }
 
+  /// Get color for a tag based on whether it's an instrument tag
+  (Color, Color) _getTagColors(String tag, BuildContext context) {
+    const instrumentTags = {'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'};
+    
+    if (instrumentTags.contains(tag)) {
+      return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
+    } else {
+      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
+    }
+  }
+
+  /// Open the Edit Tags dialog
+  Future<void> _openTagsDialog() async {
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => TagEditDialog(
+        title: 'Edit Tags',
+        initialTags: _currentSong.tags.toSet(),
+        onTagsUpdated: (updatedTags) async {
+          // Update the song in the database
+          final repository = context.read<SongRepository>();
+          final updatedSong = _currentSong.copyWith(tags: updatedTags);
+          await repository.updateSong(updatedSong);
+          
+          // Reload the song to get fresh data
+          await _reloadSong();
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     // Reset to portrait only when leaving
@@ -86,15 +117,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       body: SafeArea(
         child: GestureDetector(
           onTap: () {
-            // If sidebar check callback is provided, check if sidebar should be hidden
-            if (widget.shouldHideSidebar != null) {
-              final sidebarWasHidden = widget.shouldHideSidebar!();
-              if (sidebarWasHidden) {
-                // Sidebar was hidden, don't toggle controls
-                return;
-              }
-            }
-            // Otherwise, toggle controls visibility
+            // Toggle controls visibility
             setState(() {
               _showControls = !_showControls;
             });
@@ -139,11 +162,14 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 left: 8,
                 child: IconButton(
                   icon: Icon(
-                    Icons.arrow_back,
+                    Icons.menu,
                     color: textColor,
                     size: 28,
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    context.read<GlobalSidebarProvider>().toggleSidebar();
+                  },
+                  tooltip: 'Toggle sidebar',
                 ),
               ),
 
@@ -256,6 +282,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                   _buildTagChip(tag, textColor),
                 if (_currentSong.tags.length > 3)
                   _buildInfoChip('+${_currentSong.tags.length - 3} more', textColor),
+                // Add button to edit tags
+                _buildEditTagsButton(textColor),
               ],
             ],
           ),
@@ -286,21 +314,62 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   }
 
   Widget _buildTagChip(String tag, Color textColor) {
-    final themeProvider = context.read<ThemeProvider>();
-    final isDarkMode = themeProvider.isDarkMode;
+    final (bgColor, tagTextColor) = _getTagColors(tag, context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.blue.shade800 : Colors.blue.shade200,
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: tagTextColor.withValues(alpha: 0.3),
+        ),
       ),
       child: Text(
         tag,
         style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade800,
+          fontSize: 12,
+          color: tagTextColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditTagsButton(Color textColor) {
+    return GestureDetector(
+      onTap: _openTagsDialog,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.grey.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add,
+              size: 14,
+              color: Colors.grey,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Edit',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
         ),
       ),
     );
