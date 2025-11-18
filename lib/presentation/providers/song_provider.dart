@@ -304,6 +304,22 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
+  /// Update/replace tags for all selected songs
+  Future<void> updateTagsForSelectedSongs(List<String> newTags) async {
+    final songsToUpdate = selectedSongs;
+    for (final song in songsToUpdate) {
+      try {
+        final updatedSong = song.copyWith(tags: newTags);
+        await _repository.updateSong(updatedSong);
+      } catch (e) {
+        _errorMessage = 'Failed to update song "${song.title}": $e';
+        notifyListeners();
+        rethrow;
+      }
+    }
+    await loadSongs();
+  }
+
   /// Remove tags from all selected songs
   Future<void> removeTagsFromSelectedSongs(List<String> tags) async {
     final songsToUpdate = selectedSongs;

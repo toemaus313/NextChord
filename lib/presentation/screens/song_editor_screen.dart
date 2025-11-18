@@ -105,7 +105,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     });
 
     try {
-      final repository = context.read<SongRepository>();
       final now = DateTime.now();
 
       // Update ChordPro body with duration if provided
@@ -158,8 +157,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       );
 
       if (widget.song != null) {
-        // Update existing song
-        await repository.updateSong(song);
+        // Update existing song - use provider to ensure UI updates
+        final provider = context.read<SongProvider>();
+        await provider.updateSong(song);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -169,8 +169,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           );
         }
       } else {
-        // Create new song
-        await repository.insertSong(song);
+        // Create new song - use provider to ensure UI updates
+        final provider = context.read<SongProvider>();
+        await provider.addSong(song);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -778,30 +779,29 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     ),
                     const SizedBox(height: 8),
                     if (_tags.isNotEmpty)
-                      Wrap(
+                      ReorderableWrap(
                         spacing: 6,
                         runSpacing: 4,
-                        children: _tags.map((tag) {
+                        onReorder: (oldIndex, newIndex) {
+                          setState(() {
+                            final tag = _tags.removeAt(oldIndex);
+                            _tags.insert(newIndex, tag);
+                          });
+                        },
+                        children: _tags.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final tag = entry.value;
                           final (bgColor, textColor) = _getTagColors(tag, context);
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: bgColor,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: textColor.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Text(
-                              tag,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: textColor,
-                              ),
-                            ),
+                          return _TagChip(
+                            key: ValueKey('tag_$index\_$tag'),
+                            tag: tag,
+                            bgColor: bgColor,
+                            textColor: textColor,
+                            onRemove: () {
+                              setState(() {
+                                _tags.removeAt(index);
+                              });
+                            },
                           );
                         }).toList(),
                       )
@@ -892,6 +892,131 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Custom widget for displaying a tag chip with remove button
+class _TagChip extends StatelessWidget {
+  final String tag;
+  final Color bgColor;
+  final Color textColor;
+  final VoidCallback onRemove;
+
+  const _TagChip({
+    super.key,
+    required this.tag,
+    required this.bgColor,
+    required this.textColor,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: textColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            tag,
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(
+              Icons.close,
+              size: 14,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom reorderable wrap widget for drag-and-drop tag reordering
+class ReorderableWrap extends StatefulWidget {
+  final List<Widget> children;
+  final double spacing;
+  final double runSpacing;
+  final Function(int oldIndex, int newIndex) onReorder;
+
+  const ReorderableWrap({
+    super.key,
+    required this.children,
+    required this.spacing,
+    required this.runSpacing,
+    required this.onReorder,
+  });
+
+  @override
+  State<ReorderableWrap> createState() => _ReorderableWrapState();
+}
+
+class _ReorderableWrapState extends State<ReorderableWrap> {
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: widget.spacing,
+      runSpacing: widget.runSpacing,
+      children: widget.children.asMap().entries.map((entry) {
+        final index = entry.key;
+        final child = entry.value;
+        
+        return DragTarget<int>(
+          onWillAcceptWithDetails: (details) {
+            return details.data != index;
+          },
+          onAcceptWithDetails: (details) {
+            widget.onReorder(details.data, index);
+          },
+          builder: (context, candidateData, rejectedData) {
+            final isHovered = candidateData.isNotEmpty;
+            return Draggable<int>(
+              data: index,
+              feedback: Opacity(
+                opacity: 0.7,
+                child: Material(
+                  color: Colors.transparent,
+                  child: child,
+                ),
+              ),
+              childWhenDragging: Opacity(
+                opacity: 0.3,
+                child: child,
+              ),
+              child: Container(
+                decoration: isHovered
+                    ? BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      )
+                    : null,
+                child: child,
+              ),
+            );
+          },
+        );
+      }).toList(),
     );
   }
 }

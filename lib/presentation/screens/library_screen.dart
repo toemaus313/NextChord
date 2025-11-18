@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../providers/song_provider.dart';
 import '../widgets/song_list_tile.dart';
+import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
 import 'song_viewer_screen.dart';
 
@@ -283,9 +284,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
         // Song list
         return ListView.builder(
           padding: EdgeInsets.only(bottom: inSidebar ? 0 : 80),
-          itemCount: provider.songs.length,
+          itemCount: provider.songs.length + (inSidebar && provider.selectionMode ? 1 : 0),
           itemBuilder: (context, index) {
-            final song = provider.songs[index];
+            // Select All header for sidebar in selection mode
+            if (inSidebar && provider.selectionMode && index == 0) {
+              return _buildSelectAllHeader(provider);
+            }
+            final songIndex = inSidebar && provider.selectionMode ? index - 1 : index;
+            final song = provider.songs[songIndex];
             return _buildSongItem(song, inSidebar);
           },
         );
@@ -371,7 +377,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              // Tags (max 2) - now before the key
+                              if (song.tags.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                ...song.tags.take(2).map((tag) => Padding(
+                                  padding: const EdgeInsets.only(left: 3),
+                                  child: _buildTagChip(tag, compact: true),
+                                )),
+                              ],
+                              const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,
@@ -442,6 +456,91 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  /// Build Select All header for sidebar selection mode
+  Widget _buildSelectAllHeader(SongProvider provider) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: provider.isAllSelected,
+            onChanged: (value) {
+              provider.toggleSelectAll();
+            },
+            fillColor: WidgetStateProperty.all(Colors.white),
+            checkColor: Colors.black,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            provider.isAllSelected ? 'Deselect All' : 'Select All',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '${provider.selectedSongIds.length} of ${provider.songs.length}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build a tag chip with matching styling from Edit Tags dialog
+  Widget _buildTagChip(String tag, {bool compact = false}) {
+    final (bgColor, tagTextColor) = _getTagColors(tag);
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 8,
+        vertical: compact ? 2 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(compact ? 12 : 16),
+        border: Border.all(
+          color: tagTextColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(
+          fontSize: compact ? 10 : 12,
+          color: tagTextColor,
+        ),
+      ),
+    );
+  }
+
+  /// Get color for a tag based on whether it's an instrument tag
+  (Color, Color) _getTagColors(String tag) {
+    const instrumentTags = {
+      'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 
+      'Drums', 'Vocals', 'Instrumental'
+    };
+    
+    if (instrumentTags.contains(tag)) {
+      return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
+    } else {
+      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
+    }
+  }
+
   /// Show bulk operations menu for selected songs
   void _showBulkOptions(BuildContext context) {
     showModalBottomSheet(
@@ -471,7 +570,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   // Tag option
                   ListTile(
                     leading: const Icon(Icons.tag),
-                    title: const Text('Add Tags...'),
+                    title: const Text('Edit Tags...'),
                     onTap: () {
                       Navigator.pop(context);
                       _showTagDialog(context);
@@ -497,66 +596,66 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  /// Show dialog to add tags to selected songs
-  void _showTagDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
+  /// Show dialog to edit tags for selected songs
+  Future<void> _showTagDialog(BuildContext context) async {
+    final provider = context.read<SongProvider>();
+    
+    // Collect all tags from selected songs
+    final allTagsFromSelection = <String>{};
+    for (final songId in provider.selectedSongIds) {
+      final song = provider.songs.firstWhere((s) => s.id == songId, orElse: () => throw Exception('Song not found'));
+      allTagsFromSelection.addAll(song.tags);
+    }
+    
+    await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Tags'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Enter tags separated by commas:'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: 'e.g., rock, favorite, practice',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final tagText = controller.text.trim();
-                if (tagText.isEmpty) return;
-                
-                final tags = tagText
-                    .split(',')
-                    .map((tag) => tag.trim())
-                    .where((tag) => tag.isNotEmpty)
-                    .toList();
-                
-                Navigator.pop(context);
-                try {
-                  await context.read<SongProvider>().addTagsToSelectedSongs(tags);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added ${tags.length} tag(s) to ${context.read<SongProvider>().selectedSongIds.length} songs')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to add tags: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Add Tags'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => TagEditDialog(
+        title: 'Edit Tags',
+        initialTags: allTagsFromSelection,
+        onTagsUpdated: (updatedTags) async {
+          try {
+            await context.read<SongProvider>().updateTagsForSelectedSongs(updatedTags);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Updated tags for ${context.read<SongProvider>().selectedSongIds.length} songs')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to update tags: $e')),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  /// Show dialog to edit tags for a single song
+  Future<void> _showSingleSongTagDialog(BuildContext context, Song song) async {
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => TagEditDialog(
+        title: 'Edit Tags',
+        initialTags: song.tags.toSet(),
+        onTagsUpdated: (updatedTags) async {
+          try {
+            await context.read<SongProvider>().updateSongTags(song.id, updatedTags);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tags updated')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to update tags: $e')),
+              );
+            }
+          }
+        },
+      ),
     );
   }
 
@@ -644,6 +743,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   if (result == true && context.mounted) {
                     context.read<SongProvider>().loadSongs();
                   }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tag),
+                title: const Text('Edit Tags...'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSingleSongTagDialog(context, song);
                 },
               ),
               ListTile(
