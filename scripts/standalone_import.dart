@@ -93,6 +93,8 @@ void main(List<String> args) async {
         final rawData = songJson['rawData'] as String? ?? '';
         final timeSignature = (songJson['timeSignature'] as String? ?? '4/4').replaceAll(r'\/', '/');
         final tempo = songJson['tempo'] as String?;
+        final tags = (songJson['tags'] as List?)?.whereType<String>().toList() ?? const <String>[];
+        final tagsJson = jsonEncode(tags);
         
         // Extract key
         String key = 'C';
@@ -132,7 +134,7 @@ void main(List<String> args) async {
           0, // capo
           bpm,
           timeSignature,
-          null, // tags
+          tagsJson,
           null, // audio_file_path
           null, // notes
           now,

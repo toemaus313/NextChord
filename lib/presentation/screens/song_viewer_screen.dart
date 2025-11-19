@@ -16,34 +16,360 @@ import 'song_editor_screen.dart';
 class SongViewerScreen extends StatefulWidget {
   final Song song;
   final VoidCallback? onSongEdit;
+  final SetlistSongItem? setlistContext;
 
   const SongViewerScreen({
     Key? key,
     required this.song,
     this.onSongEdit,
+    this.setlistContext,
   }) : super(key: key);
 
   @override
   State<SongViewerScreen> createState() => _SongViewerScreenState();
 }
 
+/// Lightweight metadata describing how chords should be adjusted in the viewer.
+/// This lets us keep track of per-setlist overrides without mutating the base song.
+class ViewerAdjustmentMetadata {
+  final int transposeSteps;
+  final int capo;
+  final bool appliesToSetlist;
+
+  const ViewerAdjustmentMetadata({
+    required this.transposeSteps,
+    required this.capo,
+    required this.appliesToSetlist,
+  });
+
+  ViewerAdjustmentMetadata copyWith({
+    int? transposeSteps,
+    int? capo,
+    bool? appliesToSetlist,
+  }) {
+    return ViewerAdjustmentMetadata(
+      transposeSteps: transposeSteps ?? this.transposeSteps,
+      capo: capo ?? this.capo,
+      appliesToSetlist: appliesToSetlist ?? this.appliesToSetlist,
+    );
+  }
+}
+
+class _ViewerTagWrap extends StatelessWidget {
+  final List<String> tags;
+  final bool hasTags;
+  final Color textColor;
+  final Future<void> Function(String tag) onRemove;
+  final VoidCallback onEdit;
+  final (Color, Color) Function(String tag) getTagColors;
+
+  const _ViewerTagWrap({
+    required this.tags,
+    required this.hasTags,
+    required this.textColor,
+    required this.onRemove,
+    required this.onEdit,
+    required this.getTagColors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasTags) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            'Tags',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+          Text(
+            'No tags yet',
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor.withValues(alpha: 0.6),
+            ),
+          ),
+          _buildEditButton(),
+        ],
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'Tags',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        ...tags.asMap().entries.map((entry) {
+          final index = entry.key;
+          final tag = entry.value;
+          final (bgColor, tagTextColor) = getTagColors(tag);
+          return DragTarget<int>(
+            onWillAccept: (dragIndex) => dragIndex != index,
+            onAccept: (dragIndex) async {
+              final updated = List<String>.from(tags);
+              final tagToMove = updated.removeAt(dragIndex);
+              updated.insert(index, tagToMove);
+              await _reorderTags(context, updated);
+            },
+            builder: (context, candidate, rejected) {
+              return Draggable<int>(
+                data: index,
+                feedback: Opacity(
+                  opacity: 0.7,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: _TagChip(
+                      tag: tag,
+                      bgColor: bgColor,
+                      textColor: tagTextColor,
+                      onRemove: () {},
+                    ),
+                  ),
+                ),
+                childWhenDragging: Opacity(
+                  opacity: 0.3,
+                  child: _TagChip(
+                    tag: tag,
+                    bgColor: bgColor,
+                    textColor: tagTextColor,
+                    onRemove: () => onRemove(tag),
+                  ),
+                ),
+                child: _TagChip(
+                  tag: tag,
+                  bgColor: bgColor,
+                  textColor: tagTextColor,
+                  onRemove: () => onRemove(tag),
+                ),
+              );
+            },
+          );
+        }),
+        _buildEditButton(),
+      ],
+    );
+  }
+
+  Future<void> _reorderTags(BuildContext context, List<String> updated) async {
+    final repository = context.read<SongRepository>();
+    final state = context.findAncestorStateOfType<_SongViewerScreenState>();
+    if (state == null) return;
+    final updatedSong = state._currentSong.copyWith(tags: updated);
+    await repository.updateSong(updatedSong);
+    await state._reloadSong();
+  }
+
+  Widget _buildEditButton() {
+    return GestureDetector(
+      onTap: onEdit,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: textColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.edit, size: 14, color: textColor.withValues(alpha: 0.7)),
+            const SizedBox(width: 4),
+            Text(
+              'Edit',
+              style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  final String tag;
+  final Color bgColor;
+  final Color textColor;
+  final VoidCallback onRemove;
+
+  const _TagChip({
+    required this.tag,
+    required this.bgColor,
+    required this.textColor,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: textColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            tag,
+            style: TextStyle(fontSize: 12, color: textColor),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(Icons.close, size: 14, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SongViewerScreenState extends State<SongViewerScreen> {
+  static const int _minTranspose = -12;
+  static const int _maxTranspose = 12;
+  static const int _minCapo = 0;
+  static const int _maxCapo = 12;
+
   double _fontSize = 18.0;
   double _baseFontSize = 18.0; // Font size at the start of pinch gesture
-  final int _transposeSteps = 0; // Semitones to transpose
+  int _transposeSteps = 0; // Semitones to transpose
   late Song _currentSong; // Mutable song that can be refreshed
   bool _showSettingsFlyout = false; // Compact settings flyout visibility
+  int _currentCapo = 0;
+  bool _showTransposeFlyout = false;
+  bool _showCapoFlyout = false;
+  late ViewerAdjustmentMetadata _viewerAdjustments;
 
   @override
   void initState() {
     super.initState();
     _currentSong = widget.song;
+    _transposeSteps = widget.setlistContext?.transposeSteps ?? 0;
+    _currentCapo = widget.setlistContext?.capo ?? widget.song.capo;
+    _initializeViewerAdjustments();
     // Enable landscape mode
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+  }
+
+  void _initializeViewerAdjustments() {
+    _viewerAdjustments = ViewerAdjustmentMetadata(
+      transposeSteps: _transposeSteps,
+      capo: _currentCapo,
+      appliesToSetlist: widget.setlistContext != null,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant SongViewerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final songChanged = oldWidget.song.id != widget.song.id;
+    final setlistChanged = oldWidget.setlistContext?.songId != widget.setlistContext?.songId;
+    if (songChanged || setlistChanged) {
+      setState(() {
+        _currentSong = widget.song;
+        _transposeSteps = widget.setlistContext?.transposeSteps ?? 0;
+        _currentCapo = widget.setlistContext?.capo ?? widget.song.capo;
+        _initializeViewerAdjustments();
+        _showTransposeFlyout = false;
+        _showCapoFlyout = false;
+      });
+    }
+  }
+
+  bool get _hasSetlistContext => widget.setlistContext != null;
+
+  int get _capoOffsetFromSong => _currentSong.capo - _currentCapo;
+
+  int get _effectiveTransposeSteps => _transposeSteps + _capoOffsetFromSong;
+
+  String get _transposeStatusLabel {
+    final steps = _effectiveTransposeSteps;
+    if (steps == 0) return 'No transposition';
+    final unit = steps.abs() == 1 ? 'semitone' : 'semitones';
+    return 'Transposed ${_formatSignedValue(steps)} $unit';
+  }
+
+  String get _capoStatusLabel {
+    final defaultCapo = _currentSong.capo;
+    if (_currentCapo == defaultCapo) {
+      return 'Capo ${_currentCapo} (song default)';
+    }
+    final direction = _currentCapo > defaultCapo ? 'higher' : 'lower';
+    return 'Capo ${_currentCapo} (${(defaultCapo - _currentCapo).abs()} frets $direction than song)';
+  }
+
+  String? _getKeyDisplayLabel() {
+    final baseKey = _currentSong.key.trim();
+    if (baseKey.isEmpty) return null;
+    final steps = _effectiveTransposeSteps;
+    if (steps == 0) {
+      return 'Key of $baseKey';
+    }
+    final transposed = ChordProParser.transposeChord(baseKey, steps);
+    return 'Key of $transposed (${_formatSignedValue(steps)})';
+  }
+
+  String _formatSignedValue(int value) => value > 0 ? '+$value' : value.toString();
+
+  void _updateTranspose(int delta) {
+    final int updated = (_transposeSteps + delta).clamp(_minTranspose, _maxTranspose);
+    if (updated == _transposeSteps) return;
+    setState(() {
+      _transposeSteps = updated;
+      _viewerAdjustments = _viewerAdjustments.copyWith(transposeSteps: updated);
+    });
+  }
+
+  void _updateCapo(int delta) {
+    final int updated = (_currentCapo + delta).clamp(_minCapo, _maxCapo);
+    if (updated == _currentCapo) return;
+    setState(() {
+      _currentCapo = updated;
+      _viewerAdjustments = _viewerAdjustments.copyWith(capo: updated);
+    });
+  }
+
+  void _toggleTransposeFlyout() {
+    setState(() {
+      _showTransposeFlyout = !_showTransposeFlyout;
+      if (_showTransposeFlyout) {
+        _showCapoFlyout = false;
+      }
+    });
+  }
+
+  void _toggleCapoFlyout() {
+    setState(() {
+      _showCapoFlyout = !_showCapoFlyout;
+      if (_showCapoFlyout) {
+        _showTransposeFlyout = false;
+      }
+    });
+  }
+
+  void _onScopeToggle(bool value) {
+    if (!_hasSetlistContext) return;
+    setState(() {
+      _viewerAdjustments = _viewerAdjustments.copyWith(appliesToSetlist: value);
+    });
   }
 
   /// Reload the song from the database to get fresh data
@@ -59,12 +385,6 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     }
     // Song was deleted
     return false;
-  }
-
-  /// Extract duration from song metadata
-  String? _getDuration() {
-    final metadata = ChordProParser.extractMetadata(_currentSong.body);
-    return metadata.duration;
   }
 
   /// Get color for a tag based on whether it's an instrument tag
@@ -96,6 +416,15 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _removeTag(String tag) async {
+    if (!_currentSong.tags.contains(tag)) return;
+    final repository = context.read<SongRepository>();
+    final updatedTags = List<String>.from(_currentSong.tags)..remove(tag);
+    final updatedSong = _currentSong.copyWith(tags: updatedTags);
+    await repository.updateSong(updatedSong);
+    await _reloadSong();
   }
 
   /// Delete the current song with confirmation
@@ -223,7 +552,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                             chordProText: _currentSong.body,
                             fontSize: _fontSize,
                             isDarkMode: isDarkMode,
-                            transposeSteps: _transposeSteps,
+                            transposeSteps: _effectiveTransposeSteps,
                           ),
                         ],
                       ),
@@ -485,20 +814,14 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: 96, // Fixed width to prevent shifting
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildTransposeButton(),
-                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildTransposeButton(),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: 96, // Fixed width to prevent shifting
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildCapoButton(),
-                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildCapoButton(),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -662,175 +985,310 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   Widget _buildCapoButton() {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    const glowColor = Color(0xFF00D9FF);
-    
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDarkMode 
-            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
-            : Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-          width: 1.0,
-        ),
-        boxShadow: isDarkMode ? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    final iconColor = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+
+    return _buildAdjustmentFlyout(
+      isDarkMode: isDarkMode,
+      isOpen: _showCapoFlyout,
+      onToggle: _toggleCapoFlyout,
+      icon: CustomPaint(
+        size: const Size(18, 18),
+        painter: CapoIconPainter(color: iconColor),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // TODO: Implement capo
-          },
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: CustomPaint(
-              size: const Size(18, 18),
-              painter: CapoIconPainter(
-                color: isDarkMode ? glowColor : const Color(0xFF0468cc),
-              ),
-            ),
-          ),
-        ),
-      ),
+      title: 'Capo',
+      valueText: _capoStatusLabel,
+      onIncrement: () => _updateCapo(1),
+      onDecrement: () => _updateCapo(-1),
+      canIncrement: _currentCapo < _maxCapo,
+      canDecrement: _currentCapo > _minCapo,
+      extraContent: _buildAdjustmentScopeToggle(isDarkMode),
     );
   }
 
   Widget _buildTransposeButton() {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    const glowColor = Color(0xFF00D9FF); // Bright cyan
-    
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDarkMode 
-            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
-            : Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-          width: 1.0,
+    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+
+    final icon = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '−',
+          style: TextStyle(
+            color: accent,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
+          ),
         ),
-        boxShadow: isDarkMode ? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
+        const SizedBox(width: 1),
+        Icon(
+          Icons.music_note,
+          color: accent,
+          size: 14,
+        ),
+        const SizedBox(width: 1),
+        Text(
+          '+',
+          style: TextStyle(
+            color: accent,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+        ),
+      ],
+    );
+
+    final capoOffset = _capoOffsetFromSong;
+    final capoNote = capoOffset == 0
+        ? null
+        : Text(
+            'Includes capo offset ${_formatSignedValue(capoOffset)}',
+            style: TextStyle(
+              fontSize: 11,
+              color: accent.withValues(alpha: 0.9),
+            ),
+          );
+
+    return _buildAdjustmentFlyout(
+      isDarkMode: isDarkMode,
+      isOpen: _showTransposeFlyout,
+      onToggle: _toggleTransposeFlyout,
+      icon: icon,
+      title: 'Transpose',
+      valueText: _transposeStatusLabel,
+      onIncrement: () => _updateTranspose(1),
+      onDecrement: () => _updateTranspose(-1),
+      canIncrement: _transposeSteps < _maxTranspose,
+      canDecrement: _transposeSteps > _minTranspose,
+      extraContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (capoNote != null) capoNote,
+          if (_buildAdjustmentScopeToggle(isDarkMode) != null) ...[
+            const SizedBox(height: 6),
+            _buildAdjustmentScopeToggle(isDarkMode)!,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdjustmentFlyout({
+    required bool isDarkMode,
+    required bool isOpen,
+    required VoidCallback onToggle,
+    required Widget icon,
+    required String title,
+    required String valueText,
+    required VoidCallback onIncrement,
+    required VoidCallback onDecrement,
+    bool canIncrement = true,
+    bool canDecrement = true,
+    Widget? extraContent,
+  }) {
+    final backgroundColor = isDarkMode
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.95);
+    final borderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    return SizedBox(
+      width: 220,
+      height: 72,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.centerRight,
+        children: [
+          Positioned(
+            right: 52,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isOpen ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !isOpen,
+                child: Container(
+                  width: 180,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: borderColor, width: 1.0),
+                    boxShadow: _buildFloatingShadows(isDarkMode),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _buildStepperButton(
+                            icon: Icons.remove,
+                            onPressed: onDecrement,
+                            enabled: canDecrement,
+                            isDarkMode: isDarkMode,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              valueText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStepperButton(
+                            icon: Icons.add,
+                            onPressed: onIncrement,
+                            enabled: canIncrement,
+                            isDarkMode: isDarkMode,
+                          ),
+                        ],
+                      ),
+                      if (extraContent != null) ...[
+                        const SizedBox(height: 6),
+                        extraContent,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+          Positioned(
+            right: 0,
+            child: GestureDetector(
+              onTap: onToggle,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                      : Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor, width: 1.0),
+                  boxShadow: _buildFloatingShadows(isDarkMode),
+                ),
+                child: Center(child: icon),
+              ),
+            ),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // TODO: Implement transpose
-          },
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '−',
-                  style: TextStyle(
-                    color: isDarkMode ? glowColor : const Color(0xFF0468cc),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(width: 1),
-                Icon(
-                  Icons.music_note,
-                  color: isDarkMode ? glowColor : const Color(0xFF0468cc),
-                  size: 14,
-                ),
-                const SizedBox(width: 1),
-                Text(
-                  '+',
-                  style: TextStyle(
-                    color: isDarkMode ? glowColor : const Color(0xFF0468cc),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
-                  ),
-                ),
-              ],
-            ),
+    );
+  }
+
+  Widget? _buildAdjustmentScopeToggle(bool isDarkMode) {
+    if (!_hasSetlistContext) return null;
+    final labelColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Apply to setlist entry',
+            style: TextStyle(fontSize: 11, color: labelColor),
           ),
+        ),
+        Switch.adaptive(
+          value: _viewerAdjustments.appliesToSetlist,
+          onChanged: _onScopeToggle,
+          activeColor: accent,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStepperButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required bool enabled,
+    required bool isDarkMode,
+  }) {
+    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final disabledColor = Colors.grey.withValues(alpha: 0.5);
+
+    return GestureDetector(
+      onTap: enabled ? onPressed : null,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: enabled ? accent.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: enabled ? accent.withValues(alpha: 0.7) : disabledColor,
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: enabled ? accent : disabledColor,
         ),
       ),
     );
   }
 
+  List<BoxShadow> _buildFloatingShadows(bool isDarkMode) {
+    return isDarkMode
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.05),
+              blurRadius: 4,
+              offset: const Offset(0, -1),
+            ),
+          ]
+        : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ];
+  }
+
   Widget _buildSongMetadata(Color textColor) {
     // Check if we have any metadata to display
-    final hasKey = _currentSong.key.isNotEmpty;
+    final keyLabel = _getKeyDisplayLabel();
     final hasBpm = _currentSong.bpm > 0;
     final hasTimeSignature = _currentSong.timeSignature.isNotEmpty;
-    final hasCapo = _currentSong.capo > 0;
+    final showCapoBadge = _currentCapo > 0;
     final hasArtist = _currentSong.artist.isNotEmpty;
-    final duration = _getDuration();
-    final hasDuration = duration != null && duration.isNotEmpty;
-    final hasMetaChips =
-        hasKey || hasBpm || hasTimeSignature || hasCapo || hasDuration;
     final tags = _currentSong.tags;
     final hasTags = tags.isNotEmpty;
 
@@ -869,16 +1327,16 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (hasKey)
+                if (keyLabel != null)
                   Text(
-                    'Key of ${_currentSong.key}',
+                    keyLabel,
                     style: TextStyle(
                       fontSize: 12,
                       color: textColor.withValues(alpha: 0.7),
                     ),
                   ),
                 if (hasBpm || hasTimeSignature) ...[
-                  if (hasKey) const SizedBox(height: 2),
+                  if (keyLabel != null) const SizedBox(height: 2),
                   Text(
                     '${hasBpm ? '${_currentSong.bpm} bpm' : ''}${hasBpm && hasTimeSignature ? ' ' : ''}${hasTimeSignature ? _currentSong.timeSignature : ''}',
                     style: TextStyle(
@@ -887,10 +1345,11 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     ),
                   ),
                 ],
-                if (hasCapo) ...[
-                  if (hasKey || hasBpm || hasTimeSignature) const SizedBox(height: 2),
+                if (showCapoBadge) ...[
+                  if (keyLabel != null || hasBpm || hasTimeSignature)
+                    const SizedBox(height: 2),
                   Text(
-                    'CAPO ${_currentSong.capo}',
+                    'CAPO $_currentCapo',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -902,139 +1361,17 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             ),
           ],
         ),
-        if (hasMetaChips) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (hasKey)
-                _buildInfoChip('Key: ${_currentSong.key}', textColor),
-              if (hasBpm)
-                _buildInfoChip('${_currentSong.bpm} bpm', textColor),
-              if (hasTimeSignature)
-                _buildInfoChip(_currentSong.timeSignature, textColor),
-              if (hasCapo)
-                _buildInfoChip('Capo ${_currentSong.capo}', textColor),
-              if (hasDuration)
-                _buildInfoChip('Duration $duration', textColor),
-            ],
-          ),
-        ],
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Text(
-              'Tags',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-            const Spacer(),
-            _buildEditTagsButton(textColor),
-          ],
+        _ViewerTagWrap(
+          tags: tags,
+          hasTags: hasTags,
+          textColor: textColor,
+          onRemove: _removeTag,
+          onEdit: _openTagsDialog,
+          getTagColors: (tag) => _getTagColors(tag, context),
         ),
         const SizedBox(height: 8),
-        if (hasTags)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: tags.map(_buildTagChip).toList(),
-          )
-        else
-          Text(
-            'No tags yet',
-            style: TextStyle(
-              fontSize: 12,
-              color: textColor.withValues(alpha: 0.6),
-            ),
-          ),
       ],
-    );
-  }
-
-  Widget _buildInfoChip(String label, Color textColor) {
-    final themeProvider = context.read<ThemeProvider>();
-    final isDarkMode = themeProvider.isDarkMode;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTagChip(String tag) {
-    final (bgColor, tagTextColor) = _getTagColors(tag, context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 4,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: tagTextColor.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        tag,
-        style: TextStyle(
-          fontSize: 12,
-          color: tagTextColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEditTagsButton(Color textColor) {
-    return GestureDetector(
-      onTap: _openTagsDialog,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          color: textColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: textColor.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.add,
-              size: 14,
-              color: textColor.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Edit',
-              style: TextStyle(
-                fontSize: 12,
-                color: textColor.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

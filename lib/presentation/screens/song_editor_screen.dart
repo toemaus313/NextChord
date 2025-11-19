@@ -10,6 +10,7 @@ import '../../core/utils/ug_text_converter.dart';
 import '../../services/import/ultimate_guitar_import_service.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/global_sidebar_provider.dart';
 import '../widgets/tag_edit_dialog.dart';
 
 /// Screen for creating or editing a song
@@ -315,10 +316,12 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         updatedAt: now,
       );
 
+      final songProvider = context.read<SongProvider>();
+      Song savedSong = song;
+
       if (widget.song != null) {
         // Update existing song - use provider to ensure UI updates
-        final provider = context.read<SongProvider>();
-        await provider.updateSong(song);
+        await songProvider.updateSong(song);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -329,8 +332,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         }
       } else {
         // Create new song - use provider to ensure UI updates
-        final provider = context.read<SongProvider>();
-        await provider.addSong(song);
+        final newSongId = await songProvider.addSong(song);
+        savedSong = song.copyWith(id: newSongId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -338,6 +341,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               backgroundColor: Colors.green,
             ),
           );
+          context.read<GlobalSidebarProvider>().navigateToSong(savedSong);
         }
       }
 
@@ -979,10 +983,10 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Tags section - single row
+            // Tags row matching viewer behavior
             Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 border: Border.all(
                   color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
@@ -990,57 +994,105 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 ),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Row(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
-                    'Tags:',
+                    'Tags',
                     style: TextStyle(
                       fontSize: 14,
-                      color: textColor.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _tags.isNotEmpty
-                        ? SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: _tags.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final tag = entry.value;
-                                final (bgColor, tagTextColor) = _getTagColors(tag, context);
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 6),
-                                  child: _TagChip(
-                                    key: ValueKey('tag_${index}_$tag'),
-                                    tag: tag,
-                                    bgColor: bgColor,
-                                    textColor: tagTextColor,
-                                    onRemove: () {
-                                      setState(() {
-                                        _tags.removeAt(index);
-                                      });
-                                    },
-                                  ),
-                                );
-                              }).toList(),
+                  if (_tags.isNotEmpty)
+                    ..._tags.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final tag = entry.value;
+                      final (bgColor, tagTextColor) = _getTagColors(tag, context);
+                      return DragTarget<int>(
+                        onWillAccept: (dragIndex) => dragIndex != index,
+                        onAccept: (dragIndex) {
+                          setState(() {
+                            final tagToMove = _tags.removeAt(dragIndex);
+                            _tags.insert(index, tagToMove);
+                          });
+                        },
+                        builder: (context, candidate, rejected) {
+                          return Draggable<int>(
+                            data: index,
+                            feedback: Opacity(
+                              opacity: 0.7,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: _TagChip(
+                                  key: ValueKey('drag_tag_$tag'),
+                                  tag: tag,
+                                  bgColor: bgColor,
+                                  textColor: tagTextColor,
+                                  onRemove: () {},
+                                ),
+                              ),
                             ),
-                          )
-                        : Text(
-                            'No tags',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: textColor.withValues(alpha: 0.4),
+                            childWhenDragging: Opacity(
+                              opacity: 0.3,
+                              child: _TagChip(
+                                key: ValueKey('tag_drag_${index}_$tag'),
+                                tag: tag,
+                                bgColor: bgColor,
+                                textColor: tagTextColor,
+                                onRemove: () {
+                                  setState(() {
+                                    _tags.removeAt(index);
+                                  });
+                                },
+                              ),
                             ),
+                            child: _TagChip(
+                              key: ValueKey('tag_${index}_$tag'),
+                              tag: tag,
+                              bgColor: bgColor,
+                              textColor: tagTextColor,
+                              onRemove: () {
+                                setState(() {
+                                  _tags.removeAt(index);
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    })
+                  else
+                    Text(
+                      'No tags yet',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: _openTagsDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: textColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit, size: 14, color: textColor.withValues(alpha: 0.7)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Edit',
+                            style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7)),
                           ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add, size: 20),
-                    onPressed: _openTagsDialog,
-                    tooltip: 'Edit tags',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

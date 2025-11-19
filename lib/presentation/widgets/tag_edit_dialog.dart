@@ -100,6 +100,9 @@ class _TagEditDialogState extends State<TagEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryGradientTop = Color(0xFF0468cc);
+    const primaryGradientBottom = Color.fromARGB(99, 3, 73, 153);
+
     return StatefulBuilder(
       builder: (context, setState) {
         // Get the current tag being typed (text after last comma)
@@ -262,15 +265,15 @@ class _TagEditDialogState extends State<TagEditDialog> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.1),
+                          color: primaryGradientTop.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey),
+                          border: Border.all(color: primaryGradientTop),
                         ),
                         child: Text(
                           tag,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: primaryGradientTop,
                           ),
                         ),
                       ),
@@ -296,6 +299,10 @@ class _TagEditDialogState extends State<TagEditDialog> {
                   widget.onTagsUpdated(finalTags.toList());
                 },
                 child: const Text('OK'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryGradientTop,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
             Focus(
@@ -303,6 +310,9 @@ class _TagEditDialogState extends State<TagEditDialog> {
               skipTraversal: true,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: primaryGradientBottom,
+                ),
                 child: const Text('Cancel'),
               ),
             ),
