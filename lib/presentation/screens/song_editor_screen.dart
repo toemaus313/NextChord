@@ -8,6 +8,7 @@ import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../../services/import/ultimate_guitar_import_service.dart';
 import '../providers/song_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/tag_edit_dialog.dart';
 
 /// Screen for creating or editing a song
@@ -32,7 +33,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   int _selectedCapo = 0;
   String _selectedTimeSignature = '4/4';
   List<String> _tags = [];
-  String? _audioFilePath;
   bool _isSaving = false;
 
   // Available options
@@ -71,7 +71,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       _selectedCapo = song.capo;
       _selectedTimeSignature = song.timeSignature;
       _tags = List.from(song.tags);
-      _audioFilePath = song.audioFilePath;
       
       // Extract duration from ChordPro metadata if available
       final metadata = ChordProParser.extractMetadata(song.body);
@@ -150,7 +149,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         bpm: int.parse(_bpmController.text.trim()),
         timeSignature: _selectedTimeSignature,
         tags: _tags,
-        audioFilePath: _audioFilePath,
+        audioFilePath: null,
         notes: widget.song?.notes,
         createdAt: widget.song?.createdAt ?? now,
         updatedAt: now,
@@ -410,31 +409,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     }
   }
 
-  /// Pick an audio file
-  Future<void> _pickAudioFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
-        allowMultiple: false,
-      );
-
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          _audioFilePath = result.files.single.path;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking file: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   /// Get color for a tag based on whether it's an instrument tag
   (Color, Color) _getTagColors(String tag, BuildContext context) {
     const instrumentTags = {'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'};
@@ -524,67 +498,40 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.song != null;
-    final theme = Theme.of(context);
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final actionColor = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Song' : 'Create Song'),
-        actions: [
-          // Delete button (only show when editing)
-          if (isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _deleteSong,
-              tooltip: 'Delete Song',
-              color: Colors.red,
-            ),
-          // Import from Ultimate Guitar button
-          if (!isEditing)
-            IconButton(
-              icon: const Icon(Icons.cloud_download),
-              onPressed: _importFromUltimateGuitar,
-              tooltip: 'Import from Ultimate Guitar',
-            ),
-          // Import ChordPro file button
-          if (!isEditing)
-            IconButton(
-              icon: const Icon(Icons.file_upload),
-              onPressed: _importChordProFile,
-              tooltip: 'Import ChordPro File',
-            ),
-          // Save button or loading indicator
-          if (_isSaving)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveSong,
-              tooltip: 'Save',
-            ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: Stack(
           children: [
+            // Main content
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  // Scrollable metadata section
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16.0, 60.0, 16.0, 0),
+                    child: Column(
+                      children: [
             // Title field
             TextFormField(
               controller: _titleController,
+              style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 labelText: 'Title',
+                labelStyle: TextStyle(fontSize: 13),
                 hintText: 'Enter song title',
+                hintStyle: TextStyle(fontSize: 13),
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.music_note),
+                prefixIcon: Icon(Icons.music_note, size: 20),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                isDense: true,
               ),
               textCapitalization: TextCapitalization.words,
               validator: (value) {
@@ -594,16 +541,21 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // Artist field
             TextFormField(
               controller: _artistController,
+              style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 labelText: 'Artist',
+                labelStyle: TextStyle(fontSize: 13),
                 hintText: 'Enter artist name',
+                hintStyle: TextStyle(fontSize: 13),
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+                prefixIcon: Icon(Icons.person, size: 20),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                isDense: true,
               ),
               textCapitalization: TextCapitalization.words,
               validator: (value) {
@@ -613,24 +565,27 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Key and Capo row
+            // Single row with Key, BPM, Capo, Time Signature, Duration
             Row(
               children: [
                 // Key dropdown
                 Expanded(
+                  flex: 2,
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedKey,
+                    value: _selectedKey,
+                    style: TextStyle(fontSize: 14, color: textColor),
                     decoration: const InputDecoration(
-                      labelText: 'Key',
+                      prefixIcon: Icon(Icons.piano, size: 18),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.piano),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
                     ),
                     items: _keys.map((key) {
                       return DropdownMenuItem(
                         value: key,
-                        child: Text(key),
+                        child: Text(key, style: const TextStyle(fontSize: 13)),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -642,21 +597,72 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
 
-                // Capo spinner
+                // BPM field
                 Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _bpmController,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: CustomPaint(
+                          size: const Size(18, 18),
+                          painter: MetronomeIconPainter(
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      ),
+                      hintText: '120',
+                      hintStyle: const TextStyle(fontSize: 12),
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      final bpm = int.tryParse(value.trim());
+                      if (bpm == null || bpm < 1 || bpm > 300) {
+                        return 'Invalid';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Capo dropdown
+                Expanded(
+                  flex: 2,
                   child: DropdownButtonFormField<int>(
-                    initialValue: _selectedCapo,
-                    decoration: const InputDecoration(
-                      labelText: 'Capo',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.straighten),
+                    value: _selectedCapo,
+                    style: TextStyle(fontSize: 14, color: textColor),
+                    decoration: InputDecoration(
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: CustomPaint(
+                          size: const Size(18, 18),
+                          painter: CapoIconPainter(
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      ),
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
                     ),
                     items: List.generate(13, (index) => index).map((capo) {
                       return DropdownMenuItem(
                         value: capo,
-                        child: Text(capo.toString()),
+                        child: Text(capo.toString(), style: const TextStyle(fontSize: 13)),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -668,54 +674,24 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     },
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // BPM and Time Signature row
-            Row(
-              children: [
-                // BPM field
-                Expanded(
-                  child: TextFormField(
-                    controller: _bpmController,
-                    decoration: const InputDecoration(
-                      labelText: 'BPM',
-                      hintText: '120',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.speed),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'BPM is required';
-                      }
-                      final bpm = int.tryParse(value.trim());
-                      if (bpm == null || bpm < 1 || bpm > 300) {
-                        return 'Enter valid BPM (1-300)';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
 
                 // Time Signature dropdown
                 Expanded(
+                  flex: 2,
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedTimeSignature,
+                    value: _selectedTimeSignature,
+                    style: TextStyle(fontSize: 14, color: textColor),
                     decoration: const InputDecoration(
-                      labelText: 'Time Signature',
+                      prefixIcon: Icon(Icons.timer, size: 18),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.timer),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
                     ),
                     items: _timeSignatures.map((sig) {
                       return DropdownMenuItem(
                         value: sig,
-                        child: Text(sig),
+                        child: Text(sig, style: const TextStyle(fontSize: 13)),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -727,170 +703,347 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     },
                   ),
                 ),
+                const SizedBox(width: 8),
+
+                // Duration field
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    controller: _durationController,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.play_arrow, size: 18),
+                      hintText: '3:45',
+                      hintStyle: TextStyle(fontSize: 12),
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.text,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return null;
+                      }
+                      final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
+                      if (!pattern.hasMatch(value.trim())) {
+                        return 'Invalid';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Duration field
-            TextFormField(
-              controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Duration (optional)',
-                hintText: '3:45 or 1:30:15',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.access_time),
-                helperText: 'Format: MM:SS or HH:MM:SS',
+            // Tags section - single row
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+                  width: 1.0,
+                ),
+                borderRadius: BorderRadius.circular(4),
               ),
-              keyboardType: TextInputType.text,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return null; // Duration is optional
-                }
-                // Validate format: MM:SS or HH:MM:SS
-                final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
-                if (!pattern.hasMatch(value.trim())) {
-                  return 'Use format MM:SS or HH:MM:SS';
-                }
-                return null;
-              },
+              child: Row(
+                children: [
+                  Text(
+                    'Tags:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _tags.isNotEmpty
+                        ? SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: _tags.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final tag = entry.value;
+                                final (bgColor, tagTextColor) = _getTagColors(tag, context);
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _TagChip(
+                                    key: ValueKey('tag_$index\_$tag'),
+                                    tag: tag,
+                                    bgColor: bgColor,
+                                    textColor: tagTextColor,
+                                    onRemove: () {
+                                      setState(() {
+                                        _tags.removeAt(index);
+                                      });
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          )
+                        : Text(
+                            'No tags',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: textColor.withValues(alpha: 0.4),
+                            ),
+                          ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 20),
+                    onPressed: _openTagsDialog,
+                    tooltip: 'Edit tags',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
-            // Tags section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Tags',
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: _openTagsDialog,
-                          tooltip: 'Edit tags',
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    if (_tags.isNotEmpty)
-                      ReorderableWrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        onReorder: (oldIndex, newIndex) {
-                          setState(() {
-                            final tag = _tags.removeAt(oldIndex);
-                            _tags.insert(newIndex, tag);
-                          });
-                        },
-                        children: _tags.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final tag = entry.value;
-                          final (bgColor, textColor) = _getTagColors(tag, context);
-                          return _TagChip(
-                            key: ValueKey('tag_$index\_$tag'),
-                            tag: tag,
-                            bgColor: bgColor,
-                            textColor: textColor,
-                            onRemove: () {
-                              setState(() {
-                                _tags.removeAt(index);
-                              });
-                            },
-                          );
-                        }).toList(),
-                      )
-                    else
-                      Text(
-                        'No tags added',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  // Body (ChordPro text) field - borderless editing area
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextFormField(
+                        controller: _bodyController,
+                        style: const TextStyle(fontSize: 14, fontFamily: 'monospace'),
+                        decoration: InputDecoration(
+                          hintText: '[C]Amazing [G]grace, how [Am]sweet the [F]sound\n[C]That saved a [G]wretch like [C]me',
+                          hintStyle: TextStyle(fontSize: 13, color: textColor.withValues(alpha: 0.3)),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
                         ),
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        textCapitalization: TextCapitalization.sentences,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Song body is required';
+                          }
+                          return null;
+                        },
                       ),
-                  ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Header with title
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+                color: backgroundColor,
+                child: Center(
+                  child: Text(
+                    isEditing ? 'Edit Song' : 'Create Song',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Body (ChordPro text) field
-            TextFormField(
-              controller: _bodyController,
-              decoration: const InputDecoration(
-                labelText: 'Lyrics & Chords (ChordPro)',
-                hintText:
-                    'Enter song lyrics with chords...\n\n[C]Amazing [G]grace, how [Am]sweet the [F]sound',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
+            
+            // Back button (top left)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: _buildActionButton(
+                icon: Icons.arrow_back,
+                tooltip: 'Back',
+                onPressed: () => Navigator.of(context).pop(),
+                color: textColor,
+                isDarkMode: isDarkMode,
               ),
-              maxLines: 12,
-              minLines: 6,
-              textCapitalization: TextCapitalization.sentences,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Song body is required';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: 16),
-
-            // Audio file picker
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Audio File (Optional)',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    if (_audioFilePath != null) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.audiotrack, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _audioFilePath!.split('/').last,
-                              style: theme.textTheme.bodyMedium,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+            
+            // Delete button (top right, only when editing)
+            if (isEditing)
+              Positioned(
+                top: 8,
+                right: 56,
+                child: _buildActionButton(
+                  icon: Icons.delete,
+                  tooltip: 'Delete Song',
+                  onPressed: _deleteSong,
+                  color: Colors.red,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+            
+            // Import buttons (top right, only when creating)
+            if (!isEditing) ...[
+              Positioned(
+                top: 8,
+                right: 104,
+                child: _buildActionButton(
+                  icon: Icons.cloud_download,
+                  tooltip: 'Import from Ultimate Guitar',
+                  onPressed: _importFromUltimateGuitar,
+                  color: actionColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 56,
+                child: _buildActionButton(
+                  icon: Icons.file_upload,
+                  tooltip: 'Import ChordPro File',
+                  onPressed: _importChordProFile,
+                  color: actionColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+            ],
+            
+            // Save button (top right)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: _isSaving
+                  ? Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                            : Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+                          width: 1.0,
+                        ),
+                        boxShadow: isDarkMode ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 1,
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 20),
-                            onPressed: () {
-                              setState(() {
-                                _audioFilePath = null;
-                              });
-                            },
-                            tooltip: 'Remove file',
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, -1),
+                          ),
+                        ] : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 1,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    ElevatedButton.icon(
-                      onPressed: _pickAudioFile,
-                      icon: const Icon(Icons.folder_open),
-                      label: Text(_audioFilePath != null
-                          ? 'Change Audio File'
-                          : 'Pick Audio File'),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(actionColor),
+                          ),
+                        ),
+                      ),
+                    )
+                  : _buildActionButton(
+                      icon: Icons.save,
+                      tooltip: 'Save',
+                      onPressed: _saveSong,
+                      color: actionColor,
+                      isDarkMode: isDarkMode,
                     ),
-                  ],
-                ),
-              ),
             ),
-            const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    required Color color,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+            : Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+          width: 1.0,
+        ),
+        boxShadow: isDarkMode ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        color: color,
+        iconSize: 20,
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        tooltip: tooltip,
       ),
     );
   }
@@ -1019,4 +1172,98 @@ class _ReorderableWrapState extends State<ReorderableWrap> {
       }).toList(),
     );
   }
+}
+
+/// Custom painter for capo icon (fretboard with horizontal lines)
+class CapoIconPainter extends CustomPainter {
+  final Color color;
+
+  CapoIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Draw vertical lines (strings) - 4 strings
+    final stringSpacing = size.width / 5;
+    for (int i = 1; i <= 4; i++) {
+      final x = stringSpacing * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+
+    // Draw horizontal lines (frets) - 3 frets
+    final fretSpacing = size.height / 4;
+    for (int i = 1; i <= 3; i++) {
+      final y = fretSpacing * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint,
+      );
+    }
+
+    // Draw capo bar at top (thicker horizontal line)
+    final capoPaint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(stringSpacing, 1),
+      Offset(size.width - stringSpacing, 1),
+      capoPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Custom painter for metronome icon (triangle with tick marks)
+class MetronomeIconPainter extends CustomPainter {
+  final Color color;
+
+  MetronomeIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.miter;
+
+    // Draw triangle (metronome shape)
+    final path = Path();
+    path.moveTo(size.width * 0.5, 0); // Top point
+    path.lineTo(size.width * 0.9, size.height); // Bottom right
+    path.lineTo(size.width * 0.1, size.height); // Bottom left
+    path.close();
+
+    canvas.drawPath(path, paint);
+
+    // Draw tick marks
+    final tickPaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Center vertical tick
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height * 0.3),
+      Offset(size.width * 0.5, size.height * 0.7),
+      tickPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
