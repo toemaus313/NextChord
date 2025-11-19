@@ -62,7 +62,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             child: SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: () async {
                   final result = await Navigator.push(
                     context,
@@ -74,12 +74,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     context.read<SongProvider>().loadSongs();
                   }
                 },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Song'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF0468cc),
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Add Song',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -378,32 +389,39 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // Tags (max 2) - now before the key
-                              if (song.tags.isNotEmpty) ...[
-                                const SizedBox(width: 6),
-                                ...song.tags.take(2).map((tag) => Padding(
-                                  padding: const EdgeInsets.only(left: 3),
-                                  child: _buildTagChip(tag, compact: true),
-                                )),
-                              ],
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  song.key,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              const SizedBox(width: 8),
+                              // Tags and key - aligned to the right
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Tags (max 2) - now before the key
+                                  if (song.tags.isNotEmpty)
+                                    ...song.tags.take(2).map((tag) => Padding(
+                                      padding: const EdgeInsets.only(left: 3),
+                                      child: _buildTagChip(tag, compact: true),
+                                    )),
+                                  if (song.key.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        song.key,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

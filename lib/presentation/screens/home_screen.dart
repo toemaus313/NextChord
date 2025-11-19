@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: sidebarProvider.currentSong != null
           ? SongViewerScreen(
-              key: ValueKey(sidebarProvider.currentSong!.id),
+              key: ValueKey('${sidebarProvider.currentSong!.id}_${sidebarProvider.currentSong!.updatedAt.millisecondsSinceEpoch}'),
               song: sidebarProvider.currentSong!,
               onSongEdit: () {
                 // Reload songs when returning from edit

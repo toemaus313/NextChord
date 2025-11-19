@@ -34,6 +34,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   String _selectedTimeSignature = '4/4';
   List<String> _tags = [];
   bool _isSaving = false;
+  String _lastBodyText = '';
+  bool _isAutoCompleting = false;
 
   // Available options
   static const List<String> _keys = [
@@ -57,6 +59,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   void initState() {
     super.initState();
     _initializeFields();
+    _bodyController.addListener(_onBodyTextChanged);
   }
 
   /// Initialize form fields with existing song data if editing
@@ -85,12 +88,156 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
 
   @override
   void dispose() {
+    _bodyController.removeListener(_onBodyTextChanged);
     _titleController.dispose();
     _artistController.dispose();
     _bodyController.dispose();
     _bpmController.dispose();
     _durationController.dispose();
     super.dispose();
+  }
+
+  /// Handle body text changes to auto-complete tab sections
+  void _onBodyTextChanged() {
+    // Avoid recursive calls during auto-completion
+    if (_isAutoCompleting) return;
+    
+    final currentText = _bodyController.text;
+    
+    // Only process if text actually changed
+    if (currentText == _lastBodyText) {
+      return;
+    }
+    
+    // Check if user just completed typing {sot}
+    // We detect this by checking if the text ends with {sot} at the cursor position
+    if (currentText.length > _lastBodyText.length) {
+      final cursorPos = _bodyController.selection.baseOffset;
+      
+      // Check if we just typed the closing } of {sot}
+      if (cursorPos >= 5) {
+        final beforeCursor = currentText.substring(0, cursorPos);
+        if (beforeCursor.endsWith('{sot}')) {
+          // Check if there's already a matching {eot} after this position
+          final hasMatchingEot = _hasMatchingEot(currentText, cursorPos);
+          
+          if (!hasMatchingEot) {
+            _insertEotAfterSot(cursorPos);
+          }
+        }
+      }
+    }
+    
+    _lastBodyText = currentText;
+  }
+  
+  /// Check if there's a matching {eot} for the {sot} at the given position
+  bool _hasMatchingEot(String text, int sotEndPos) {
+    // Look ahead for {eot} within reasonable distance (50 lines)
+    final afterSot = text.substring(sotEndPos);
+    final lines = afterSot.split('\n');
+    
+    // Check up to 50 lines ahead
+    final linesToCheck = lines.take(50).join('\n');
+    return linesToCheck.toLowerCase().contains('{eot}');
+  }
+
+  /// Insert {eot} immediately after {sot} is typed
+  /// If tab content already exists, place {eot} at the end of it
+  /// Otherwise, insert {eot} with space for typing
+  void _insertEotAfterSot(int sotEndPos) {
+    _isAutoCompleting = true;
+    
+    try {
+      final currentText = _bodyController.text;
+      final before = currentText.substring(0, sotEndPos);
+      final after = currentText.substring(sotEndPos);
+      
+      // Split the text after {sot} into lines
+      final afterLines = after.split('\n');
+      
+      // Check if there's tab content in the next few lines
+      int tabEndLineIndex = -1;
+      bool foundTab = false;
+      int emptyLineCount = 0;
+      
+      for (int i = 0; i < afterLines.length && i < 20; i++) {
+        final line = afterLines[i].trim();
+        
+        // Count empty lines before finding first tab
+        if (!foundTab && line.isEmpty) {
+          emptyLineCount++;
+          // If more than 2 empty lines before any tab, give up
+          if (emptyLineCount > 2) {
+            break;
+          }
+          continue;
+        }
+        
+        // Check if this line looks like tab
+        if (_looksLikeTabLine(line)) {
+          if (!foundTab) {
+            foundTab = true;
+          }
+          tabEndLineIndex = i;
+          emptyLineCount = 0; // Reset empty line counter
+        } else if (foundTab && line.isNotEmpty) {
+          // Found non-tab content after tab, stop here
+          break;
+        } else if (foundTab && line.isEmpty) {
+          // Count empty lines within tab block
+          emptyLineCount++;
+          // If more than 2 empty lines within tab block, stop
+          if (emptyLineCount > 2) {
+            break;
+          }
+        }
+      }
+      
+      String newText;
+      int newCursorPos;
+      
+      if (foundTab && tabEndLineIndex >= 0) {
+        // Tab content exists - insert {eot} after the last tab line
+        final beforeTab = afterLines.sublist(0, tabEndLineIndex + 1).join('\n');
+        final afterTab = afterLines.sublist(tabEndLineIndex + 1).join('\n');
+        
+        newText = '$before$beforeTab\n{eot}$afterTab';
+        // Keep cursor at current position (after {sot})
+        newCursorPos = sotEndPos;
+      } else {
+        // No tab content yet - insert {eot} with space for typing
+        newText = '$before\n\n{eot}$after';
+        // Position cursor right after {sot} and the newline, ready to type tab
+        newCursorPos = sotEndPos + 1;
+      }
+      
+      _bodyController.text = newText;
+      _lastBodyText = newText;
+      
+      _bodyController.selection = TextSelection.fromPosition(
+        TextPosition(offset: newCursorPos),
+      );
+    } finally {
+      _isAutoCompleting = false;
+    }
+  }
+  
+  /// Check if a line looks like guitar tablature
+  bool _looksLikeTabLine(String line) {
+    if (line.isEmpty) return false;
+    
+    // Check for standard guitar string notation (E|, A|, D|, G|, B|, e|)
+    final tabLineRegex = RegExp(r'^[EADGBe]\|[\-0-9|]+', caseSensitive: true);
+    if (tabLineRegex.hasMatch(line)) return true;
+    
+    // Also check for lines that are mostly dashes, numbers, and pipes
+    final tabChars = RegExp(r'[\-0-9|]');
+    final nonSpaceChars = line.replaceAll(' ', '');
+    if (nonSpaceChars.length < 3) return false;
+    
+    final tabCharCount = tabChars.allMatches(nonSpaceChars).length;
+    return tabCharCount / nonSpaceChars.length > 0.5;
   }
 
   /// Validate and save the song

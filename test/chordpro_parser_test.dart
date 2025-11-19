@@ -105,6 +105,75 @@ void main() {
       expect(sections[1].section, 'Chorus');
     });
 
+    test('Parse start_of_verse and start_of_chorus directives', () {
+      const chordProText = '''
+{start_of_verse: Verse 1}
+[C]This is verse one
+{end_of_verse}
+
+{start_of_chorus}
+[G]This is the chorus
+{end_of_chorus}
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+
+      // Find section lines
+      final sections =
+          lines.where((l) => l.type == ChordProLineType.section).toList();
+      expect(sections.length, 2);
+      expect(sections[0].section, 'Verse 1');
+      expect(sections[0].sectionType, 'start_of_verse');
+      expect(sections[1].section, 'Chorus');
+      expect(sections[1].sectionType, 'start_of_chorus');
+    });
+
+    test('Parse abbreviated section directives (sov, soc, sob)', () {
+      const chordProText = '''
+{sov: Verse 1}
+[C]Verse lyrics
+{eov}
+
+{soc}
+[G]Chorus lyrics
+{eoc}
+
+{sob: Bridge}
+[Am]Bridge lyrics
+{eob}
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+
+      final sections =
+          lines.where((l) => l.type == ChordProLineType.section).toList();
+      expect(sections.length, 3);
+      expect(sections[0].section, 'Verse 1');
+      expect(sections[1].section, 'Chorus');
+      expect(sections[2].section, 'Bridge');
+    });
+
+    test('Parse chorus reference directive', () {
+      const chordProText = '''
+{start_of_chorus}
+[G]This is the chorus
+{end_of_chorus}
+
+{chorus}
+
+{chorus: Final}
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+
+      // Find chorus references
+      final chorusRefs =
+          lines.where((l) => l.type == ChordProLineType.chorusRef).toList();
+      expect(chorusRefs.length, 2);
+      expect(chorusRefs[0].section, 'Chorus');
+      expect(chorusRefs[1].section, 'Final');
+    });
+
     test('Parse lyrics with chords', () {
       const chordProText = '[C]Amazing [G]grace';
       final lines = ChordProParser.parseToStructuredData(chordProText);
@@ -149,6 +218,57 @@ B|--1--3--5--|
 
       expect(tabLines.length, 2);
       expect(tabLines[0].text, 'e|--0--2--3--|');
+    });
+
+    test('Parse grid sections', () {
+      const chordProText = '''
+{start_of_grid}
+| C . . . | G . . . |
+| Am . . . | F . . . |
+{end_of_grid}
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+      final gridLines =
+          lines.where((l) => l.type == ChordProLineType.grid).toList();
+
+      expect(gridLines.length, 2);
+      expect(gridLines[0].text, '| C . . . | G . . . |');
+      expect(gridLines[1].text, '| Am . . . | F . . . |');
+    });
+
+    test('Parse intro and outro sections', () {
+      const chordProText = '''
+{intro}
+[C]Intro riff
+
+{outro}
+[G]Outro riff
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+      final sections =
+          lines.where((l) => l.type == ChordProLineType.section).toList();
+
+      expect(sections.length, 2);
+      expect(sections[0].section, 'Intro');
+      expect(sections[1].section, 'Outro');
+    });
+
+    test('End directives should not create section lines', () {
+      const chordProText = '''
+{start_of_verse}
+[C]Verse lyrics
+{end_of_verse}
+''';
+
+      final lines = ChordProParser.parseToStructuredData(chordProText);
+      final sections =
+          lines.where((l) => l.type == ChordProLineType.section).toList();
+
+      // Should only have one section (start_of_verse), not the end_of_verse
+      expect(sections.length, 1);
+      expect(sections[0].section, 'Verse');
     });
 
     test('Handle empty lines', () {
@@ -196,6 +316,104 @@ B|--1--3--5--|
       final chords = ChordProParser.extractChords(text);
 
       expect(chords, ['Cmaj7', 'Dm7b5', 'G#9']);
+    });
+  });
+
+  group('Tab Auto-Completion', () {
+    test('Auto-complete single tab block', () {
+      const input = '''
+{sot}
+E|-----------|---------|---------|---------|-------|------------|
+B|-----------|---------|---------|---------|-----3-|------------|
+G|---4-4-2-0-|-2-------|-4-4-2-0-|-2-----4-|-4-4---|-2--2-0-----|
+D|-----------|-------0-|---------|---------|-------|----------4-|
+A|-----------|---------|---------|---------|-------|------------|
+E|-----------|---------|---------|---------|-------|------------|
+
+[C]Some lyrics here
+''';
+
+      final result = ChordProParser.autoCompleteTabSections(input);
+      
+      // Should have {eot} before the chord line
+      expect(result.contains('{eot}'), true);
+      expect(result.indexOf('{eot}') < result.indexOf('[C]'), true);
+    });
+
+    test('Auto-complete tab block with chords between', () {
+      const input = '''
+{sot}
+E|-----------|---------|---------|---------|-------|------------|
+B|-----------|---------|---------|---------|-----3-|------------|
+G|---4-4-2-0-|-2-------|-4-4-2-0-|-2-----4-|-4-4---|-2--2-0-----|
+D|-----------|-------0-|---------|---------|-------|----------4-|
+A|-----------|---------|---------|---------|-------|------------|
+E|-----------|---------|---------|---------|-------|------------|
+
+[Em] [G] [D] [D]
+E|-------|-------------|-----------|---------|''';
+
+      final result = ChordProParser.autoCompleteTabSections(input);
+      
+      // Should have {eot} before the chord line
+      expect(result.contains('{eot}'), true);
+      final eotIndex = result.indexOf('{eot}');
+      final chordIndex = result.indexOf('[Em]');
+      expect(eotIndex < chordIndex, true);
+    });
+
+    test('Auto-complete multiple tab blocks separated by blank lines', () {
+      const input = '''
+{sot}
+E|-----------|---------|---------|---------|-------|------------|
+B|-----------|---------|---------|---------|-----3-|------------|
+G|---4-4-2-0-|-2-------|-4-4-2-0-|-2-----4-|-4-4---|-2--2-0-----|
+D|-----------|-------0-|---------|---------|-------|----------4-|
+A|-----------|---------|---------|---------|-------|------------|
+E|-----------|---------|---------|---------|-------|------------|
+
+
+E|-------|-------------|-----------|---------|''';
+
+      final result = ChordProParser.autoCompleteTabSections(input);
+      
+      // Should have {eot} at the end since both blocks are tab
+      expect(result.contains('{eot}'), true);
+    });
+
+    test('Do not add {eot} if already present', () {
+      const input = '''
+{sot}
+E|-----------|---------|---------|---------|-------|------------|
+B|-----------|---------|---------|---------|-----3-|------------|
+{eot}
+
+[C]Some lyrics
+''';
+
+      final result = ChordProParser.autoCompleteTabSections(input);
+      
+      // Should not add another {eot}
+      final eotCount = '{eot}'.allMatches(result).length;
+      expect(eotCount, 1);
+    });
+
+    test('Handle tab block at end of file', () {
+      const input = '''
+{verse: Verse 1}
+[C]Some lyrics
+
+{sot}
+E|-----------|---------|---------|---------|-------|------------|
+B|-----------|---------|---------|---------|-----3-|------------|
+G|---4-4-2-0-|-2-------|-4-4-2-0-|-2-----4-|-4-4---|-2--2-0-----|
+''';
+
+      final result = ChordProParser.autoCompleteTabSections(input);
+      
+      // Should have {eot} at the end
+      expect(result.contains('{eot}'), true);
+      expect(result.trim().endsWith('{eot}'), true);
     });
   });
 }

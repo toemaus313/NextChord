@@ -270,6 +270,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   // Checkbox button for selection mode
@@ -287,7 +288,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       );
                     },
                   ),
-                  const SizedBox(width: 8),
                   // Add button
                   IconButton(
                     icon: const Icon(

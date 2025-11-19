@@ -1,0 +1,11 @@
+JUSTCHORDS TO NEXTCHORD - SAMPLE IMPORT
+========================================
+
+This file shows 5 randomly selected songs from the Justchords library.json
+and how they would be converted to NextChord's ChordPro format.
+
+Generated on: 2024-11-18
+
+================================================================================
+SONG 1
+================================================================================

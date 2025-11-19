@@ -30,7 +30,6 @@ class SongViewerScreen extends StatefulWidget {
 class _SongViewerScreenState extends State<SongViewerScreen> {
   double _fontSize = 18.0;
   double _baseFontSize = 18.0; // Font size at the start of pinch gesture
-  bool _showControls = true;
   int _transposeSteps = 0; // Semitones to transpose
   late Song _currentSong; // Mutable song that can be refreshed
   bool _showSettingsFlyout = false; // Compact settings flyout visibility
@@ -133,12 +132,6 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             }
           },
           child: GestureDetector(
-            onTap: () {
-              // Toggle controls visibility
-              setState(() {
-                _showControls = !_showControls;
-              });
-            },
             onScaleStart: (details) {
               // Store the current font size when pinch starts
               _baseFontSize = _fontSize;
@@ -154,12 +147,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               // Main content - scrollable lyrics/chords
               Column(
                 children: [
-                  // Header with song info
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: _showControls ? null : 0,
-                    child: _showControls ? _buildHeader(textColor) : null,
-                  ),
+                  // Header with song info (always visible)
+                  _buildHeader(textColor),
 
                   // Scrollable song body
                   Expanded(
@@ -185,7 +174,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 ],
               ),
 
-              // Back button (always visible)
+              // Sidebar toggle button (always visible - static)
               Positioned(
                 top: 8,
                 left: 8,
@@ -230,36 +219,36 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     size: 28,
                   ),
                   onPressed: () async {
-                    // Notify home screen that song is being edited
-                    widget.onSongEdit?.call();
-                    
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            SongEditorScreen(song: _currentSong),
-                      ),
-                    );
-                    
-                    // Handle the return from editor
-                    if (mounted) {
-                      if (result == 'deleted') {
-                        // Song was deleted - clear it from global state
-                        if (context.mounted) {
-                          context.read<GlobalSidebarProvider>().clearCurrentSong();
+                        // Notify home screen that song is being edited
+                        widget.onSongEdit?.call();
+                        
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SongEditorScreen(song: _currentSong),
+                          ),
+                        );
+                        
+                        // Handle the return from editor
+                        if (mounted) {
+                          if (result == 'deleted') {
+                            // Song was deleted - clear it from global state
+                            if (context.mounted) {
+                              context.read<GlobalSidebarProvider>().clearCurrentSong();
+                            }
+                          } else if (result == true) {
+                            // Song was updated, reload it
+                            final reloaded = await _reloadSong();
+                            if (!reloaded && context.mounted) {
+                              // Song was deleted while editing, clear it
+                              context.read<GlobalSidebarProvider>().clearCurrentSong();
+                            } else if (context.mounted) {
+                              // Update the song in global state with the reloaded version
+                              context.read<GlobalSidebarProvider>().navigateToSong(_currentSong);
+                            }
+                          }
                         }
-                      } else if (result == true) {
-                        // Song was updated, reload it
-                        final reloaded = await _reloadSong();
-                        if (!reloaded && context.mounted) {
-                          // Song was deleted while editing, clear it
-                          context.read<GlobalSidebarProvider>().clearCurrentSong();
-                        } else if (context.mounted) {
-                          // Update the song in global state with the reloaded version
-                          context.read<GlobalSidebarProvider>().navigateToSong(_currentSong);
-                        }
-                      }
-                    }
                   },
                   tooltip: 'Edit song',
                 ),

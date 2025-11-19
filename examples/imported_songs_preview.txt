@@ -1,0 +1,498 @@
+JUSTCHORDS TO NEXTCHORD - IMPORT PREVIEW
+================================================================================
+
+This file shows 5 randomly selected songs from the Justchords library.json
+and how they would be converted to NextChord's ChordPro format.
+
+Generated on: 2025-11-18 18:50:15
+
+================================================================================
+SONG 1
+================================================================================
+
+ORIGINAL JUSTCHORDS DATA:
+--------------------------------------------------------------------------------
+Title: Amarillo By Morning
+Artist: George Strait
+Key: D
+Tempo: 121 BPM
+Time Signature: 4/4
+Duration: 3:15
+
+CONVERTED TO NEXTCHORD CHORDPRO FORMAT:
+--------------------------------------------------------------------------------
+{title:Amarillo By Morning}
+{artist:George Strait}
+{key:D}
+{time:4/4}
+{tempo:121}
+
+{comment:Intro}
+[D] [F#m] [G] [A] [D] [F#m] [G] [A]
+ 
+ 
+{comment:Verse 1}
+[D] Amarillo by mor[F#m]nin'
+[G] Up from San Antone [D]
+[D] Everything that I[F#m]   got
+Is [G]just what I've got on [A]
+ 
+ 
+{comment:Chorus}
+When that [G]sun is high in that [A]Texas sky
+I'll be [D]buckin' at the [A]county fa[G]ir
+[D] Amarillo by mor[A]nin'
+Ama[G]rillo, [A]I'll be there [D] [F#m] [G] [A]
+ 
+ 
+{comment:Verse 2}
+[D] They took my saddle in Hous[F#m]ton
+Broke my[G] leg in Santa Fe [D]
+[D] Lost my wife and a [F#m]girlfriend
+Some[G]where along the way [A]
+ 
+ 
+{comment:Chorus}
+But I'll be [G]lookin' for eight when they [A]pull that gate
+And I hope[D] that judge[A] ain't blind [G]
+[D] Amarillo by mor[A]nin'
+Ama[G]rillo's [A]on my mind [D] [F#m]
+ 
+ 
+[Refrain]
+[G] [F#m] [A]
+ ***KEY CHANGE***
+ 
+{comment:Verse 3}
+[E] Amarillo by mor[G#m]nin'
+[A] Up from San Antone [E]
+[E] Everything that I[G#m]   got
+Is [A]just what I've got[B7]  on
+ 
+ 
+{comment:Chorus}
+I ain't [A]got a dime but what I got[B7]  is mine
+I [E]ain't rich but [G#m]Lord I'm [A]free
+[E] Amarillo by mor[B7]nin'
+Ama[A]rillo's [B7]where I'll be [E] [A] [B7]
+[E] Amarillo by mor[B7]nin'
+Ama[A]rillo's [B7]where I'll be
+ 
+ 
+{comment:Outro}
+[E] [G#m] [A] [B7] [E] [G#m] [A] [B7]
+ 
+ 
+[Fade out]
+[E] [G#m] [A] [B7] [E] [G#m] [A] [B7]
+
+
+================================================================================
+SONG 2
+================================================================================
+
+ORIGINAL JUSTCHORDS DATA:
+--------------------------------------------------------------------------------
+Title: God Made Mexico
+Artist: Tim McGraw
+Key: G
+Tempo: N/A BPM
+Time Signature: 4/4
+Duration: N/A
+
+CONVERTED TO NEXTCHORD CHORDPRO FORMAT:
+--------------------------------------------------------------------------------
+{title:God Made Mexico}
+{artist:Tim McGraw}
+{key:G}
+{time:4/4}
+
+{start_of_verse}
+Intro: G  D  Am7 C
+{end_of_verse}
+
+{start_of_verse}
+[G]Margie said R[D]oy you ain't l[F]istening to [C]me
+[G]And I got a w[D]hole lot more to s[F]ay  [C]    [G]
+Roy just c[D]rossed the floor and p[F]icked up his car k[C]eys
+[D#]And she ain't seen or h[D]eard from him to t[G]his day
+{end_of_verse}
+
+
+[G]And that's why God made M[C]exico [D]   [G]
+[G]A place where we can l[C]ay low [D]   [Em]
+And the C[D]uervo goes down n[C]ice and slow [Caug]
+And the w[G]arm wind blows[G/Bb]
+[Am7]That's why G[D]od made M[G]exico
+{end_of_chorus}
+
+
+{start_of_verse}
+[G]And Betty fixed J[D]oe dinner every ni[F]ght half past s[C]ix
+[G]Cause that's when he'd r[D]oll through that d[F]oor [C]    [G]
+Cause sixteen y[D]ears and not a th[F]ank you from his l[C]ips
+[D#]She don't f[D]ix him dinner no m[G]ore
+{end_of_verse}
+
+
+[G]And that's why God made M[C]exico [D]   [G]
+[G]A place where we can l[C]ay low [D]   [Em]
+And the C[G]uervo goes down n[C]ice and slow [Caug]
+And the w[G]arm wind blows[G/Bb]
+[Am7]That's why G[D]od made M[G]exico
+{end_of_chorus}
+
+
+{start_of_verse}
+[Em]Cause life is sweet in a b[A]order town
+[D]You learn to let your h[B]air down
+And you d[C]on't make t[G/B]rouble[Am7],  you learn to d[D]ance the fand[G]ango [B]
+[Em]You change your name, and you ch[A]ange your face
+[D]Get used to beans, and c[B]hili paste
+And you l[C]earn to l[G/B]ive and l[Am7]ove life [D]in the s[G]low lane
+{end_of_verse}
+
+
+[G]And that's why God made M[C]exico [D]   [G]
+[G]A place where we can l[C]ay low [D]   [Em]
+Maybe Mo[G]nterrey or A[C]capulco [Caug]
+Anywhere the w[G]arm winds blow[G/Bb],   don't ya know
+[Am7]That's why G[D]od made M[Bm]exi[Em]co-[Am7]-o  [D]
+   (no chord)
+That's why God made...made Mexico
+{end_of_verse}
+
+{start_of_verse}
+[G]   [D]   [F]   [G]
+{end_of_verse}
+
+
+================================================================================
+SONG 3
+================================================================================
+
+ORIGINAL JUSTCHORDS DATA:
+--------------------------------------------------------------------------------
+Title: Overkill
+Artist: Men At Work
+Key: C# minor
+Tempo: 139 BPM
+Time Signature: 4/4
+Duration: 3:49
+
+CONVERTED TO NEXTCHORD CHORDPRO FORMAT:
+--------------------------------------------------------------------------------
+{title:Overkill}
+{artist:Men At Work}
+{key:C#}
+{time:4/4}
+{tempo:139}
+
+SCENE E, BRIDGE
+Intro
+[C#m] [Badd11][C#m][Badd11]
+
+Verse1
+[E5]  I can't get to[B/D#]    sleep
+[D5]  I think about the[A/C#]    implications
+[E5]  Of diving in too[B/D#]    deep
+[D5]  And possibly the[A/C#]    complications
+[E5]  Especially at[B/D#]    night
+[D5]  I worry over[A/C#]    situations
+[E5]  I know will be al[B/D#]right
+[D5]  Perhaps it's just i[A/C#]magination
+
+Chorus
+[C#m]   Day after day it reappears[Badd11]
+[C#m]   Night after night my heart beat [Badd11]shows the fear and
+[G#sus4]Ghosts appear[G#]  and fade a[A]way[Badd11]
+
+Verse2
+[E5]  Alone between the[B/D#]    sheets
+[D5]  Only brings ex[A/C#]asperation.
+[E5]  It's time to walk the[B/D#]    streets
+[D5]  Smell the[A/C#]    desperation.
+[E5]  At least there's pretty [B/D#]lights
+[D5]  And though there's little[A/C#]    variations.
+[E5]  It nullifies the [B/D#]night[D5]  from overkiil.[A/C#]
+
+Chorus
+[C#m]   Day after day it reappears[Badd11]
+[C#m]   Night after night my heart beat [Badd11]shows the fear and
+[G#sus4]Ghosts appear[G#]  and fade a[A]way
+[Badd11]      Come back another day
+
+Solo
+[E5][B/D#][D5][A/C#]
+[E5][B/D#][D5][A/C#]
+[E5][B/D#][D5][A/C#]
+[E5][B/D#][D5][A/C#]
+[C#m][Badd11][G#sus4][G#]
+[A]
+
+Verse3
+[E5]  I can't get to[B/D#]    sleep
+[D5]  I think about the[A/C#]    implications
+[E5]  Of diving in[B/D#]    too deep
+[D5]  And possibly the[A/C#]    complications
+[E5]  Especially at [B/D#]night
+[D5]  I worry over[A/C#]    situations that[E5]  I know will be al[B/D#]right
+[D5]  It's just o[A/C#]verkill
+
+Chorus
+[C#m]   Day after day it reappears[Badd11]
+[C#m]   Night after night my heart beat [Badd11]shows the fear and
+[G#sus4]Ghosts appear[G#]  and fade a[A]way
+[G#sus4]Ghosts appear[G#]  and fade a[A]way
+[G#sus4]Ghosts appear[G#]  and fade a[A]way
+
+
+================================================================================
+SONG 4
+================================================================================
+
+ORIGINAL JUSTCHORDS DATA:
+--------------------------------------------------------------------------------
+Title: Behind Blue Eyes
+Artist: The Who
+Key: E
+Tempo: 123 BPM
+Time Signature: 4/4
+Duration: 3:30
+
+CONVERTED TO NEXTCHORD CHORDPRO FORMAT:
+--------------------------------------------------------------------------------
+{title:Behind Blue Eyes}
+{artist:The Who}
+{key:E}
+{time:4/4}
+{tempo:123}
+
+{comment:Intro}
+Em
+ 
+ 
+{comment:Verse 1}
+[Em]No one knows what it's like
+[G] To be the [D]bad man
+[Dsus4]      [D] To be the [Cadd9]sad  man
+Behind[Aadd9]     blue eyes
+[Em]No one knows what it's like
+[G] To be [D]hated
+[Dsus4]      [D] To be [Cadd9]fated
+To telling on[Aadd9]ly lies
+But my [C]dreams
+ 
+ 
+{comment:Chorus}
+[D] They aren't as [G]empty
+As my [C]conscience [D]seems to be
+[E] I have [Bm]hours, only lon[C]ely
+My love is ven[D]geance
+That's never [Asus2]free 
+ 
+ 
+{comment:Verse 2}
+[Em]No one knows what it's like
+[G] To feel these [D]feelings
+Dsus4 D
+      Like I do
+[Cadd9]     And I blame you
+[Aadd9]      [Em]No one bites back as hard
+[G] On their [D]anger
+[Dsus4]      [D]None of my [Cadd9]pain and woe
+Can show [Aadd9]through
+But my [C]dreams
+ 
+ 
+{comment:Chorus}
+[D] They aren't as [G]empty
+As my [C]conscience [D]seems to be
+[E] I have [Bm]hours, only lon[C]ely
+My love is ven[D]geance
+That's never [Asus2]free 
+ 
+ 
+[Interlude]
+[E][Bm] [A] [E] [Bm] [A]
+ 
+ 
+{comment:Verse 3}
+[E] When my fist clen[Bm]ches, crack [A]it open
+[E] Before I use[Bm]  it and lose[G] my [D]cool
+When I smile,[Bm]  tell[A] me some bad[D] news
+Before I laugh[Bm]  and [A]act like a [E]fool [Bm] [A]
+ 
+ 
+{comment:Verse 4}
+[E] And if I swal[Bm]low a[A]nything evil [E]
+Put your fin[Bm]ger down[G] my [D]throat
+And if I shi[Bm]ver, please [A]give me a [D]blanket
+Keep me warm,[Bm]  let me [A]wear your coat [E]
+ 
+ 
+{comment:Solo}
+[Bm] [A] [E] [Bm] [A]
+ 
+ 
+{comment:Bridge}
+[B] [A] [G] [D] 
+[B] [A] [G] [D]
+[B] [A] [G] [D]
+[B]
+ 
+ 
+{comment:Outro}
+[Em]No one knows what it's like
+[G] To be the [D]bad man
+[Dsus4]      [D] To be the [Cadd9]sad  man
+Behind[Asus2]     blue eyes
+
+
+================================================================================
+SONG 5
+================================================================================
+
+ORIGINAL JUSTCHORDS DATA:
+--------------------------------------------------------------------------------
+Title: Dirt On My Boots
+Artist: Jon Pardi
+Key: D minor
+Tempo: 90 BPM
+Time Signature: 4/4
+Duration: 4:00
+
+CONVERTED TO NEXTCHORD CHORDPRO FORMAT:
+--------------------------------------------------------------------------------
+{title:Dirt On My Boots}
+{artist:Jon Pardi}
+{key:D}
+{time:4/4}
+{tempo:90}
+
+{start_of_verse}
+{comment:Intro}
+{end_of_verse}
+
+{start_of_verse}
+[Dm]
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Verse 1}
+{end_of_verse}
+
+{start_of_verse}
+[Dm]Been up since the crack of dawn
+[C]Just trying to get [G]paid
+[Dm]Been hotter than a hundred suns
+[C]I can't find no [G]shade
+[Dm]Just two more rows and I'm good to go
+Yeah, I'm [C]shutting this tractor [G]down
+Give me a [Dm]half an hour for a shave and a shower
+         C  N.C.
+And I'll be outside your house
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Chorus}
+{end_of_verse}
+
+{start_of_verse}
+Might have a little [Dm]dirt on my boots
+But I'm taking you [C]uptown to[G]night
+Might have a little [Dm]mud on my wheels
+But they're gonna [C]shine with you up in[G]side
+Gonna [Dm]hit the club, gonna cut a rug
+Burn it[C] up like neon [G]lights
+Might have a little [Dm]dirt on my boots
+                C N.C.                           Dm          C   G
+But we're gonna dance the dust right off them tonight (yeah girl)
+Got a little [Dm]dirt on my boots   [C]   [G]
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Verse 2}
+{end_of_verse}
+
+{start_of_verse}
+[Dm]Hard as I worked all day
+I'm gonna [C]work harder loving on [G]you
+[Dm]Spin you all over that dance floor
+Right [C]outta them high heel [G]shoes
+And when you're [Dm]ready to quit
+Baby, we can slip [C]right out of that bar room [G]door
+           Dm  N.C.
+And when I take you home, don't worry babe
+{end_of_verse}
+
+{start_of_verse}
+I'm gonna kick them off on the porch
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Chorus}
+{end_of_verse}
+
+{start_of_verse}
+Might have a little [Dm]dirt on my boots
+But I'm taking you [C]uptown to[G]night
+Might have a little [Dm]mud on my wheels
+But they're gonna [C]shine with you up in[G]side
+Gonna [Dm]hit the club, gonna cut a rug
+[C]Burn it up like neon [G]lights
+Might have a little [Dm]dirt on my boots
+                C N.C.                           Dm          C   G
+But we're gonna dance the dust right off them tonight (yeah girl)
+Got a little [Dm]dirt on my boots [C]   [G]
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Solo}
+{end_of_verse}
+
+{start_of_verse}
+[Dm]No solo with duo
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Bridge}
+{end_of_verse}
+
+{start_of_verse}
+[Dm]A little dirty dancing,[C] blue collar ro[G]mancing
+I can [Dm]get cleaned up if you ask me
+   C N.C.
+But I can only get so fancy
+{end_of_verse}
+
+
+{start_of_verse}
+{comment:Chorus}
+{end_of_verse}
+
+{start_of_verse}
+Got a little [Dm]dirt on my boots
+But I'm taking you [C]uptown to[G]night
+Might have a little [Dm]mud on my wheels
+But they're gonna [C]shine with you up in[G]side
+Gonna [Dm]hit the club, gonna cut a rug
+[C]Burn it up like neon [G]lights
+Might have a little [Dm]dirt on my boots
+                C N.C.                           Dm          C   G
+But we're gonna dance the dust right off them tonight (yeah girl)
+[Dm]Got a little dirt on my boot[C]s  [G]
+[Dm]Got a little dirt on my boot[C]s  [G]
+[Dm]Got a little dirt on my boot[C]s  [G]
+{end_of_verse}
+
+
+================================================================================
+END OF PREVIEW
+================================================================================
