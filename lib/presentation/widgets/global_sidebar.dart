@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
+import 'sidebar_select_all_bar.dart';
 
 /// Global sidebar widget that can overlay any screen
 class GlobalSidebar extends StatefulWidget {
@@ -155,9 +155,9 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                 InkWell(
                   onTap: () => context.read<GlobalSidebarProvider>().hideSidebar(),
                   borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: const Icon(
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
                       Icons.close,
                       color: Colors.white,
                       size: 20,
@@ -237,6 +237,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                 isSelected: false,
                                 count: songsCount,
                                 onTap: () {
+                                  context.read<SongProvider>().resetSelectionMode();
                                   setState(() {
                                     _currentView = 'allSongs';
                                     _isSongsExpanded = false;
@@ -249,6 +250,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                 isSelected: false,
                                 count: artistsCount,
                                 onTap: () {
+                                  context.read<SongProvider>().resetSelectionMode();
                                   setState(() {
                                     _currentView = 'artistsList';
                                     _isSongsExpanded = false;
@@ -261,6 +263,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                 isSelected: false,
                                 count: tagsCount,
                                 onTap: () {
+                                  context.read<SongProvider>().resetSelectionMode();
                                   setState(() {
                                     _currentView = 'tagsList';
                                     _isSongsExpanded = false;
@@ -277,6 +280,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                         isSelected: false,
                         count: _deletedSongsCount,
                         onTap: () async {
+                          context.read<SongProvider>().resetSelectionMode();
                           setState(() {
                             _currentView = 'deletedSongs';
                             _isSongsExpanded = false;
@@ -311,7 +315,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     title: 'Settings',
                     isSelected: false,
                     onTap: () {
-                      // Handle Settings navigation
                     },
                   ),
                 ],
@@ -341,6 +344,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       color: Colors.white,
                     ),
                     onPressed: () {
+                      context.read<SongProvider>().resetSelectionMode();
                       setState(() {
                         _currentView = 'menu';
                         _searchController.clear();
@@ -468,6 +472,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                   color: Colors.white,
                 ),
                 onPressed: () {
+                  context.read<SongProvider>().resetSelectionMode();
                   setState(() {
                     _currentView = 'menu';
                   });
@@ -535,9 +540,9 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                           color: Colors.white70,
                         ),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'Error loading deleted songs',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -631,48 +636,14 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     ),
                   // Select All bar (shown when in selection mode)
                   if (provider.selectionMode)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
-                      ),
-                      child: Row(
-                        children: [
-                          Transform.scale(
-                            scale: 0.85,
-                            child: Checkbox(
-                              value: provider.isAllSelected,
-                              onChanged: (value) {
-                                provider.toggleSelectAll();
-                              },
-                              fillColor: WidgetStateProperty.resolveWith((states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return Colors.white;
-                                }
-                                return Colors.white.withValues(alpha: 0.3);
-                              }),
-                              checkColor: const Color(0xFF0468cc),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            provider.isAllSelected ? 'Deselect All' : 'Select All',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${provider.selectedSongIds.length} of ${provider.songs.length}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
+                    SidebarSelectAllBar(
+                      provider: provider,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      backgroundColor: Colors.black.withValues(alpha: 0.2),
+                      dividerColor: Colors.black.withValues(alpha: 0.3),
+                      textColor: Colors.white,
+                      secondaryTextColor: Colors.white.withValues(alpha: 0.7),
+                      checkboxScale: 0.75,
                     ),
                   // Songs list
                   Expanded(
@@ -717,8 +688,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                               song.title,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -879,6 +850,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                           color: Colors.white,
                         ),
                         onPressed: () {
+                          context.read<SongProvider>().resetSelectionMode();
                           setState(() {
                             _currentView = 'menu';
                             _searchController.clear();
@@ -989,8 +961,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             artist,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1007,6 +979,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             color: Colors.white70,
                           ),
                           onTap: () {
+                            context.read<SongProvider>().resetSelectionMode();
                             setState(() {
                               _selectedArtist = artist;
                               _currentView = 'artistSongs';
@@ -1049,6 +1022,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                           color: Colors.white,
                         ),
                         onPressed: () {
+                          context.read<SongProvider>().resetSelectionMode();
                           setState(() {
                             _currentView = 'artistsList';
                             _searchController.clear();
@@ -1184,6 +1158,19 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      IconButton(
+                        icon: Icon(
+                          provider.selectionMode ? Icons.check_box : Icons.check_box_outline_blank,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          provider.toggleSelectionMode();
+                        },
+                        tooltip: provider.selectionMode ? 'Exit selection' : 'Select songs',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1219,6 +1206,16 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       setState(() {}); // Rebuild to filter and show/hide clear button
                     },
                   ),
+                  if (provider.selectionMode) ...[
+                    const SizedBox(height: 10),
+                    SidebarSelectAllBar(
+                      provider: provider,
+                      backgroundColor: Colors.black.withValues(alpha: 0.15),
+                      dividerColor: Colors.black.withValues(alpha: 0.25),
+                      textColor: Colors.white,
+                      secondaryTextColor: Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1276,8 +1273,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             tag,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1295,6 +1292,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             size: 20,
                           ),
                           onTap: () {
+                            context.read<SongProvider>().resetSelectionMode();
                             setState(() {
                               _selectedTag = tag;
                               _currentView = 'tagSongs';
@@ -1337,6 +1335,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                           color: Colors.white,
                         ),
                         onPressed: () {
+                          context.read<SongProvider>().resetSelectionMode();
                           setState(() {
                             _currentView = 'tagsList';
                             _searchController.clear();

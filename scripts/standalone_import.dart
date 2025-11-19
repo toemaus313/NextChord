@@ -1,15 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+
+import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:uuid/uuid.dart';
 
 /// Standalone import script that works without Flutter
 /// Directly writes to the SQLite database
-void main() async {
+void main(List<String> args) async {
   print('🎵 Justchords to NextChord - Standalone Importer\n');
   
-  final libraryPath = 'examples/library.json';
+  final libraryPath = _resolveLibraryPath(args.isNotEmpty ? args.first : null);
   final dbPath = await _findDatabasePath();
   
   if (dbPath == null) {
@@ -130,7 +132,7 @@ void main() async {
           0, // capo
           bpm,
           timeSignature,
-          jsonEncode(['imported', 'justchords']),
+          null, // tags
           null, // audio_file_path
           null, // notes
           now,
@@ -155,19 +157,75 @@ void main() async {
   }
 }
 
+String _resolveLibraryPath(String? cliArgument) {
+  final env = Platform.environment;
+  final overrides = <String?>[
+    cliArgument,
+    env['NEXTCHORD_LIBRARY_PATH'],
+  ];
+
+  final candidates = <String>[];
+
+  for (final override in overrides) {
+    if (override == null || override.trim().isEmpty) continue;
+    final resolved = p.isAbsolute(override)
+        ? p.normalize(override)
+        : p.normalize(p.join(Directory.current.path, override));
+    candidates.add(resolved);
+  }
+
+  final scriptFile = File(Platform.script.toFilePath());
+  final scriptsDir = scriptFile.parent;
+  final repoRoot = scriptsDir.parent;
+
+  candidates.add(p.join(Directory.current.path, 'examples', 'library.json'));
+  candidates.add(p.join(repoRoot.path, 'examples', 'library.json'));
+
+  for (final candidate in candidates) {
+    if (File(candidate).existsSync()) {
+      return candidate;
+    }
+  }
+
+  // Fall back to the last candidate so the error message shows the repo path
+  return candidates.isNotEmpty ? candidates.last : p.join(repoRoot.path, 'examples', 'library.json');
+}
+
 /// Find the NextChord database file
 Future<String?> _findDatabasePath() async {
-  // Get user's Documents folder
-  final userProfile = Platform.environment['USERPROFILE'];
-  if (userProfile == null) return null;
-  
-  final possiblePaths = [
-    '$userProfile\\Documents\\nextchord_db.sqlite',
-    '$userProfile\\AppData\\Local\\nextchord_db.sqlite',
-    '$userProfile\\AppData\\Roaming\\nextchord_db.sqlite',
-    'nextchord_db.sqlite', // Current directory
-  ];
-  
+  final env = Platform.environment;
+  final homeDir = env['HOME'] ?? env['USERPROFILE'];
+
+  if (homeDir == null) {
+    print('❗ Unable to determine home directory.');
+    return null;
+  }
+
+  final possiblePaths = <String>[];
+  Directory? deepSearchRoot;
+
+  if (Platform.isMacOS) {
+    possiblePaths.addAll([
+      '$homeDir/Library/Containers/com.example.nextchord/Data/Documents/nextchord_db.sqlite',
+      '$homeDir/Documents/nextchord_db.sqlite',
+    ]);
+  } else if (Platform.isWindows) {
+    final userProfile = env['USERPROFILE'] ?? homeDir;
+    possiblePaths.addAll([
+      '$userProfile\\Documents\\nextchord_db.sqlite',
+      '$userProfile\\AppData\\Local\\nextchord_db.sqlite',
+      '$userProfile\\AppData\\Roaming\\nextchord_db.sqlite',
+    ]);
+    deepSearchRoot = Directory('$userProfile\\Documents');
+  } else {
+    possiblePaths.addAll([
+      '$homeDir/nextchord_db.sqlite',
+      '$homeDir/Documents/nextchord_db.sqlite',
+    ]);
+  }
+
+  possiblePaths.add('nextchord_db.sqlite'); // Current directory fallback
+
   print('🔍 Searching for database in:');
   for (final path in possiblePaths) {
     print('   - $path');
@@ -176,20 +234,18 @@ Future<String?> _findDatabasePath() async {
       return path;
     }
   }
-  
+
   print('   ✗ Not found in standard locations\n');
-  
-  // Try to search more broadly
-  final documentsDir = Directory('$userProfile\\Documents');
-  if (await documentsDir.exists()) {
-    await for (final entity in documentsDir.list(recursive: true, followLinks: false)) {
+
+  if (deepSearchRoot != null && await deepSearchRoot.exists()) {
+    await for (final entity in deepSearchRoot.list(recursive: true, followLinks: false)) {
       if (entity is File && entity.path.endsWith('nextchord_db.sqlite')) {
         print('   ✓ Found at: ${entity.path}\n');
         return entity.path;
       }
     }
   }
-  
+
   return null;
 }
 

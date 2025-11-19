@@ -5,6 +5,7 @@ import '../providers/song_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../widgets/song_list_tile.dart';
 import '../widgets/tag_edit_dialog.dart';
+import '../widgets/sidebar_select_all_bar.dart';
 import 'song_editor_screen.dart';
 import 'song_viewer_screen.dart';
 
@@ -304,7 +305,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           itemBuilder: (context, index) {
             // Select All header for sidebar in selection mode
             if (inSidebar && provider.selectionMode && index == 0) {
-              return _buildSelectAllHeader(provider);
+              return SidebarSelectAllBar(provider: provider);
             }
             final songIndex = inSidebar && provider.selectionMode ? index - 1 : index;
             final song = provider.songs[songIndex];
@@ -386,8 +387,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   song.title,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -419,8 +420,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                         song.key,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
@@ -434,7 +435,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             song.artist,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 13,
+                              fontSize: 11.5,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -476,51 +477,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           );
         }
       },
-    );
-  }
-
-  /// Build Select All header for sidebar selection mode
-  Widget _buildSelectAllHeader(SongProvider provider) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Checkbox(
-            value: provider.isAllSelected,
-            onChanged: (value) {
-              provider.toggleSelectAll();
-            },
-            fillColor: WidgetStateProperty.all(Colors.white),
-            checkColor: Colors.black,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            provider.isAllSelected ? 'Deselect All' : 'Select All',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '${provider.selectedSongIds.length} of ${provider.songs.length}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

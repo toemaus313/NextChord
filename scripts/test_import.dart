@@ -7,7 +7,7 @@ void main() async {
   print('🎵 Justchords Song Importer Test\n');
   
   // Path to the library.json file
-  final libraryPath = 'examples/library.json';
+  const libraryPath = 'examples/library.json';
   
   print('📂 Reading from: $libraryPath');
   
@@ -72,7 +72,7 @@ void main() async {
         }
       }
       
-      print('\n${i + 1}. "${title}" by $artist');
+      print('\n${i + 1}. "$title" by $artist');
       print('   Key: $key | Tempo: $tempo BPM | Time: $timeSignature | Duration: $duration');
       print('   Raw data length: ${rawData.length} characters');
       
@@ -87,10 +87,10 @@ void main() async {
       if (lines.length > 10) {
         print('   | ... (${lines.length - 10} more lines)');
       }
-      print('   ' + '-' * 76);
+      print('   ${'-' * 76}');
     }
     
-    print('\n' + '=' * 80);
+    print('\n${'=' * 80}');
     print('\n✅ Import test completed successfully!');
     print('\n📝 These songs can be imported into NextChord with the following structure:');
     print('   - Title and Artist from the JSON');

@@ -1,14 +1,14 @@
 import 'dart:io';
-import '../lib/core/utils/justchords_importer.dart';
-import '../lib/data/database/app_database.dart';
-import '../lib/data/repositories/song_repository.dart';
+import 'package:nextchord/core/utils/justchords_importer.dart';
+import 'package:nextchord/data/database/app_database.dart';
+import 'package:nextchord/data/repositories/song_repository.dart';
 
 /// Script to import 5 random songs from Justchords library.json
 void main() async {
   print('🎵 Justchords to NextChord Importer\n');
   
   // Path to the library.json file
-  final libraryPath = 'examples/library.json';
+  const libraryPath = 'examples/library.json';
   
   print('📂 Reading from: $libraryPath');
   

@@ -8,14 +8,14 @@ class AppWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
         // Global sidebar (animated width)
-        const GlobalSidebar(),
+        GlobalSidebar(),
         
         // Main app content (takes remaining space)
         Expanded(
-          child: const HomeScreen(),
+          child: HomeScreen(),
         ),
       ],
     );

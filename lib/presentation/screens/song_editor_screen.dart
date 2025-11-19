@@ -817,7 +817,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedKey,
+                    initialValue: _selectedKey,
                     style: TextStyle(fontSize: 14, color: textColor),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.piano, size: 18),
@@ -886,7 +886,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<int>(
-                    value: _selectedCapo,
+                    initialValue: _selectedCapo,
                     style: TextStyle(fontSize: 14, color: textColor),
                     decoration: InputDecoration(
                       prefixIcon: Padding(
@@ -923,7 +923,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedTimeSignature,
+                    initialValue: _selectedTimeSignature,
                     style: TextStyle(fontSize: 14, color: textColor),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.timer, size: 18),
@@ -1012,7 +1012,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                 return Padding(
                                   padding: const EdgeInsets.only(right: 6),
                                   child: _TagChip(
-                                    key: ValueKey('tag_$index\_$tag'),
+                                    key: ValueKey('tag_${index}_$tag'),
                                     tag: tag,
                                     bgColor: bgColor,
                                     textColor: tagTextColor,

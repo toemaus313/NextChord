@@ -249,18 +249,25 @@ Include comprehensive comments so I understand how it works.
 **Windsurf Prompt**:
 
 ```
-I have a song viewer screen (lib/presentation/screens/song_viewer_screen.dart) and a ChordPro parser (lib/core/utils/chordpro_parser.dart).
+I have a song viewer screen (lib/presentation/screens/song_viewer_screen.dart).
 
-Please add:
-1. A transposition control to the viewer:
-   - Slider or buttons to transpose up/down by semitones
+We also have buttons added in the viewer for Capo and Transpose. I want you to:
+1. Enable the transposition feature for the viewer:
+   - Make a flyout menu with an identical look and feel to the Settings button in the Viewer with + and - buttons to transpose up/down by semitones
    - Display current transposition (e.g., "Transposed +3 semitones")
    - Apply transposition to displayed chords without modifying the song
+   - Display current transposition (e.g., "Transposed +3 semitones")
+   - Apply transposition to displayed chords without modifying the song   
+   - Add any metadata required to enable transpose options to only apply to a set list if desired, but not to the base song itself
 
-2. A capo display:
+2. Enable the capo feature for the viewer:
+   - Make a flyout menu with an identical look and feel to the Settings button in the Viewer with + and - buttons to incrementally increase the number of fret the capo is installed on
    - Show "Capo: 3" (from song data)
    - Option to adjust capo from the UI
    - Recalculate displayed chords when capo changes
+   - Add any metadata required to enable capo options to only apply to a set list if desired, but not to the base song itself
+
+
 
 Example: Song is in key C with capo 0. User transposes +2 semitones → display chords as if in key D.
 Or: Song is in key G with capo 2. User moves capo to 5 → adjust displayed chords accordingly.

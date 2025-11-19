@@ -117,7 +117,7 @@ class JustchordsImporter {
       capo: 0,
       bpm: bpm,
       timeSignature: timeSignature,
-      tags: ['imported', 'justchords'],
+      tags: const ['imported', 'justchords'],
       notes: duration != null ? 'Duration: $duration' : null,
       createdAt: now,
       updatedAt: now,

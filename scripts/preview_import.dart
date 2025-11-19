@@ -62,7 +62,7 @@ String convertToChordPro(String rawData, String title, String artist, String key
 void main() async {
   print('🎵 Justchords to NextChord Import Preview\n');
   
-  final libraryPath = 'examples/library.json';
+  const libraryPath = 'examples/library.json';
   
   try {
     final file = File(libraryPath);
@@ -168,7 +168,7 @@ void main() async {
     // Write to file
     await outputFile.writeAsString(output.toString());
     
-    print('\n' + '=' * 80);
+    print('\n${'=' * 80}');
     print('✅ Preview completed successfully!');
     print('📄 Output written to: ${outputFile.path}');
     print('\n📝 Summary:');

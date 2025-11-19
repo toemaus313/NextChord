@@ -220,6 +220,15 @@ class SongProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Force selection mode off and clear selections
+  void resetSelectionMode() {
+    if (_selectionMode || _selectedSongIds.isNotEmpty) {
+      _selectionMode = false;
+      _selectedSongIds.clear();
+      notifyListeners();
+    }
+  }
+
   /// Toggle selection of a specific song
   void toggleSongSelection(String songId) {
     if (_selectedSongIds.contains(songId)) {
