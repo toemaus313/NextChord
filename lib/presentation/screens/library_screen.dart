@@ -13,11 +13,13 @@ import 'song_viewer_screen.dart';
 class LibraryScreen extends StatefulWidget {
   final Function(Song)? onSongSelected;
   final bool inSidebar;
+  final bool skipInitialLoad;
 
   const LibraryScreen({
     Key? key,
     this.onSongSelected,
     this.inSidebar = false,
+    this.skipInitialLoad = false,
   }) : super(key: key);
 
   @override
@@ -30,10 +32,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
-    // Load songs when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SongProvider>().loadSongs();
-    });
+    // Load songs when screen initializes (unless skipInitialLoad is true)
+    if (!widget.skipInitialLoad) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SongProvider>().loadSongs();
+      });
+    }
   }
 
   @override

@@ -5,18 +5,8 @@ version: 0.0.1
 environment:
   sdk: ^3.11.0-146.0.dev
 dependencies:
-  dtd: ^4.0.0
   flutter:
     sdk: flutter
-  flutter_lints: ^6.0.0
-  google_fonts: ^6.3.2
-  json_rpc_2: ^4.0.0
-  nextchord:
-    path: ../..
-  path: ^1.9.1
-  stack_trace: ^1.12.1
-  url_launcher: ^6.3.2
-  web: ^1.1.1
 flutter:
   uses-material-design: true
 dependency_overrides:

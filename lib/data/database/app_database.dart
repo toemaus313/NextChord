@@ -37,6 +37,7 @@ class Setlists extends Table {
   TextColumn get name => text()();
   TextColumn get items => text()(); // JSON array of SetlistItems
   TextColumn get notes => text().nullable()();
+  TextColumn get imagePath => text().nullable()(); // Path to 200x200px image
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -50,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Get the DAO for Songs
   late final songsDao = SongsDao(this);
@@ -70,6 +71,10 @@ class AppDatabase extends _$AppDatabase {
         if (from <= 1 && to >= 2) {
           // Add isDeleted column to songs table
           await m.addColumn(songs, songs.isDeleted);
+        }
+        if (from <= 2 && to >= 3) {
+          // Add imagePath column to setlists table
+          await m.addColumn(setlists, setlists.imagePath);
         }
       },
     );
@@ -244,6 +249,10 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
+    
+    // Debug: Print database location
+    print('📁 Database location: ${file.path}');
+    
     return NativeDatabase(file);
   });
 }

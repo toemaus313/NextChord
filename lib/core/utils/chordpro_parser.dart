@@ -376,6 +376,16 @@ class ChordProParser {
         continue;
       }
 
+      // Check for comment directives: {comment: Text}
+      final commentDirectiveMatch = RegExp(r'^\s*\{comment:\s*([^}]+)\}\s*$', caseSensitive: false).firstMatch(line);
+      if (commentDirectiveMatch != null) {
+        lines.add(ChordProLine(
+          type: ChordProLineType.comment,
+          text: commentDirectiveMatch.group(1)?.trim() ?? '',
+        ));
+        continue;
+      }
+
       // Check for comments (lines starting with #)
       final commentMatch = commentRegex.firstMatch(line);
       if (commentMatch != null) {
@@ -551,7 +561,8 @@ class ChordProParser {
           buffer.write('{${line.sectionType}: ${line.section}}');
           break;
         case ChordProLineType.comment:
-          buffer.write('# ${line.text}');
+          // Render as {comment: ...} directive for better compatibility
+          buffer.write('{comment: ${line.text}}');
           break;
         case ChordProLineType.directive:
           buffer.write(line.text);

@@ -94,6 +94,7 @@ class Setlist extends Equatable {
   final String name;
   final List<SetlistItem> items; // Ordered list of songs/dividers
   final String? notes;
+  final String? imagePath; // Path to 200x200px setlist image
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -102,6 +103,7 @@ class Setlist extends Equatable {
     required this.name,
     required this.items,
     this.notes,
+    this.imagePath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -111,6 +113,7 @@ class Setlist extends Equatable {
     String? name,
     List<SetlistItem>? items,
     String? notes,
+    String? imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -119,13 +122,14 @@ class Setlist extends Equatable {
       name: name ?? this.name,
       items: items ?? this.items,
       notes: notes ?? this.notes,
+      imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, items, notes, createdAt, updatedAt];
+  List<Object?> get props => [id, name, items, notes, imagePath, createdAt, updatedAt];
 }
 
 /// An item in a setlist - can be a song or a divider
@@ -137,14 +141,32 @@ abstract class SetlistItem extends Equatable {
 class SetlistSongItem extends SetlistItem {
   final String songId;
   final int order;
+  final int? transposeSteps; // Setlist-specific transpose (null = use song default)
+  final int? capo; // Setlist-specific capo (null = use song default)
 
   const SetlistSongItem({
     required this.songId,
     required this.order,
+    this.transposeSteps,
+    this.capo,
   });
 
+  SetlistSongItem copyWith({
+    String? songId,
+    int? order,
+    int? transposeSteps,
+    int? capo,
+  }) {
+    return SetlistSongItem(
+      songId: songId ?? this.songId,
+      order: order ?? this.order,
+      transposeSteps: transposeSteps ?? this.transposeSteps,
+      capo: capo ?? this.capo,
+    );
+  }
+
   @override
-  List<Object?> get props => [songId, order];
+  List<Object?> get props => [songId, order, transposeSteps, capo];
 }
 
 /// A divider/section marker in a setlist

@@ -98,6 +98,62 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     );
   }
 
+  /// Delete the current song with confirmation
+  Future<void> _deleteSong() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Song'),
+        content: Text(
+          'Are you sure you want to delete "${_currentSong.title}"?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final repository = context.read<SongRepository>();
+      await repository.deleteSong(_currentSong.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Song deleted successfully'),
+          ),
+        );
+        
+        // Clear the current song from global state
+        if (context.mounted) {
+          context.read<GlobalSidebarProvider>().clearCurrentSong();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     // Reset to portrait only when leaving
@@ -194,7 +250,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               // Share button (always visible)
               Positioned(
                 top: 8,
-                right: 56,
+                right: 104,
                 child: IconButton(
                   icon: Icon(
                     Icons.share,
@@ -205,6 +261,21 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     // TODO: Implement share
                   },
                   tooltip: 'Share song',
+                ),
+              ),
+
+              // Delete button (always visible)
+              Positioned(
+                top: 8,
+                right: 56,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                    size: 28,
+                  ),
+                  onPressed: _deleteSong,
+                  tooltip: 'Delete song',
                 ),
               ),
 

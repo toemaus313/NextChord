@@ -91,6 +91,18 @@ class SongProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Filter songs by artist
+  void filterByArtist(String artist) {
+    _filteredSongs = _songs.where((song) => song.artist == artist).toList();
+    notifyListeners();
+  }
+
+  /// Filter songs by tag
+  void filterByTag(String tag) {
+    _filteredSongs = _songs.where((song) => song.tags.contains(tag)).toList();
+    notifyListeners();
+  }
+
   /// Clear any error message
   void clearError() {
     _errorMessage = null;

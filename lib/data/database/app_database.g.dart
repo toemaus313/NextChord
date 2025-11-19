@@ -696,6 +696,12 @@ class $SetlistsTable extends Setlists
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
       'notes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _imagePathMeta =
+      const VerificationMeta('imagePath');
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+      'image_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -710,7 +716,7 @@ class $SetlistsTable extends Setlists
       type: DriftSqlType.int, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, name, items, notes, createdAt, updatedAt];
+      [id, name, items, notes, imagePath, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -742,6 +748,10 @@ class $SetlistsTable extends Setlists
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('image_path')) {
+      context.handle(_imagePathMeta,
+          imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -771,6 +781,8 @@ class $SetlistsTable extends Setlists
           .read(DriftSqlType.string, data['${effectivePrefix}items'])!,
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      imagePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}image_path']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -789,6 +801,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
   final String name;
   final String items;
   final String? notes;
+  final String? imagePath;
   final int createdAt;
   final int updatedAt;
   const SetlistModel(
@@ -796,6 +809,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       required this.name,
       required this.items,
       this.notes,
+      this.imagePath,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -806,6 +820,9 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
     map['items'] = Variable<String>(items);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || imagePath != null) {
+      map['image_path'] = Variable<String>(imagePath);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -819,6 +836,9 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       items: Value(items),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      imagePath: imagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imagePath),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -832,6 +852,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       name: serializer.fromJson<String>(json['name']),
       items: serializer.fromJson<String>(json['items']),
       notes: serializer.fromJson<String?>(json['notes']),
+      imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -844,6 +865,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       'name': serializer.toJson<String>(name),
       'items': serializer.toJson<String>(items),
       'notes': serializer.toJson<String?>(notes),
+      'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -854,6 +876,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           String? name,
           String? items,
           Value<String?> notes = const Value.absent(),
+          Value<String?> imagePath = const Value.absent(),
           int? createdAt,
           int? updatedAt}) =>
       SetlistModel(
@@ -861,6 +884,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
         name: name ?? this.name,
         items: items ?? this.items,
         notes: notes.present ? notes.value : this.notes,
+        imagePath: imagePath.present ? imagePath.value : this.imagePath,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -870,6 +894,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       name: data.name.present ? data.name.value : this.name,
       items: data.items.present ? data.items.value : this.items,
       notes: data.notes.present ? data.notes.value : this.notes,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -882,6 +907,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           ..write('name: $name, ')
           ..write('items: $items, ')
           ..write('notes: $notes, ')
+          ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -889,7 +915,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, items, notes, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, items, notes, imagePath, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -898,6 +925,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           other.name == this.name &&
           other.items == this.items &&
           other.notes == this.notes &&
+          other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -907,6 +935,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
   final Value<String> name;
   final Value<String> items;
   final Value<String?> notes;
+  final Value<String?> imagePath;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -915,6 +944,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     this.name = const Value.absent(),
     this.items = const Value.absent(),
     this.notes = const Value.absent(),
+    this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -924,6 +954,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     required String name,
     required String items,
     this.notes = const Value.absent(),
+    this.imagePath = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -937,6 +968,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     Expression<String>? name,
     Expression<String>? items,
     Expression<String>? notes,
+    Expression<String>? imagePath,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -946,6 +978,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       if (name != null) 'name': name,
       if (items != null) 'items': items,
       if (notes != null) 'notes': notes,
+      if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -957,6 +990,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       Value<String>? name,
       Value<String>? items,
       Value<String?>? notes,
+      Value<String?>? imagePath,
       Value<int>? createdAt,
       Value<int>? updatedAt,
       Value<int>? rowid}) {
@@ -965,6 +999,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       name: name ?? this.name,
       items: items ?? this.items,
       notes: notes ?? this.notes,
+      imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -986,6 +1021,9 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -1005,6 +1043,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
           ..write('name: $name, ')
           ..write('items: $items, ')
           ..write('notes: $notes, ')
+          ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1331,6 +1370,7 @@ typedef $$SetlistsTableCreateCompanionBuilder = SetlistsCompanion Function({
   required String name,
   required String items,
   Value<String?> notes,
+  Value<String?> imagePath,
   required int createdAt,
   required int updatedAt,
   Value<int> rowid,
@@ -1340,6 +1380,7 @@ typedef $$SetlistsTableUpdateCompanionBuilder = SetlistsCompanion Function({
   Value<String> name,
   Value<String> items,
   Value<String?> notes,
+  Value<String?> imagePath,
   Value<int> createdAt,
   Value<int> updatedAt,
   Value<int> rowid,
@@ -1365,6 +1406,9 @@ class $$SetlistsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -1394,6 +1438,9 @@ class $$SetlistsTableOrderingComposer
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+      column: $table.imagePath, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -1421,6 +1468,9 @@ class $$SetlistsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1456,6 +1506,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<String> items = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> imagePath = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -1465,6 +1516,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             name: name,
             items: items,
             notes: notes,
+            imagePath: imagePath,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -1474,6 +1526,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             required String name,
             required String items,
             Value<String?> notes = const Value.absent(),
+            Value<String?> imagePath = const Value.absent(),
             required int createdAt,
             required int updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -1483,6 +1536,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             name: name,
             items: items,
             notes: notes,
+            imagePath: imagePath,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,

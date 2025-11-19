@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
+import '../../core/utils/ug_text_converter.dart';
 import '../../services/import/ultimate_guitar_import_service.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
@@ -50,7 +51,19 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     'G#',
     'A',
     'A#',
-    'B'
+    'B',
+    'Cm',
+    'C#m',
+    'Dm',
+    'D#m',
+    'Em',
+    'Fm',
+    'F#m',
+    'Gm',
+    'G#m',
+    'Am',
+    'A#m',
+    'Bm'
   ];
 
   static const List<String> _timeSignatures = ['4/4', '3/4', '6/8'];
@@ -351,8 +364,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     }
   }
 
-  /// Import a ChordPro file and auto-populate fields
-  Future<void> _importChordProFile() async {
+  /// Import from ChordPro file and auto-populate fields
+  Future<void> _importFromFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -361,14 +374,18 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       );
 
       if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
+        final filePath = result.files.single.path!;
+        final fileName = result.files.single.name;
+        
+        // Parse as ChordPro text file
+        final file = File(filePath);
         final content = await file.readAsString();
         
-        // Parse metadata from ChordPro file
+        // Extract metadata from ChordPro
         final metadata = ChordProParser.extractMetadata(content);
         
+        // Update UI with initial metadata
         setState(() {
-          // Populate form fields from metadata
           if (metadata.title != null) {
             _titleController.text = metadata.title!;
           }
@@ -401,7 +418,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Imported: ${result.files.single.name}'),
+              content: Text('✓ Imported: $fileName'),
               backgroundColor: Colors.green,
             ),
           );
@@ -412,6 +429,77 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error importing file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Convert pasted Ultimate Guitar text to ChordPro format
+  Future<void> _convertToChordPro() async {
+    final currentText = _bodyController.text.trim();
+    
+    if (currentText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Paste some Ultimate Guitar text first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    try {
+      // Convert the text
+      final result = UGTextConverter.convertToChordPro(currentText);
+      final chordProContent = result['chordpro'] as String;
+      final metadata = result['metadata'] as Map<String, String>;
+      
+      setState(() {
+        // Populate metadata fields
+        if (metadata['title'] != null && _titleController.text.isEmpty) {
+          _titleController.text = metadata['title']!;
+        }
+        if (metadata['artist'] != null && _artistController.text.isEmpty) {
+          _artistController.text = metadata['artist']!;
+        }
+        if (metadata['key'] != null && _keys.contains(metadata['key'])) {
+          _selectedKey = metadata['key']!;
+        }
+        if (metadata['capo'] != null) {
+          final capo = int.tryParse(metadata['capo']!);
+          if (capo != null) {
+            _selectedCapo = capo;
+          }
+        }
+        if (metadata['bpm'] != null) {
+          final tempo = int.tryParse(metadata['bpm']!);
+          if (tempo != null) {
+            _bpmController.text = tempo.toString();
+          }
+        }
+        if (metadata['timeSignature'] != null && _timeSignatures.contains(metadata['timeSignature'])) {
+          _selectedTimeSignature = metadata['timeSignature']!;
+        }
+        
+        // Replace the body with converted content
+        _bodyController.text = chordProContent;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Converted to ChordPro'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error converting text: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -503,15 +591,15 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
 
       // Close loading dialog
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.of(context).pop();
       }
 
       if (result.success) {
-        // Populate form fields
+        // Populate fields with imported data
         setState(() {
-          _titleController.text = result.title ?? '';
-          _artistController.text = result.artist ?? '';
-          _bodyController.text = result.chordProContent ?? '';
+          _titleController.text = result.title!;
+          _artistController.text = result.artist!;
+          _bodyController.text = result.chordProContent!;
         });
 
         if (mounted) {
@@ -523,6 +611,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           );
         }
       } else {
+        // Show error
         if (mounted) {
           showDialog(
             context: context,
@@ -542,14 +631,21 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     } catch (e) {
       // Close loading dialog
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.of(context).pop();
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to import: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }
@@ -1039,6 +1135,17 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
             if (!isEditing) ...[
               Positioned(
                 top: 8,
+                right: 152,
+                child: _buildActionButton(
+                  icon: Icons.auto_fix_high,
+                  tooltip: 'Convert to ChordPro',
+                  onPressed: _convertToChordPro,
+                  color: actionColor,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+              Positioned(
+                top: 8,
                 right: 104,
                 child: _buildActionButton(
                   icon: Icons.cloud_download,
@@ -1053,8 +1160,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 right: 56,
                 child: _buildActionButton(
                   icon: Icons.file_upload,
-                  tooltip: 'Import ChordPro File',
-                  onPressed: _importChordProFile,
+                  tooltip: 'Import from File',
+                  onPressed: _importFromFile,
                   color: actionColor,
                   isDarkMode: isDarkMode,
                 ),

@@ -108,17 +108,40 @@ class ChordRenderer extends StatelessWidget {
     );
   }
 
-  /// Build a comment line
+  /// Build a comment line (rendered as section header with cyan color)
   Widget _buildComment(ChordProLine line) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Text(
-        line.text,
-        style: TextStyle(
-          fontSize: fontSize * 0.9,
-          fontStyle: FontStyle.italic,
-          color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+    final commentColor = isDarkMode ? Colors.cyan.shade300 : Colors.cyan.shade800;
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Colors.cyan.withOpacity(isDarkMode ? 0.2 : 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.cyan.shade600.withOpacity(isDarkMode ? 0.5 : 0.3),
+          width: 1.5,
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: fontSize * 1.1,
+            color: commentColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            line.text,
+            style: TextStyle(
+              fontSize: fontSize * 1.15,
+              fontWeight: FontWeight.bold,
+              color: commentColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
