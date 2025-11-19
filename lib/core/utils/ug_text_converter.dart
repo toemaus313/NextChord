@@ -23,6 +23,7 @@ class UGTextConverter {
       final line = lines[i].trim();
       
       if (line.isEmpty) continue;
+      if (_isPageMarker(line)) continue;
       
       // Extract title and artist (check for "Title by Artist" pattern on first line)
       if (title == null && artist == null && line.isNotEmpty) {
@@ -198,9 +199,8 @@ class UGTextConverter {
       final line = lines[i];
       final trimmedLine = line.trim();
       
-      // Skip page markers
-      if (trimmedLine.startsWith('Page ') || 
-          RegExp(r'^\d+/\d+$').hasMatch(trimmedLine)) {
+      // Skip page markers like "Page 1/4"
+      if (_isPageMarker(trimmedLine)) {
         continue;
       }
       
@@ -447,4 +447,10 @@ class UGTextConverter {
     
     return result.toString().trim();
   }
+}
+
+bool _isPageMarker(String line) {
+  final trimmed = line.trim();
+  if (trimmed.isEmpty) return false;
+  return RegExp(r'^Page\s+\d+\s*/\s*\d+$', caseSensitive: false).hasMatch(trimmed);
 }

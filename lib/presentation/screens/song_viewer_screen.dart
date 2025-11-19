@@ -365,6 +365,15 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     });
   }
 
+  void _closeAllFlyouts() {
+    if (!_showSettingsFlyout && !_showTransposeFlyout && !_showCapoFlyout) return;
+    setState(() {
+      _showSettingsFlyout = false;
+      _showTransposeFlyout = false;
+      _showCapoFlyout = false;
+    });
+  }
+
   void _onScopeToggle(bool value) {
     if (!_hasSetlistContext) return;
     setState(() {
@@ -532,33 +541,37 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             child: Stack(
             children: [
               // Main content - scrollable lyrics/chords
-              Column(
-                children: [
-                  // Header with song info (always visible)
-                  _buildHeader(textColor),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) => _closeAllFlyouts(),
+                child: Column(
+                  children: [
+                    // Header with song info (always visible)
+                    _buildHeader(textColor),
 
-                  // Scrollable song body
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Song metadata section
-                          _buildSongMetadata(textColor),
-                          const SizedBox(height: 24),
-                          // Song content
-                          ChordRenderer(
-                            chordProText: _currentSong.body,
-                            fontSize: _fontSize,
-                            isDarkMode: isDarkMode,
-                            transposeSteps: _effectiveTransposeSteps,
-                          ),
-                        ],
+                    // Scrollable song body
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Song metadata section
+                            _buildSongMetadata(textColor),
+                            const SizedBox(height: 24),
+                            // Song content
+                            ChordRenderer(
+                              chordProText: _currentSong.body,
+                              fontSize: _fontSize,
+                              isDarkMode: isDarkMode,
+                              transposeSteps: _effectiveTransposeSteps,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               // Sidebar toggle button (always visible - static)
@@ -995,8 +1008,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         size: const Size(18, 18),
         painter: CapoIconPainter(color: iconColor),
       ),
-      title: 'Capo',
-      valueText: _capoStatusLabel,
+      displayValue: '$_currentCapo',
+      semanticsLabel: _capoStatusLabel,
       onIncrement: () => _updateCapo(1),
       onDecrement: () => _updateCapo(-1),
       canIncrement: _currentCapo < _maxCapo,
@@ -1052,28 +1065,34 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               color: accent.withValues(alpha: 0.9),
             ),
           );
+    final scopeToggle = _buildAdjustmentScopeToggle(isDarkMode);
+
+    Widget? extraContent;
+    if (capoNote != null || scopeToggle != null) {
+      extraContent = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (capoNote != null) capoNote,
+          if (scopeToggle != null) ...[
+            if (capoNote != null) const SizedBox(height: 6),
+            scopeToggle,
+          ],
+        ],
+      );
+    }
 
     return _buildAdjustmentFlyout(
       isDarkMode: isDarkMode,
       isOpen: _showTransposeFlyout,
       onToggle: _toggleTransposeFlyout,
       icon: icon,
-      title: 'Transpose',
-      valueText: _transposeStatusLabel,
+      displayValue: _formatSignedValue(_transposeSteps),
+      semanticsLabel: _transposeStatusLabel,
       onIncrement: () => _updateTranspose(1),
       onDecrement: () => _updateTranspose(-1),
       canIncrement: _transposeSteps < _maxTranspose,
       canDecrement: _transposeSteps > _minTranspose,
-      extraContent: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (capoNote != null) capoNote,
-          if (_buildAdjustmentScopeToggle(isDarkMode) != null) ...[
-            const SizedBox(height: 6),
-            _buildAdjustmentScopeToggle(isDarkMode)!,
-          ],
-        ],
-      ),
+      extraContent: extraContent,
     );
   }
 
@@ -1082,8 +1101,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     required bool isOpen,
     required VoidCallback onToggle,
     required Widget icon,
-    required String title,
-    required String valueText,
+    required String displayValue,
+    String? semanticsLabel,
     required VoidCallback onIncrement,
     required VoidCallback onDecrement,
     bool canIncrement = true,
@@ -1095,10 +1114,11 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         : Colors.white.withValues(alpha: 0.95);
     final borderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return SizedBox(
       width: 220,
-      height: 72,
+      height: 40,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.centerRight,
@@ -1111,64 +1131,73 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               child: IgnorePointer(
                 ignoring: !isOpen,
                 child: Container(
-                  width: 180,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  width: 148,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   decoration: BoxDecoration(
                     color: backgroundColor,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: borderColor, width: 1.0),
                     boxShadow: _buildFloatingShadows(isDarkMode),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
+                      _buildInlineAdjustmentControl(
+                        label: '- ',
+                        onPressed: onDecrement,
+                        enabled: canDecrement,
+                        accentColor: accent,
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _buildStepperButton(
-                            icon: Icons.remove,
-                            onPressed: onDecrement,
-                            enabled: canDecrement,
-                            isDarkMode: isDarkMode,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
+                      Expanded(
+                        child: Center(
+                          child: Semantics(
+                            label: semanticsLabel ?? displayValue,
                             child: Text(
-                              valueText,
+                              displayValue,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                                 color: textColor,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _buildStepperButton(
-                            icon: Icons.add,
-                            onPressed: onIncrement,
-                            enabled: canIncrement,
-                            isDarkMode: isDarkMode,
-                          ),
-                        ],
+                        ),
                       ),
-                      if (extraContent != null) ...[
-                        const SizedBox(height: 6),
-                        extraContent,
-                      ],
+                      _buildInlineAdjustmentControl(
+                        label: ' +',
+                        onPressed: onIncrement,
+                        enabled: canIncrement,
+                        accentColor: accent,
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+          if (extraContent != null)
+            Positioned(
+              right: 52,
+              top: 48,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: isOpen ? 1 : 0,
+                child: IgnorePointer(
+                  ignoring: !isOpen,
+                  child: Container(
+                    width: 180,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: borderColor, width: 1.0),
+                      boxShadow: _buildFloatingShadows(isDarkMode),
+                    ),
+                    child: extraContent,
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: 0,
             child: GestureDetector(
@@ -1216,32 +1245,29 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     );
   }
 
-  Widget _buildStepperButton({
-    required IconData icon,
+  Widget _buildInlineAdjustmentControl({
+    required String label,
     required VoidCallback onPressed,
     required bool enabled,
-    required bool isDarkMode,
+    required Color accentColor,
   }) {
-    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
-    final disabledColor = Colors.grey.withValues(alpha: 0.5);
+    final color = enabled ? accentColor : accentColor.withValues(alpha: 0.35);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: enabled ? onPressed : null,
-      child: Container(
+      child: SizedBox(
         width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: enabled ? accent.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.08),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: enabled ? accent.withValues(alpha: 0.7) : disabledColor,
-            width: 1,
+        height: 40,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: enabled ? accent : disabledColor,
         ),
       ),
     );
