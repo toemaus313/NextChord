@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../providers/song_provider.dart';
+import '../providers/global_sidebar_provider.dart';
 import '../widgets/song_list_tile.dart';
 import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
@@ -662,6 +663,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Confirm bulk deletion of selected songs
   void _confirmBulkDelete(BuildContext context) {
     final provider = context.read<SongProvider>();
+    final sidebarProvider = context.read<GlobalSidebarProvider>();
     showDialog(
       context: context,
       builder: (context) {
@@ -677,7 +679,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: () async {
                 Navigator.pop(context);
                 try {
+                  // Check if current song is in the selection
+                  final currentSongId = sidebarProvider.currentSong?.id;
+                  final willDeleteCurrentSong = currentSongId != null && 
+                      provider.selectedSongIds.contains(currentSongId);
+                  
                   await provider.deleteSelectedSongs();
+                  
+                  // Clear current song if it was deleted
+                  if (willDeleteCurrentSong) {
+                    sidebarProvider.clearCurrentSong();
+                  }
+                  
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${provider.selectedSongIds.length} songs deleted')),
@@ -786,7 +799,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: () async {
                 Navigator.pop(context);
                 try {
-                  await context.read<SongProvider>().deleteSong(song.id);
+                  final sidebarProvider = context.read<GlobalSidebarProvider>();
+                  await context.read<SongProvider>().deleteSong(
+                    song.id,
+                    onDeleted: () {
+                      // If this song is currently being viewed, clear it
+                      if (sidebarProvider.currentSong?.id == song.id) {
+                        sidebarProvider.clearCurrentSong();
+                      }
+                    },
+                  );
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Song deleted')),

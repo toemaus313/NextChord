@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
@@ -28,9 +29,11 @@ class SongViewerScreen extends StatefulWidget {
 
 class _SongViewerScreenState extends State<SongViewerScreen> {
   double _fontSize = 18.0;
+  double _baseFontSize = 18.0; // Font size at the start of pinch gesture
   bool _showControls = true;
   int _transposeSteps = 0; // Semitones to transpose
   late Song _currentSong; // Mutable song that can be refreshed
+  bool _showSettingsFlyout = false; // Compact settings flyout visibility
 
   @override
   void initState() {
@@ -109,20 +112,44 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: GestureDetector(
-          onTap: () {
-            // Toggle controls visibility
-            setState(() {
-              _showControls = !_showControls;
-            });
+        child: Listener(
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              // Check if Ctrl key is pressed (for mouse wheel zoom)
+              if (HardwareKeyboard.instance.isControlPressed) {
+                setState(() {
+                  // Scroll down = negative delta = increase font size
+                  // Scroll up = positive delta = decrease font size
+                  final delta = event.scrollDelta.dy;
+                  _fontSize = (_fontSize - delta * 0.05).clamp(12.0, 48.0);
+                });
+              }
+            }
           },
-          child: Stack(
+          child: GestureDetector(
+            onTap: () {
+              // Toggle controls visibility
+              setState(() {
+                _showControls = !_showControls;
+              });
+            },
+            onScaleStart: (details) {
+              // Store the current font size when pinch starts
+              _baseFontSize = _fontSize;
+            },
+            onScaleUpdate: (details) {
+              // Update font size based on pinch scale
+              setState(() {
+                _fontSize = (_baseFontSize * details.scale).clamp(12.0, 48.0);
+              });
+            },
+            child: Stack(
             children: [
               // Main content - scrollable lyrics/chords
               Column(
@@ -138,20 +165,22 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16.0),
-                      child: ChordRenderer(
-                        chordProText: _currentSong.body,
-                        fontSize: _fontSize,
-                        isDarkMode: isDarkMode,
-                        transposeSteps: _transposeSteps,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Song metadata section
+                          _buildSongMetadata(textColor),
+                          const SizedBox(height: 24),
+                          // Song content
+                          ChordRenderer(
+                            chordProText: _currentSong.body,
+                            fontSize: _fontSize,
+                            isDarkMode: isDarkMode,
+                            transposeSteps: _transposeSteps,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-
-                  // Controls at bottom
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: _showControls ? null : 0,
-                    child: _showControls ? _buildControls(textColor) : null,
                   ),
                 ],
               ),
@@ -173,6 +202,23 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 ),
               ),
 
+              // Share button (always visible)
+              Positioned(
+                top: 8,
+                right: 56,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.share,
+                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    // TODO: Implement share
+                  },
+                  tooltip: 'Share song',
+                ),
+              ),
+
               // Edit button (always visible)
               Positioned(
                 top: 8,
@@ -180,7 +226,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 child: IconButton(
                   icon: Icon(
                     Icons.edit,
-                    color: textColor,
+                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
                     size: 28,
                   ),
                   onPressed: () async {
@@ -198,22 +244,19 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     // Handle the return from editor
                     if (mounted) {
                       if (result == 'deleted') {
-                        // Song was deleted - pop all the way back to home screen
-                        // with special value to indicate deletion
+                        // Song was deleted - clear it from global state
                         if (context.mounted) {
-                          Navigator.of(context).pop('deleted');
+                          context.read<GlobalSidebarProvider>().clearCurrentSong();
                         }
                       } else if (result == true) {
                         // Song was updated, reload it
-                        await _reloadSong();
-                        // Also notify the library screen that data changed
-                        if (context.mounted) {
-                          Navigator.of(context).pop(true);
-                        }
-                      } else {
-                        // Editor was closed without saving, just pop back
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
+                        final reloaded = await _reloadSong();
+                        if (!reloaded && context.mounted) {
+                          // Song was deleted while editing, clear it
+                          context.read<GlobalSidebarProvider>().clearCurrentSong();
+                        } else if (context.mounted) {
+                          // Update the song in global state with the reloaded version
+                          context.read<GlobalSidebarProvider>().navigateToSong(_currentSong);
                         }
                       }
                     }
@@ -221,7 +264,207 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                   tooltip: 'Edit song',
                 ),
               ),
+
+              // Floating action buttons (bottom right)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    SizedBox(
+                      width: 96, // Fixed width to prevent shifting
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, wrapperValue, child) {
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              // Absorb taps to prevent propagation to parent
+                            },
+                            child: SizedBox(
+                              width: 96,
+                              height: 40,
+                            child: Stack(
+                              alignment: Alignment.centerRight,
+                              clipBehavior: Clip.none,
+                              children: [
+                          // Expanding container (positioned to grow left)
+                          Positioned(
+                            right: 0,
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                // Calculate width based on expansion - starts at 40 (circular), expands by 56 for second button
+                                final expandedWidth = 40.0 + (value * 56.0);
+                                
+                                return Container(
+                                  width: expandedWidth,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode 
+                                        ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                                        : Colors.white.withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+                                      width: 1.0,
+                                    ),
+                                    boxShadow: isDarkMode ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.4),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                        spreadRadius: 1,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.2),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.white.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, -1),
+                                      ),
+                                    ] : [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                        spreadRadius: 1,
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Stack(
+                                      children: [
+                                        // Theme toggle button (fades in/out) - positioned on left
+                                        if (value > 0.3) // Start showing when 30% expanded
+                                          Positioned(
+                                            left: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            child: Center(
+                                              child: Opacity(
+                                                opacity: ((value - 0.3) / 0.7).clamp(0.0, 1.0),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    // Prevent tap from propagating to parent
+                                                  },
+                                                  child: Builder(
+                                                    builder: (btnContext) => _buildInnerButton(
+                                                      icon: isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                                                      tooltip: 'Toggle Theme',
+                                                      onPressed: () {
+                                                        btnContext.read<ThemeProvider>().toggleTheme();
+                                                      },
+                                                      isDarkMode: isDarkMode,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        // Settings icon button - fixed position from right
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: 40,
+                                          child: Center(
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _showSettingsFlyout = !_showSettingsFlyout;
+                                                  });
+                                                },
+                                                customBorder: const CircleBorder(),
+                                                child: SizedBox(
+                                                  width: 40,
+                                                  height: 40,
+                                                  child: Center(
+                                                    child: Icon(
+                                                      Icons.settings,
+                                                      color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: 96, // Fixed width to prevent shifting
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildTransposeButton(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: 96, // Fixed width to prevent shifting
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildCapoButton(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: 96, // Fixed width to prevent shifting
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildFloatingButton(
+                          icon: Icons.play_arrow,
+                          tooltip: 'AutoScroll',
+                          onPressed: () {
+                            // TODO: Implement autoscroll
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: 96, // Fixed width to prevent shifting
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildMetronomeButton(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
+          ),
           ),
         ),
       ),
@@ -231,70 +474,362 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   Widget _buildHeader(Color textColor) {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
+    final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
 
     return Container(
-      width: double.infinity, // Ensure full width
-      padding: const EdgeInsets.fromLTRB(60, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
-        border: Border(
-          bottom: BorderSide(
-            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-            width: 1,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+      color: backgroundColor, // Match main window background
+      child: Center(
+        child: Text(
+          _currentSong.title,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: textColor,
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Text(
-            _currentSong.title,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+    );
+  }
+
+  Widget _buildInnerButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    required bool isDarkMode,
+  }) {
+    const glowColor = Color(0xFF00D9FF);
+    
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDarkMode 
+                ? Colors.grey.shade700.withValues(alpha: 0.3) // Very faint border
+                : Colors.grey.shade400.withValues(alpha: 0.3),
+            width: 0.5,
           ),
-          const SizedBox(height: 4),
-          // Artist
-          Text(
-            _currentSong.artist,
-            style: TextStyle(
-              fontSize: 18,
-              color: textColor.withValues(alpha: 0.7),
-            ),
+        ),
+        child: IconButton(
+          icon: Icon(icon),
+          color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+          iconSize: 20,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: onPressed,
+          tooltip: tooltip,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    const glowColor = Color(0xFF00D9FF); // Bright cyan
+    
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7) // Semi-transparent dark interior
+            : Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+          width: 1.0, // Thinner border
+        ),
+        boxShadow: isDarkMode ? [
+          // Main shadow for elevation
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
           ),
-          const SizedBox(height: 12),
-          // Key, Capo, BPM, Duration info
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildInfoChip('Key: ${_currentSong.key}', textColor),
-              if (_currentSong.capo > 0)
-                _buildInfoChip('Capo: ${_currentSong.capo}', textColor),
-              _buildInfoChip('${_currentSong.bpm} BPM', textColor),
-              if (_getDuration() != null)
-                _buildInfoChip('${_getDuration()}', textColor),
-              if (_transposeSteps != 0)
-                _buildInfoChip(
-                  'Transpose: ${_transposeSteps > 0 ? '+' : ''}$_transposeSteps',
-                  textColor,
-                ),
-              // Tags
-              if (_currentSong.tags.isNotEmpty) ...[
-                for (final tag in _currentSong.tags.take(3)) // Show max 3 tags
-                  _buildTagChip(tag, textColor),
-                if (_currentSong.tags.length > 3)
-                  _buildInfoChip('+${_currentSong.tags.length - 3} more', textColor),
-                // Add button to edit tags
-                _buildEditTagsButton(textColor),
-              ],
-            ],
+          // Secondary shadow for depth
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          // Subtle top highlight for raised effect
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ] : [
+          // Main shadow for elevation
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          // Secondary shadow for depth
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
+      child: IconButton(
+        icon: Icon(icon),
+        color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+        iconSize: 20,
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        tooltip: tooltip,
+      ),
+    );
+  }
+
+  Widget _buildCapoButton() {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    const glowColor = Color(0xFF00D9FF);
+    
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+            : Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+          width: 1.0,
+        ),
+        boxShadow: isDarkMode ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Implement capo
+          },
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: CustomPaint(
+              size: const Size(18, 18),
+              painter: CapoIconPainter(
+                color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransposeButton() {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    const glowColor = Color(0xFF00D9FF); // Bright cyan
+    
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+            : Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+          width: 1.0,
+        ),
+        boxShadow: isDarkMode ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Implement transpose
+          },
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '−',
+                  style: TextStyle(
+                    color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(width: 1),
+                Icon(
+                  Icons.music_note,
+                  color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+                  size: 14,
+                ),
+                const SizedBox(width: 1),
+                Text(
+                  '+',
+                  style: TextStyle(
+                    color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSongMetadata(Color textColor) {
+    // Check if we have any metadata to display
+    final hasKey = _currentSong.key.isNotEmpty;
+    final hasBpm = _currentSong.bpm > 0;
+    final hasTimeSignature = _currentSong.timeSignature.isNotEmpty;
+    final hasCapo = _currentSong.capo > 0;
+    final hasArtist = _currentSong.artist.isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left side: Title and Artist
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _currentSong.title,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: textColor,
+                ),
+              ),
+              if (hasArtist) ...[
+                const SizedBox(height: 2),
+                Text(
+                  _currentSong.artist,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        // Right side: Key, Tempo, Capo
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (hasKey)
+              Text(
+                'Key of ${_currentSong.key}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textColor.withValues(alpha: 0.7),
+                ),
+              ),
+            if (hasBpm || hasTimeSignature) ...[
+              if (hasKey) const SizedBox(height: 2),
+              Text(
+                '${hasBpm ? '${_currentSong.bpm} bpm' : ''}${hasBpm && hasTimeSignature ? ' ' : ''}${hasTimeSignature ? _currentSong.timeSignature : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textColor.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+            if (hasCapo) ...[
+              if (hasKey || hasBpm || hasTimeSignature) const SizedBox(height: 2),
+              Text(
+                'CAPO ${_currentSong.capo}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 
@@ -530,4 +1065,166 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       ),
     );
   }
+
+  Widget _buildMetronomeButton() {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    const glowColor = Color(0xFF00D9FF);
+    
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+            : Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+          width: 1.0,
+        ),
+        boxShadow: isDarkMode ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Implement metronome
+          },
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: CustomPaint(
+              size: const Size(16, 16),
+              painter: MetronomeIconPainter(
+                color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for capo icon (fretboard with horizontal lines)
+class CapoIconPainter extends CustomPainter {
+  final Color color;
+
+  CapoIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Draw vertical lines (strings) - 4 strings
+    final stringSpacing = size.width / 5;
+    for (int i = 1; i <= 4; i++) {
+      final x = stringSpacing * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+
+    // Draw horizontal lines (frets) - 3 frets
+    final fretSpacing = size.height / 4;
+    for (int i = 1; i <= 3; i++) {
+      final y = fretSpacing * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint,
+      );
+    }
+
+    // Draw capo bar at top (thicker horizontal line)
+    final capoPaint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(stringSpacing, 1),
+      Offset(size.width - stringSpacing, 1),
+      capoPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Custom painter for metronome icon (triangle with tick marks)
+class MetronomeIconPainter extends CustomPainter {
+  final Color color;
+
+  MetronomeIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.miter;
+
+    // Draw triangle (metronome shape)
+    final path = Path();
+    path.moveTo(size.width * 0.5, 0); // Top point
+    path.lineTo(size.width * 0.9, size.height); // Bottom right
+    path.lineTo(size.width * 0.1, size.height); // Bottom left
+    path.close();
+
+    canvas.drawPath(path, paint);
+
+    // Draw tick marks
+    final tickPaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Center vertical tick
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height * 0.3),
+      Offset(size.width * 0.5, size.height * 0.7),
+      tickPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

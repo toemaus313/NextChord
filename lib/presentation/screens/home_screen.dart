@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
+import 'song_viewer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -51,9 +52,19 @@ class _HomeScreenState extends State<HomeScreen>
     final theme = Theme.of(context);
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
+    final sidebarProvider = context.watch<GlobalSidebarProvider>();
 
     return Scaffold(
-      body: _buildMainContent(theme, isDarkMode),
+      body: sidebarProvider.currentSong != null
+          ? SongViewerScreen(
+              key: ValueKey(sidebarProvider.currentSong!.id),
+              song: sidebarProvider.currentSong!,
+              onSongEdit: () {
+                // Reload songs when returning from edit
+                context.read<SongProvider>().loadSongs();
+              },
+            )
+          : _buildMainContent(theme, isDarkMode),
     );
   }
 

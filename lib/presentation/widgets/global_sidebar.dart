@@ -53,20 +53,16 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        final sidebarProvider = context.watch<GlobalSidebarProvider>();
-        
-        if (!sidebarProvider.isSidebarVisible || _animation.value == 0) {
-          return const SizedBox.shrink();
-        }
+        // Calculate width based on animation value (0 when hidden, 302 when visible)
+        final width = 302.0 * _animation.value;
 
-        return Positioned(
-          left: 16,
-          top: 16,
-          bottom: 16,
-          child: Transform.translate(
-            offset: Offset(-320 * (1 - _animation.value), 0),
-            child: _buildSidebar(context),
-          ),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          width: width,
+          decoration: const BoxDecoration(),
+          clipBehavior: Clip.hardEdge,
+          child: width > 0 ? _buildSidebar(context) : null,
         );
       },
     );
@@ -74,25 +70,32 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   Widget _buildSidebar(BuildContext context) {
     return Material(
-      color: const Color(0xFF0468cc),
-      borderRadius: BorderRadius.circular(16),
-      elevation: 8,
-      shadowColor: Colors.black.withAlpha(30),
+      borderRadius: const BorderRadius.only(
+        topRight: Radius.circular(16),
+        bottomRight: Radius.circular(16),
+      ),
       child: Container(
-        width: 320,
+        width: 302,
         decoration: BoxDecoration(
-          color: const Color(0xFF0468cc),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(30),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(4, 4),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0468cc), // Original blue at top
+              Color.fromARGB(99, 3, 73, 153), // Darker blue at bottom
+            ],
+          ),
+          borderRadius: const BorderRadius.only(
+            topRight: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          ),
+          border: Border(
+            right: BorderSide(
+              color: Colors.black.withValues(alpha: 0.2),
+              width: 1,
             ),
-          ],
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
         child: _currentView == 'allSongs'
             ? _buildAllSongsView(context)
             : _buildMenuView(context),
@@ -141,7 +144,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                   child: Padding(
                     padding: const EdgeInsets.all(6),
                     child: const Icon(
-                      Icons.chevron_left,
+                      Icons.close,
                       color: Colors.white,
                       size: 24,
                     ),
@@ -342,7 +345,14 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         ),
         // Song list from LibraryScreen
         Expanded(
-          child: const LibraryScreen(inSidebar: true),
+          child: LibraryScreen(
+            inSidebar: true,
+            onSongSelected: (song) {
+              // Navigate to the song in the main content area
+              context.read<GlobalSidebarProvider>().navigateToSong(song);
+              // Keep sidebar open (drawer behavior)
+            },
+          ),
         ),
       ],
     );

@@ -128,10 +128,11 @@ class SongProvider extends ChangeNotifier {
   }
 
   /// Delete a song and refresh the list
-  Future<void> deleteSong(String id) async {
+  Future<void> deleteSong(String id, {VoidCallback? onDeleted}) async {
     try {
       await _repository.deleteSong(id);
       await loadSongs(); // Refresh the list
+      onDeleted?.call(); // Notify that song was deleted
     } catch (e) {
       _errorMessage = 'Failed to delete song: $e';
       notifyListeners();

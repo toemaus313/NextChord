@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import '../../domain/entities/song.dart';
 
-/// Provider for managing global sidebar visibility across the app
+/// Provider for managing global sidebar visibility and navigation state across the app
 class GlobalSidebarProvider extends ChangeNotifier {
   bool _isSidebarVisible = true;
   AnimationController? _animationController;
+  Song? _currentSong;
 
   bool get isSidebarVisible => _isSidebarVisible;
+  Song? get currentSong => _currentSong;
 
   /// Initialize the animation controller
   void initializeAnimation(AnimationController controller) {
@@ -38,5 +41,17 @@ class GlobalSidebarProvider extends ChangeNotifier {
       _animationController!.reverse();
       notifyListeners();
     }
+  }
+
+  /// Navigate to a song (show it in the main content area)
+  void navigateToSong(Song song) {
+    _currentSong = song;
+    notifyListeners();
+  }
+
+  /// Clear the current song and return to welcome screen
+  void clearCurrentSong() {
+    _currentSong = null;
+    notifyListeners();
   }
 }
