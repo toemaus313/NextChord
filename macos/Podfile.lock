@@ -59,7 +59,7 @@ DEPENDENCIES:
   - universal_ble (from `Flutter/ephemeral/.symlinks/plugins/universal_ble/darwin`)
 
 SPEC REPOS:
-  file:///Users/antonovt/.cocoapods/repos/trunk-ssh:
+  trunk:
     - sqlite3
 
 EXTERNAL SOURCES:
@@ -97,6 +97,6 @@ SPEC CHECKSUMS:
   sqlite3_flutter_libs: 83f8e9f5b6554077f1d93119fe20ebaa5f3a9ef1
   universal_ble: ff19787898040d721109c6324472e5dd4bc86adc
 
-PODFILE CHECKSUM: 1a5352050a62733c42188f97171d4fd05dc7194a
+PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 
 COCOAPODS: 1.16.2

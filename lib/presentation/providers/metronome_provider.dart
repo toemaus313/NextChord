@@ -116,7 +116,8 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   Future<void> _ensurePlayerReady() async {
-    if (_player.audioSource != null && _accentPlayer.audioSource != null) return;
+    if (_player.audioSource != null && _accentPlayer.audioSource != null)
+      return;
     if (_loadingCompleter != null) {
       await _loadingCompleter!.future;
       return;
@@ -125,11 +126,11 @@ class MetronomeProvider extends ChangeNotifier {
     _loadingCompleter = Completer<void>();
     try {
       if (_player.audioSource == null) {
-        await _player.setAsset('assets/audio/Perc_HeadKnock_lo.wav');
+        await _player.setAsset('assets/audio/Synth_Block_B_lo.wav');
         await _player.setVolume(0.9);
       }
       if (_accentPlayer.audioSource == null) {
-        await _accentPlayer.setAsset('assets/audio/Perc_HeadKnock_hi.wav');
+        await _accentPlayer.setAsset('assets/audio/Synth_Block_B_hi.wav');
         await _accentPlayer.setVolume(1.0);
       }
     } catch (e, stack) {

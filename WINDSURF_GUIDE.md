@@ -410,6 +410,16 @@ Please create/modify [file path] to:
 Use [Flutter/Dart best practices / Material 3 design / etc.].
 ```
 
+Current Context:
+- I have the song viewer with an Autoscroll button
+- I have a standard way of making flyout menus for these buttons in the Viewer, as can be referenced from the Settings and Capo buttons
+- I need an Autoscroll provider created that will calculate the rate at which to scroll the Viewer screen in order to reach the end of the song at the end of the Duration as configured in the song metadata. If no duration is specified, use 3:00 as the default duration.
+- I need the provider to be able to be started and stopped. Pressing the Autoscroll button should change the button to a blue background to indicate it is "on". Clicking the button again will pause the autoscrolling and leave the viewer window as-is. If autoscroll is restarted, it will continue scrolling from the present position.
+- I need the provider to be able to have the duration adjusted up or down while it is autoscrolling. To facilitate this, we need a flyout menu with + and - buttons to incrementally increase or decrease the duration by 15 seconds each time. This needs to stay concise to fit the flyout menu format. Format it like "<- <mm:ss> +>". The flyout menu should stay open until Autoscroll is stopped.
+- I need the user to be able to swipe up/down on the Viewer screen to override the current position if needed. After a couple of seconds, Autoscroll can continue from wherever the user left the Viewer window scrolled to at the same rate that was calculated based on the duration. 
+
+
+
 ---
 
 ## Running & Testing
