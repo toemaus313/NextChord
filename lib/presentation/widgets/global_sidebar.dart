@@ -798,6 +798,11 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
     return GestureDetector(
       key: ValueKey('song_${item.songId}_$index'),
+      onTap: () {
+        if (song != null) {
+          context.read<GlobalSidebarProvider>().navigateToSong(song);
+        }
+      },
       onSecondaryTap: () => _showSongContextMenu(context, item, song, index),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
@@ -944,33 +949,50 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   Widget _buildSetlistDividerItem(SetlistDividerItem item, int index) {
     return GestureDetector(
-      key: ValueKey('divider_${item.order}_$index'),
+      key: ValueKey('divider_${item.order}_${item.color.value}_$index'),
       onSecondaryTap: () => _showDividerContextMenu(context, item, index),
       onLongPress: () => _showDividerContextMenu(context, item, index),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
-            ReorderableDragStartListener(
-              index: index,
-              child: const Icon(
-                Icons.drag_indicator,
-                color: Colors.white54,
-                size: 16,
-              ),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: item.color,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                item.label,
-                style: TextStyle(
-                  color: item.color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                // Drag handle
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(
+                    Icons.drag_indicator,
+                    color: Colors.white54,
+                    size: 16,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.label,
+                    style: TextStyle(
+                      color: item.color,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: item.color,
             ),
           ],
         ),
@@ -1013,13 +1035,15 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   void _editDivider(
       BuildContext context, SetlistDividerItem divider, int index) async {
+    // Get provider reference BEFORE async operation to avoid deactivated context
+    final setlistProvider = context.read<SetlistProvider>();
+
     final result = await DividerDialog.show(
       context,
       existingDivider: divider,
     );
 
-    if (result != null && context.mounted) {
-      final setlistProvider = context.read<SetlistProvider>();
+    if (result != null && mounted) {
       final currentSetlist = setlistProvider.setlists
           .where((s) => s.id == _selectedSetlistId)
           .firstOrNull;
@@ -1030,7 +1054,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         for (int i = 0; i < currentSetlist.items.length; i++) {
           final currentItem = currentSetlist.items[i];
           if (i == index && currentItem is SetlistDividerItem) {
-            updatedItems.add(result.copyWith(order: currentItem.order));
+            final updatedDivider = result.copyWith(order: currentItem.order);
+            updatedItems.add(updatedDivider);
           } else {
             updatedItems.add(currentItem);
           }
@@ -1198,8 +1223,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   }
 
   Future<void> _openAddSongsModal(BuildContext context, Setlist setlist) async {
-    debugPrint('Sidebar: _openAddSongsModal called for setlist ${setlist.id}');
-
     // Get provider references before opening modal to avoid deactivated widget issues
     final setlistProvider = context.read<SetlistProvider>();
     final currentSongItems =
@@ -1207,20 +1230,15 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     final selectedSongIds =
         await SetlistEditorDialog.showAddSongs(context, currentSongItems);
 
-    debugPrint('Sidebar: Modal returned selectedSongIds: $selectedSongIds');
     if (!mounted || selectedSongIds == null || selectedSongIds.isEmpty) {
-      debugPrint(
-          'Sidebar: No songs selected or context not mounted, returning');
       return;
     }
 
     // Add selected songs to the setlist
     try {
-      debugPrint('Sidebar: Starting to add songs to setlist');
       final currentSetlist =
           setlistProvider.setlists.where((s) => s.id == setlist.id).firstOrNull;
 
-      debugPrint('Sidebar: Found currentSetlist: ${currentSetlist?.name}');
       if (currentSetlist != null) {
         final newItems = List<SetlistItem>.from(currentSetlist.items);
         for (final songId in selectedSongIds) {
@@ -1230,7 +1248,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               songId: songId,
               order: newItems.length,
             ));
-            debugPrint('Sidebar: Added song $songId to newItems');
           }
         }
 
@@ -1242,7 +1259,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         debugPrint(
             'Sidebar: About to call updateSetlist with ${newItems.length} items');
         await setlistProvider.updateSetlist(updatedSetlist);
-        debugPrint('Sidebar: updateSetlist completed successfully');
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1255,7 +1271,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         }
       }
     } catch (e) {
-      debugPrint('Sidebar: Error adding songs to setlist: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

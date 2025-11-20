@@ -55,7 +55,8 @@ class _DividerDialogState extends State<DividerDialog> {
     super.initState();
     if (widget.existingDivider != null) {
       _textController.text = widget.existingDivider!.label;
-      _selectedColor = widget.existingDivider!.color;
+      // Ensure we use a plain Color, not MaterialColor
+      _selectedColor = Color(widget.existingDivider!.color.value);
     } else {
       _textController.text = 'Text';
     }
@@ -205,9 +206,14 @@ class _DividerDialogState extends State<DividerDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: _colorPalette.map((color) {
-          final isSelected = _selectedColor == color;
+          // Compare color values to handle MaterialColor vs Color equality
+          final isSelected = _selectedColor.value == color.value;
           return GestureDetector(
-            onTap: () => setState(() => _selectedColor = color),
+            onTap: () {
+              // Convert MaterialColor to plain Color to avoid equality issues
+              final plainColor = Color(color.value);
+              setState(() => _selectedColor = plainColor);
+            },
             child: Container(
               width: 20,
               height: 20,
@@ -229,7 +235,9 @@ class _DividerDialogState extends State<DividerDialog> {
   }
 
   void _saveDivider() async {
-    if (_textController.text.trim().isEmpty) return;
+    if (_textController.text.trim().isEmpty) {
+      return;
+    }
 
     setState(() => _isSaving = true);
 

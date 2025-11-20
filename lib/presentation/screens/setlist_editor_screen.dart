@@ -796,7 +796,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         minimumSize: const Size(0, 0),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      onPressed: _isSaving ? null : _openAddSongSheet,
+      onPressed: _isSaving ? null : _onAddSongsPressed,
       icon: const Icon(Icons.add, size: 16),
       label: const Text(
         'Add ...',
@@ -805,76 +805,24 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     );
   }
 
-  Future<void> _openAddSongSheet() async {
-    final songProvider = context.read<SongProvider>();
-    final songs = songProvider.songs;
+  Future<void> _onAddSongsPressed() async {
+    final selectedSongIds =
+        await SetlistEditorDialog.showAddSongs(context, _items);
 
-    if (songs.isEmpty) {
-      if (!songProvider.isLoading) {
-        await songProvider.loadSongs();
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    final selectedSongId = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (builderContext) {
-        return FractionallySizedBox(
-          heightFactor: 0.7,
-          child: Column(
-            children: [
-              ListTile(
-                title: const Text('Add Song to Setlist'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(builderContext).pop(),
-                ),
-              ),
-              const Divider(height: 0),
-              Expanded(
-                child: songs.isEmpty && songProvider.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListView.builder(
-                        itemCount: songs.length,
-                        itemBuilder: (listContext, index) {
-                          final song = songs[index];
-                          final alreadyAdded =
-                              _items.any((item) => item.songId == song.id);
-                          return ListTile(
-                            enabled: !alreadyAdded,
-                            title: Text(song.title),
-                            subtitle: Text(song.artist),
-                            trailing: alreadyAdded
-                                ? const Icon(Icons.check, color: Colors.green)
-                                : const Icon(Icons.add),
-                            onTap: alreadyAdded
-                                ? null
-                                : () => Navigator.of(listContext).pop(song.id),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (!mounted || selectedSongId == null) {
+    if (!mounted || selectedSongIds == null || selectedSongIds.isEmpty) {
       return;
     }
 
     setState(() {
-      _items.add(
-        SetlistSongItem(
-          songId: selectedSongId,
+      for (final songId in selectedSongIds) {
+        if (_items.any((item) => item.songId == songId)) {
+          continue;
+        }
+        _items.add(SetlistSongItem(
+          songId: songId,
           order: _items.length,
-        ),
-      );
+        ));
+      }
     });
   }
 

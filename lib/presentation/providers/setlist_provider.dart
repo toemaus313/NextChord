@@ -30,6 +30,7 @@ class SetlistProvider extends ChangeNotifier {
       _setlists = await _repository.getAllSetlists();
       _errorMessage = null;
     } catch (e) {
+      debugPrint('SetlistProvider: Error loading setlists: $e');
       _errorMessage = 'Failed to load setlists: $e';
       _setlists = [];
     } finally {

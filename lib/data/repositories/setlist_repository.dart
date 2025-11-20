@@ -42,7 +42,7 @@ class SetlistRepository {
 
   /// Serialize setlist items to JSON-compatible format
   List<Map<String, dynamic>> _serializeItems(List<SetlistItem> items) {
-    return items.map((item) {
+    final serialized = items.map((item) {
       if (item is SetlistSongItem) {
         return {
           'type': 'song',
@@ -52,15 +52,17 @@ class SetlistRepository {
           'capo': item.capo,
         };
       } else if (item is SetlistDividerItem) {
+        final colorValue = item.color.value;
         return {
           'type': 'divider',
           'label': item.label,
           'order': item.order,
-          'color': item.color.value,
+          'color': colorValue,
         };
       }
       throw Exception('Unknown SetlistItem type');
     }).toList();
+    return serialized;
   }
 
   /// Deserialize JSON to setlist items
@@ -77,10 +79,12 @@ class SetlistRepository {
             capo: item['capo'] as int?,
           );
         } else if (type == 'divider') {
+          final colorValue = item['color'] as int? ?? 0xFFFFFFFF;
+          final color = Color(colorValue);
           return SetlistDividerItem(
             label: item['label'] as String,
             order: item['order'] as int,
-            color: Color(item['color'] as int? ?? 0xFFFFFFFF),
+            color: color,
           );
         }
         throw Exception('Unknown item type: $type');
@@ -107,7 +111,8 @@ class SetlistRepository {
   Future<List<Setlist>> getAllSetlists() async {
     try {
       final models = await _db.setlistsDao.getAllSetlists();
-      return models.map(_modelToSetlist).toList();
+      final setlists = models.map(_modelToSetlist).toList();
+      return setlists;
     } catch (e) {
       throw Exception('Failed to fetch setlists: $e');
     }
@@ -149,6 +154,7 @@ class SetlistRepository {
     try {
       final updatedSetlist = setlist.copyWith(updatedAt: DateTime.now());
       final model = _setlistToModel(updatedSetlist);
+
       await _db.setlistsDao.updateSetlist(model);
     } catch (e) {
       throw Exception('Failed to update setlist: $e');
