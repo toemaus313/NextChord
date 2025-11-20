@@ -84,26 +84,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     _bodyController.addListener(_onBodyTextChanged);
   }
 
-  String _ensureDirectiveValue(String body, String directive, String value) {
-    final trimmedValue = value.trim();
-    if (trimmedValue.isEmpty) return body;
-
-    final regex = RegExp('\\{$directive:[^}]*\\}', caseSensitive: false);
-    if (regex.hasMatch(body)) {
-      return body.replaceFirst(
-          regex, '{${directive.toLowerCase()}:$trimmedValue}');
-    }
-
-    final lines = body.split('\n');
-    int insertIndex = 0;
-    while (insertIndex < lines.length &&
-        lines[insertIndex].trim().startsWith('{')) {
-      insertIndex++;
-    }
-    lines.insert(insertIndex, '{${directive.toLowerCase()}:$trimmedValue}');
-    return lines.join('\n');
-  }
-
+  
   /// Initialize form fields with existing song data if editing
   void _initializeFields() {
     if (widget.song != null) {
@@ -799,18 +780,18 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Song'),
         content: Text(
           'Are you sure you want to delete "${_titleController.text}"?\n\nThis action cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
@@ -820,26 +801,26 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (!mounted || confirmed != true) return;
 
     try {
       final repository = context.read<SongRepository>();
       await repository.deleteSong(widget.song!.id);
 
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Song deleted successfully'),
+        ),
+      );
+      // Refresh the song list in the provider
+      await context.read<SongProvider>().loadSongs();
+      // Return a special value to indicate deletion occurred
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Song deleted successfully'),
-          ),
-        );
-        // Refresh the song list in the provider
-        if (context.mounted) {
-          await context.read<SongProvider>().loadSongs();
-        }
-        // Return a special value to indicate deletion occurred
-        if (mounted) {
-          Navigator.of(context).pop('deleted');
-        }
+        Navigator.of(context).pop('deleted');
       }
     } catch (e) {
       if (mounted) {
@@ -1144,12 +1125,12 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   final (bgColor, tagTextColor) =
                                       _getTagColors(tag, context);
                                   return DragTarget<int>(
-                                    onWillAccept: (dragIndex) =>
-                                        dragIndex != index,
-                                    onAccept: (dragIndex) {
+                                    onWillAcceptWithDetails: (details) =>
+                                        details.data != index,
+                                    onAcceptWithDetails: (details) {
                                       setState(() {
                                         final tagToMove =
-                                            _tags.removeAt(dragIndex);
+                                            _tags.removeAt(details.data);
                                         _tags.insert(index, tagToMove);
                                       });
                                     },

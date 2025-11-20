@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -258,7 +259,7 @@ LazyDatabase _openConnection() {
     final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
 
     // Debug: Print database location
-    print('📁 Database location: ${file.path}');
+    debugPrint('📁 Database location: ${file.path}');
 
     return NativeDatabase(file);
   });

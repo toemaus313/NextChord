@@ -122,10 +122,10 @@ class _ViewerTagWrap extends StatelessWidget {
           final tag = entry.value;
           final (bgColor, tagTextColor) = getTagColors(tag);
           return DragTarget<int>(
-            onWillAccept: (dragIndex) => dragIndex != index,
-            onAccept: (dragIndex) async {
+            onWillAcceptWithDetails: (details) => details.data != index,
+            onAcceptWithDetails: (details) async {
               final updated = List<String>.from(tags);
-              final tagToMove = updated.removeAt(dragIndex);
+              final tagToMove = updated.removeAt(details.data);
               updated.insert(index, tagToMove);
               await _reorderTags(context, updated);
             },
@@ -342,10 +342,10 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   String get _capoStatusLabel {
     final defaultCapo = _currentSong.capo;
     if (_currentCapo == defaultCapo) {
-      return 'Capo ${_currentCapo} (song default)';
+      return 'Capo $_currentCapo (song default)';
     }
     final direction = _currentCapo > defaultCapo ? 'higher' : 'lower';
-    return 'Capo ${_currentCapo} (${(defaultCapo - _currentCapo).abs()} frets $direction than song)';
+    return 'Capo $_currentCapo (${(defaultCapo - _currentCapo).abs()} frets $direction than song)';
   }
 
   String? _getKeyDisplayLabel() {
@@ -431,7 +431,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     if (!_showSettingsFlyout &&
         !_showTransposeFlyout &&
         !_showCapoFlyout &&
-        !_showAutoscrollFlyout) return;
+        !_showAutoscrollFlyout) {
+      return;
+    }
     setState(() {
       _showSettingsFlyout = false;
       _showTransposeFlyout = false;
@@ -697,7 +699,11 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                       size: 28,
                     ),
                     onPressed: () {
-                      // TODO: Implement share
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Share functionality coming soon!'),
+                        ),
+                      );
                     },
                     tooltip: 'Share song',
                   ),
@@ -1285,7 +1291,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         Switch.adaptive(
           value: _viewerAdjustments.appliesToSetlist,
           onChanged: _onScopeToggle,
-          activeColor: accent,
+          activeThumbColor: accent,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ],
@@ -1458,7 +1464,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         final isActive = metronome.isRunning;
         final accent = isDarkMode ? glowColor : const Color(0xFF0468cc);
         final backgroundColor = isActive
-            ? accent.withOpacity(0.15)
+            ? accent.withValues(alpha: 0.15)
             : isDarkMode
                 ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
                 : Colors.white.withValues(alpha: 0.9);
@@ -1545,7 +1551,7 @@ class _MetronomeFlashOverlay extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: _sidebarTopColor.withOpacity(0.5),
+                  color: _sidebarTopColor.withValues(alpha: 0.5),
                   width: 12,
                 ),
               ),

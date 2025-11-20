@@ -271,7 +271,7 @@ class _TagEditDialogState extends State<TagEditDialog> {
                         ),
                         child: Text(
                           tag,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
                             color: primaryGradientTop,
                           ),
@@ -298,11 +298,11 @@ class _TagEditDialogState extends State<TagEditDialog> {
                   Navigator.pop(context, true);
                   widget.onTagsUpdated(finalTags.toList());
                 },
-                child: const Text('OK'),
                 style: FilledButton.styleFrom(
                   backgroundColor: primaryGradientTop,
                   foregroundColor: Colors.white,
                 ),
+                child: const Text('OK'),
               ),
             ),
             Focus(

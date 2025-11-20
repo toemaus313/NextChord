@@ -116,8 +116,9 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   Future<void> _ensurePlayerReady() async {
-    if (_player.audioSource != null && _accentPlayer.audioSource != null)
+    if (_player.audioSource != null && _accentPlayer.audioSource != null) {
       return;
+    }
     if (_loadingCompleter != null) {
       await _loadingCompleter!.future;
       return;

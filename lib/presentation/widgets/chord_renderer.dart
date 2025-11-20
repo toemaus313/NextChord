@@ -78,10 +78,10 @@ class ChordRenderer extends StatelessWidget {
       margin: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       decoration: BoxDecoration(
-        color: sectionInfo.backgroundColor.withOpacity(isDarkMode ? 0.2 : 0.15),
+        color: sectionInfo.backgroundColor.withValues(alpha: isDarkMode ? 0.2 : 0.15),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: sectionInfo.borderColor.withOpacity(isDarkMode ? 0.5 : 0.3),
+          color: sectionInfo.borderColor.withValues(alpha: isDarkMode ? 0.5 : 0.3),
           width: 1.5,
         ),
       ),
@@ -116,10 +116,10 @@ class ChordRenderer extends StatelessWidget {
       margin: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       decoration: BoxDecoration(
-        color: Colors.cyan.withOpacity(isDarkMode ? 0.2 : 0.15),
+        color: Colors.cyan.withValues(alpha: isDarkMode ? 0.2 : 0.15),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: Colors.cyan.shade600.withOpacity(isDarkMode ? 0.5 : 0.3),
+          color: Colors.cyan.shade600.withValues(alpha: isDarkMode ? 0.5 : 0.3),
           width: 1.5,
         ),
       ),
@@ -186,7 +186,7 @@ class ChordRenderer extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: isDarkMode 
-            ? Colors.purple.shade900.withOpacity(0.3)
+            ? Colors.purple.shade900.withValues(alpha: 0.3)
             : Colors.purple.shade50,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(

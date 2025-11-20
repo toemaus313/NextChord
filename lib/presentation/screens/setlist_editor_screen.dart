@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
@@ -273,10 +272,10 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Setlist-specific edits',
                   style: TextStyle(
@@ -292,7 +291,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
             scale: 0.7,
             child: Switch(
               value: _setlistSpecificEditsEnabled,
-              activeColor: Colors.white,
+              activeThumbColor: Colors.white,
               activeTrackColor: const Color(0xFF00D9FF),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               onChanged: _isSaving
@@ -311,7 +310,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     BuildContext context,
     Map<String, Song> songsMap,
   ) {
-    final textColor = Colors.white;
+    const textColor = Colors.white;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -464,22 +463,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, {required IconData icon}) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
-      prefixIcon: Icon(icon, color: Colors.white70, size: 18),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white24),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white),
-      ),
-    );
-  }
-
+  
   Future<void> _openAddSongSheet() async {
     final songProvider = context.read<SongProvider>();
     final songs = songProvider.songs;
@@ -490,10 +474,14 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
       }
     }
 
+    if (!mounted) {
+      return;
+    }
+
     final selectedSongId = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (builderContext) {
         return FractionallySizedBox(
           heightFactor: 0.7,
           child: Column(
@@ -502,7 +490,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                 title: const Text('Add Song to Setlist'),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(builderContext).pop(),
                 ),
               ),
               const Divider(height: 0),
@@ -511,7 +499,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                     ? const Center(child: CircularProgressIndicator())
                     : ListView.builder(
                         itemCount: songs.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (listContext, index) {
                           final song = songs[index];
                           final alreadyAdded =
                               _items.any((item) => item.songId == song.id);
@@ -524,7 +512,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                                 : const Icon(Icons.add),
                             onTap: alreadyAdded
                                 ? null
-                                : () => Navigator.of(context).pop(song.id),
+                                : () => Navigator.of(listContext).pop(song.id),
                           );
                         },
                       ),
@@ -535,16 +523,18 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
       },
     );
 
-    if (selectedSongId != null) {
-      setState(() {
-        _items.add(
-          SetlistSongItem(
-            songId: selectedSongId,
-            order: _items.length,
-          ),
-        );
-      });
+    if (!mounted || selectedSongId == null) {
+      return;
     }
+
+    setState(() {
+      _items.add(
+        SetlistSongItem(
+          songId: selectedSongId,
+          order: _items.length,
+        ),
+      );
+    });
   }
 
   Future<void> _selectImage() async {
@@ -614,10 +604,10 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
   }
 
   Widget _buildImagePlaceholder() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           Icon(Icons.image_outlined, color: Colors.white54, size: 42),
           SizedBox(height: 8),
           Text(
