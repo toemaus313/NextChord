@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../services/midi/midi_service.dart';
+import 'metronome_settings_provider.dart';
 
 typedef MetronomeTickAction = FutureOr<void> Function(int tickCount);
 
@@ -16,6 +18,8 @@ class MetronomeProvider extends ChangeNotifier {
   AudioPlayer? _player; // base beat (lo)
   AudioPlayer? _accentPlayer; // accent beat (hi)
   final Map<String, MetronomeTickAction> _tickActions = {};
+  MetronomeSettingsProvider? _settingsProvider;
+  MidiService? _midiService;
 
   Timer? _tickTimer;
   Timer? _flashTimer;
@@ -28,9 +32,26 @@ class MetronomeProvider extends ChangeNotifier {
   bool _flashActive = false;
   bool _isDisposed = false;
   bool _audioAvailable = true; // Track if audio is working
+  int _beatsSinceStart =
+      0; // Track beats since metronome started for MIDI sends
 
   MetronomeProvider() {
     _ensurePlayerReady();
+    _initializeServices();
+  }
+
+  /// Initialize service references for MIDI integration
+  void _initializeServices() {
+    // Initialize MIDI service singleton
+    _midiService = MidiService();
+
+    // Register MIDI tick action
+    registerTickAction('midi_send_on_tick', _handleMidiSendOnTick);
+  }
+
+  /// Set the metronome settings provider (called from UI)
+  void setSettingsProvider(MetronomeSettingsProvider settingsProvider) {
+    _settingsProvider = settingsProvider;
   }
 
   void setTimeSignature(String timeSignature) {
@@ -61,6 +82,7 @@ class MetronomeProvider extends ChangeNotifier {
     await _ensurePlayerReady();
     _isRunning = true;
     _tickCounter = 0;
+    _beatsSinceStart = 0; // Reset beat counter for MIDI sends
     _safeNotifyListeners();
     _handleTick();
     _startTimer();
@@ -181,6 +203,7 @@ class MetronomeProvider extends ChangeNotifier {
     if (!_isRunning) return;
 
     _tickCounter++;
+    _beatsSinceStart++; // Increment beats since start
     _triggerFlash();
 
     final isAccent = ((_tickCounter - 1) % _beatsPerMeasure) == 0;
@@ -247,6 +270,89 @@ class MetronomeProvider extends ChangeNotifier {
           notifyListeners();
         }
       });
+    }
+  }
+
+  /// Handle MIDI send on tick based on metronome settings
+  Future<void> _handleMidiSendOnTick(int tickCount) async {
+    if (_settingsProvider == null || _midiService == null) {
+      return;
+    }
+
+    try {
+      final midiCommand = _settingsProvider!.midiSendOnTick;
+      if (midiCommand.isEmpty) {
+        return; // No MIDI command configured
+      }
+
+      // Only send if MIDI device is connected
+      if (!_midiService!.isConnected) {
+        return;
+      }
+
+      // Only send MIDI for the first 4 beats after starting metronome
+      if (_beatsSinceStart > 4) {
+        return;
+      }
+
+      // Send the MIDI command
+      await _sendMidiCommand(midiCommand);
+      debugPrint('🎹 MIDI sent on beat $_beatsSinceStart of 4');
+    } catch (e, stack) {
+      debugPrint('Error in MIDI send on tick: $e');
+      debugPrint(stack.toString());
+    }
+  }
+
+  /// Send MIDI command based on string format
+  Future<void> _sendMidiCommand(String commandText) async {
+    if (_midiService == null) return;
+
+    final messages = commandText
+        .split(',')
+        .map((msg) => msg.trim())
+        .where((msg) => msg.isNotEmpty);
+
+    for (final message in messages) {
+      final lowerMessage = message.toLowerCase();
+
+      // Check timing command
+      if (lowerMessage == 'timing') {
+        await _midiService!.sendMidiClock();
+      }
+      // Parse Program Change: "PC10" or "PC:10"
+      else if (lowerMessage.startsWith('pc')) {
+        final pcMatch =
+            RegExp(r'^pc(\d+)$', caseSensitive: false).firstMatch(message) ??
+                RegExp(r'^pc:(\d+)$', caseSensitive: false).firstMatch(message);
+
+        if (pcMatch != null) {
+          final pcValue = int.tryParse(pcMatch.group(1)!);
+          if (pcValue != null && pcValue >= 0 && pcValue <= 127) {
+            await _midiService!
+                .sendProgramChange(pcValue, channel: _midiService!.midiChannel);
+          }
+        }
+      }
+      // Parse Control Change: "CC7:100"
+      else if (lowerMessage.startsWith('cc')) {
+        final ccMatch = RegExp(r'^cc(\d+):(\d+)$', caseSensitive: false)
+            .firstMatch(message);
+        if (ccMatch != null) {
+          final controller = int.tryParse(ccMatch.group(1)!);
+          final value = int.tryParse(ccMatch.group(2)!);
+
+          if (controller != null &&
+              controller >= 0 &&
+              controller <= 119 &&
+              value != null &&
+              value >= 0 &&
+              value <= 127) {
+            await _midiService!.sendControlChange(controller, value,
+                channel: _midiService!.midiChannel);
+          }
+        }
+      }
     }
   }
 }

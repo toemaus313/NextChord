@@ -45,6 +45,21 @@ void main(List<String> args) async {
 
     print('📊 Total songs in library: ${songsJson.length}\n');
 
+    // Extract MIDI profiles for lookup
+    final midiProfiles = <String, List<Map<String, dynamic>>>{};
+    final midiLibraryMessages = data['midiLibraryMessages'] as List<dynamic>?;
+    if (midiLibraryMessages != null) {
+      for (final profile
+          in midiLibraryMessages.whereType<Map<String, dynamic>>()) {
+        final id = profile['id'] as String?;
+        final midi = profile['midi'] as List<dynamic>?;
+        if (id != null && midi != null) {
+          midiProfiles[id] = midi.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+    }
+    print('🎹 Found ${midiProfiles.length} MIDI profiles\n');
+
     final selectedSongs = <Map<String, dynamic>>[];
     if (cliOptions.titleFilter != null) {
       final normalizedFilter = cliOptions.titleFilter!.trim().toLowerCase();
@@ -143,6 +158,9 @@ void main(List<String> args) async {
           }
         }
 
+        // Check for MIDI data in song entry
+        final midiMapping = _extractMidiMapping(songJson, midiProfiles);
+
         // Convert to ChordPro
         final body = _convertToChordPro(
             rawData, title, artist, key, timeSignature, tempo, duration);
@@ -173,8 +191,28 @@ void main(List<String> args) async {
           0, // is_deleted (false)
         ]);
 
+        // Insert MIDI mapping if present
+        if (midiMapping != null) {
+          db.execute('''
+            INSERT INTO midi_mappings (
+              id, song_id, program_change_number, control_changes, 
+              timing, notes, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ''', [
+            midiMapping['id'],
+            id, // song_id
+            midiMapping['program_change_number'],
+            midiMapping['control_changes'],
+            midiMapping['timing'],
+            midiMapping['notes'],
+            now,
+            now,
+          ]);
+          print('   ✓ Imported: $title (with MIDI)');
+        } else {
+          print('   ✓ Imported: $title');
+        }
         imported++;
-        print('   ✓ Imported: $title');
       }
 
       print('\n✅ Successfully imported $imported songs!');
@@ -410,4 +448,69 @@ String _convertToChordPro(String rawData, String title, String artist,
   buffer.write(converted.trim());
 
   return buffer.toString();
+}
+
+/// Extract MIDI mapping from song JSON data using MIDI profiles
+/// Returns null if no MIDI data found
+Map<String, dynamic>? _extractMidiMapping(Map<String, dynamic> songJson,
+    Map<String, List<Map<String, dynamic>>> midiProfiles) {
+  // Check if song has a MIDI profile reference
+  final profileId = songJson['midiAppearMessage'] as String?;
+  if (profileId == null || !midiProfiles.containsKey(profileId)) {
+    return null; // No MIDI profile found
+  }
+
+  final midiMessages = midiProfiles[profileId]!;
+  if (midiMessages.isEmpty) {
+    return null;
+  }
+
+  // Convert raw MIDI messages to NextChord format
+  int? programChangeNumber;
+  List<Map<String, dynamic>> controlChanges = [];
+  bool timing = false;
+
+  for (final message in midiMessages) {
+    final status = message['status'] as int? ?? 0;
+    final data1 = message['data1'] as int? ?? 0;
+    final data2 = message['data2'] as int? ?? 0;
+
+    switch (status) {
+      case 176: // Control Change (0xB0)
+        controlChanges.add({
+          'controller': data1,
+          'value': data2,
+          'label': null,
+        });
+        break;
+      case 192: // Program Change (0xC0)
+        programChangeNumber = data1;
+        break;
+      case 248: // MIDI Clock (0xF8)
+        timing = true;
+        break;
+      default:
+        // Ignore other status types for now
+        break;
+    }
+  }
+
+  // If no MIDI data was actually extracted, return null
+  if (programChangeNumber == null && controlChanges.isEmpty && !timing) {
+    return null;
+  }
+
+  // Generate mapping ID
+  final mappingId = const Uuid().v4();
+
+  // Convert control changes to JSON string for database
+  final controlChangesJson = jsonEncode(controlChanges);
+
+  return {
+    'id': mappingId,
+    'program_change_number': programChangeNumber,
+    'control_changes': controlChangesJson,
+    'timing': timing,
+    'notes': 'Imported from MIDI profile: $profileId',
+  };
 }

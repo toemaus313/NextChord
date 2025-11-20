@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
+import '../../data/database/app_database.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -12,6 +14,7 @@ import '../providers/autoscroll_provider.dart';
 import '../providers/setlist_provider.dart';
 import '../widgets/chord_renderer.dart';
 import '../widgets/tag_edit_dialog.dart';
+import '../../services/midi/midi_service.dart';
 import 'song_editor_screen.dart';
 
 const Color _sidebarTopColor = Color(0xFF0468cc);
@@ -274,6 +277,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       if (!mounted) return;
       _syncMetronomeSettings();
       _initializeAutoscroll();
+      _sendMidiMappingOnOpen();
     });
     // Enable landscape mode
     SystemChrome.setPreferredOrientations([
@@ -281,6 +285,69 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+  }
+
+  /// Send MIDI mapping when song is opened in viewer
+  Future<void> _sendMidiMappingOnOpen() async {
+    try {
+      // Load MIDI mapping from database
+      final songRepository = SongRepository(AppDatabase());
+      final midiMapping = await songRepository.getMidiMapping(_currentSong.id);
+
+      if (midiMapping == null) {
+        debugPrint('🎹 No MIDI mapping found for song: ${_currentSong.title}');
+        return;
+      }
+
+      // Get MIDI service
+      final midiService = Provider.of<MidiService>(context, listen: false);
+
+      if (!midiService.isConnected) {
+        debugPrint(
+            '🎹 No MIDI device connected - skipping MIDI sends for song: ${_currentSong.title}');
+        return;
+      }
+
+      debugPrint('🎹 Sending MIDI mapping for song: ${_currentSong.title}');
+
+      // Send Program Change
+      if (midiMapping.programChangeNumber != null) {
+        debugPrint(
+            '🎹 Sending Program Change: PC${midiMapping.programChangeNumber} on channel ${midiService.midiChannel}');
+        await midiService.sendProgramChange(midiMapping.programChangeNumber!,
+            channel: midiService.midiChannel);
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      // Send Control Changes
+      for (final cc in midiMapping.controlChanges) {
+        // Handle PC commands (stored as controller -1)
+        if (cc.controller == -1) {
+          debugPrint(
+              '🎹 Sending Program Change: PC${cc.value} on channel ${midiService.midiChannel}');
+          await midiService.sendProgramChange(cc.value,
+              channel: midiService.midiChannel);
+        } else {
+          debugPrint(
+              '🎹 Sending Control Change: CC${cc.controller}:${cc.value} on channel ${midiService.midiChannel}');
+          await midiService.sendControlChange(cc.controller, cc.value,
+              channel: midiService.midiChannel);
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      // Send timing if enabled
+      if (midiMapping.timing) {
+        debugPrint('🎹 Sending MIDI timing clock');
+        await midiService.sendMidiClock();
+      }
+
+      debugPrint(
+          '🎹 MIDI mapping sent successfully for song: ${_currentSong.title}');
+    } catch (e) {
+      debugPrint(
+          '🎹 Error sending MIDI mapping for song: ${_currentSong.title} - $e');
+    }
   }
 
   @override

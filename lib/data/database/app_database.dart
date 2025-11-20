@@ -32,6 +32,23 @@ class Songs extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Drift table for MIDI Mappings
+@DataClassName('MidiMappingModel')
+class MidiMappings extends Table {
+  TextColumn get id => text()();
+  TextColumn get songId => text()();
+  IntColumn get programChangeNumber => integer().nullable()(); // 0-127
+  TextColumn get controlChanges =>
+      text().withDefault(const Constant('[]'))(); // JSON array of MidiCC
+  BoolColumn get timing => boolean().withDefault(const Constant(false))();
+  TextColumn get notes => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Drift table for Setlists (collection of songs for a performance)
 @DataClassName('SetlistModel')
 class Setlists extends Table {
@@ -50,12 +67,12 @@ class Setlists extends Table {
 }
 
 /// Main Drift database
-@DriftDatabase(tables: [Songs, Setlists])
+@DriftDatabase(tables: [Songs, Setlists, MidiMappings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Get the DAO for Songs
   late final songsDao = SongsDao(this);
@@ -68,22 +85,36 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
+        debugPrint('🎹 Creating new database with all tables...');
         await m.createAll();
+        debugPrint('🎹 Database creation completed');
       },
       onUpgrade: (Migrator m, int from, int to) async {
+        debugPrint('🎹 Upgrading database from schema $from to $to');
         // Handle schema migrations here when you update the database
         if (from <= 1 && to >= 2) {
           // Add isDeleted column to songs table
+          debugPrint('🎹 Adding isDeleted column to songs table');
           await m.addColumn(songs, songs.isDeleted);
         }
         if (from <= 2 && to >= 3) {
           // Add imagePath column to setlists table
+          debugPrint('🎹 Adding imagePath column to setlists table');
           await m.addColumn(setlists, setlists.imagePath);
         }
         if (from <= 3 && to >= 4) {
           // Add setlistSpecificEditsEnabled column with default true
+          debugPrint(
+              '🎹 Adding setlistSpecificEditsEnabled column to setlists table');
           await m.addColumn(setlists, setlists.setlistSpecificEditsEnabled);
         }
+        if (from <= 4 && to >= 5) {
+          // Create midi_mappings table
+          debugPrint('🎹 Creating midi_mappings table');
+          await m.createTable(midiMappings);
+          debugPrint('🎹 midi_mappings table created successfully');
+        }
+        debugPrint('🎹 Database upgrade completed');
       },
     );
   }

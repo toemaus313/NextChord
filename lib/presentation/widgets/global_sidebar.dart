@@ -10,6 +10,7 @@ import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
 import '../screens/setlist_editor_screen.dart';
 import 'midi_settings_modal.dart';
+import 'metronome_settings_modal.dart';
 import '../../domain/entities/song.dart';
 import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
@@ -452,6 +453,15 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             onTap: () async {
                               debugPrint('🎹 Opening MIDI Settings...');
                               await MidiSettingsModal.show(context);
+                            },
+                          ),
+                          _buildSubMenuItem(
+                            context,
+                            title: 'Metronome',
+                            isSelected: false,
+                            onTap: () async {
+                              debugPrint('🎵 Opening Metronome Settings...');
+                              await MetronomeSettingsModal.show(context);
                             },
                           ),
                         ]

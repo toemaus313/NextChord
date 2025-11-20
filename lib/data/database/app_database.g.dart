@@ -1113,16 +1113,458 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
   }
 }
 
+class $MidiMappingsTable extends MidiMappings
+    with TableInfo<$MidiMappingsTable, MidiMappingModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MidiMappingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _songIdMeta = const VerificationMeta('songId');
+  @override
+  late final GeneratedColumn<String> songId = GeneratedColumn<String>(
+      'song_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _programChangeNumberMeta =
+      const VerificationMeta('programChangeNumber');
+  @override
+  late final GeneratedColumn<int> programChangeNumber = GeneratedColumn<int>(
+      'program_change_number', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _controlChangesMeta =
+      const VerificationMeta('controlChanges');
+  @override
+  late final GeneratedColumn<String> controlChanges = GeneratedColumn<String>(
+      'control_changes', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _timingMeta = const VerificationMeta('timing');
+  @override
+  late final GeneratedColumn<bool> timing = GeneratedColumn<bool>(
+      'timing', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("timing" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        songId,
+        programChangeNumber,
+        controlChanges,
+        timing,
+        notes,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'midi_mappings';
+  @override
+  VerificationContext validateIntegrity(Insertable<MidiMappingModel> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('song_id')) {
+      context.handle(_songIdMeta,
+          songId.isAcceptableOrUnknown(data['song_id']!, _songIdMeta));
+    } else if (isInserting) {
+      context.missing(_songIdMeta);
+    }
+    if (data.containsKey('program_change_number')) {
+      context.handle(
+          _programChangeNumberMeta,
+          programChangeNumber.isAcceptableOrUnknown(
+              data['program_change_number']!, _programChangeNumberMeta));
+    }
+    if (data.containsKey('control_changes')) {
+      context.handle(
+          _controlChangesMeta,
+          controlChanges.isAcceptableOrUnknown(
+              data['control_changes']!, _controlChangesMeta));
+    }
+    if (data.containsKey('timing')) {
+      context.handle(_timingMeta,
+          timing.isAcceptableOrUnknown(data['timing']!, _timingMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MidiMappingModel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MidiMappingModel(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      songId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}song_id'])!,
+      programChangeNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}program_change_number']),
+      controlChanges: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}control_changes'])!,
+      timing: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}timing'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $MidiMappingsTable createAlias(String alias) {
+    return $MidiMappingsTable(attachedDatabase, alias);
+  }
+}
+
+class MidiMappingModel extends DataClass
+    implements Insertable<MidiMappingModel> {
+  final String id;
+  final String songId;
+  final int? programChangeNumber;
+  final String controlChanges;
+  final bool timing;
+  final String? notes;
+  final int createdAt;
+  final int updatedAt;
+  const MidiMappingModel(
+      {required this.id,
+      required this.songId,
+      this.programChangeNumber,
+      required this.controlChanges,
+      required this.timing,
+      this.notes,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['song_id'] = Variable<String>(songId);
+    if (!nullToAbsent || programChangeNumber != null) {
+      map['program_change_number'] = Variable<int>(programChangeNumber);
+    }
+    map['control_changes'] = Variable<String>(controlChanges);
+    map['timing'] = Variable<bool>(timing);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  MidiMappingsCompanion toCompanion(bool nullToAbsent) {
+    return MidiMappingsCompanion(
+      id: Value(id),
+      songId: Value(songId),
+      programChangeNumber: programChangeNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(programChangeNumber),
+      controlChanges: Value(controlChanges),
+      timing: Value(timing),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory MidiMappingModel.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MidiMappingModel(
+      id: serializer.fromJson<String>(json['id']),
+      songId: serializer.fromJson<String>(json['songId']),
+      programChangeNumber:
+          serializer.fromJson<int?>(json['programChangeNumber']),
+      controlChanges: serializer.fromJson<String>(json['controlChanges']),
+      timing: serializer.fromJson<bool>(json['timing']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'songId': serializer.toJson<String>(songId),
+      'programChangeNumber': serializer.toJson<int?>(programChangeNumber),
+      'controlChanges': serializer.toJson<String>(controlChanges),
+      'timing': serializer.toJson<bool>(timing),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  MidiMappingModel copyWith(
+          {String? id,
+          String? songId,
+          Value<int?> programChangeNumber = const Value.absent(),
+          String? controlChanges,
+          bool? timing,
+          Value<String?> notes = const Value.absent(),
+          int? createdAt,
+          int? updatedAt}) =>
+      MidiMappingModel(
+        id: id ?? this.id,
+        songId: songId ?? this.songId,
+        programChangeNumber: programChangeNumber.present
+            ? programChangeNumber.value
+            : this.programChangeNumber,
+        controlChanges: controlChanges ?? this.controlChanges,
+        timing: timing ?? this.timing,
+        notes: notes.present ? notes.value : this.notes,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  MidiMappingModel copyWithCompanion(MidiMappingsCompanion data) {
+    return MidiMappingModel(
+      id: data.id.present ? data.id.value : this.id,
+      songId: data.songId.present ? data.songId.value : this.songId,
+      programChangeNumber: data.programChangeNumber.present
+          ? data.programChangeNumber.value
+          : this.programChangeNumber,
+      controlChanges: data.controlChanges.present
+          ? data.controlChanges.value
+          : this.controlChanges,
+      timing: data.timing.present ? data.timing.value : this.timing,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MidiMappingModel(')
+          ..write('id: $id, ')
+          ..write('songId: $songId, ')
+          ..write('programChangeNumber: $programChangeNumber, ')
+          ..write('controlChanges: $controlChanges, ')
+          ..write('timing: $timing, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, songId, programChangeNumber,
+      controlChanges, timing, notes, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MidiMappingModel &&
+          other.id == this.id &&
+          other.songId == this.songId &&
+          other.programChangeNumber == this.programChangeNumber &&
+          other.controlChanges == this.controlChanges &&
+          other.timing == this.timing &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
+  final Value<String> id;
+  final Value<String> songId;
+  final Value<int?> programChangeNumber;
+  final Value<String> controlChanges;
+  final Value<bool> timing;
+  final Value<String?> notes;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const MidiMappingsCompanion({
+    this.id = const Value.absent(),
+    this.songId = const Value.absent(),
+    this.programChangeNumber = const Value.absent(),
+    this.controlChanges = const Value.absent(),
+    this.timing = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MidiMappingsCompanion.insert({
+    required String id,
+    required String songId,
+    this.programChangeNumber = const Value.absent(),
+    this.controlChanges = const Value.absent(),
+    this.timing = const Value.absent(),
+    this.notes = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        songId = Value(songId),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<MidiMappingModel> custom({
+    Expression<String>? id,
+    Expression<String>? songId,
+    Expression<int>? programChangeNumber,
+    Expression<String>? controlChanges,
+    Expression<bool>? timing,
+    Expression<String>? notes,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (songId != null) 'song_id': songId,
+      if (programChangeNumber != null)
+        'program_change_number': programChangeNumber,
+      if (controlChanges != null) 'control_changes': controlChanges,
+      if (timing != null) 'timing': timing,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MidiMappingsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? songId,
+      Value<int?>? programChangeNumber,
+      Value<String>? controlChanges,
+      Value<bool>? timing,
+      Value<String?>? notes,
+      Value<int>? createdAt,
+      Value<int>? updatedAt,
+      Value<int>? rowid}) {
+    return MidiMappingsCompanion(
+      id: id ?? this.id,
+      songId: songId ?? this.songId,
+      programChangeNumber: programChangeNumber ?? this.programChangeNumber,
+      controlChanges: controlChanges ?? this.controlChanges,
+      timing: timing ?? this.timing,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (songId.present) {
+      map['song_id'] = Variable<String>(songId.value);
+    }
+    if (programChangeNumber.present) {
+      map['program_change_number'] = Variable<int>(programChangeNumber.value);
+    }
+    if (controlChanges.present) {
+      map['control_changes'] = Variable<String>(controlChanges.value);
+    }
+    if (timing.present) {
+      map['timing'] = Variable<bool>(timing.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MidiMappingsCompanion(')
+          ..write('id: $id, ')
+          ..write('songId: $songId, ')
+          ..write('programChangeNumber: $programChangeNumber, ')
+          ..write('controlChanges: $controlChanges, ')
+          ..write('timing: $timing, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SongsTable songs = $SongsTable(this);
   late final $SetlistsTable setlists = $SetlistsTable(this);
+  late final $MidiMappingsTable midiMappings = $MidiMappingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [songs, setlists];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [songs, setlists, midiMappings];
 }
 
 typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
@@ -1638,6 +2080,228 @@ typedef $$SetlistsTableProcessedTableManager = ProcessedTableManager<
     (SetlistModel, BaseReferences<_$AppDatabase, $SetlistsTable, SetlistModel>),
     SetlistModel,
     PrefetchHooks Function()>;
+typedef $$MidiMappingsTableCreateCompanionBuilder = MidiMappingsCompanion
+    Function({
+  required String id,
+  required String songId,
+  Value<int?> programChangeNumber,
+  Value<String> controlChanges,
+  Value<bool> timing,
+  Value<String?> notes,
+  required int createdAt,
+  required int updatedAt,
+  Value<int> rowid,
+});
+typedef $$MidiMappingsTableUpdateCompanionBuilder = MidiMappingsCompanion
+    Function({
+  Value<String> id,
+  Value<String> songId,
+  Value<int?> programChangeNumber,
+  Value<String> controlChanges,
+  Value<bool> timing,
+  Value<String?> notes,
+  Value<int> createdAt,
+  Value<int> updatedAt,
+  Value<int> rowid,
+});
+
+class $$MidiMappingsTableFilterComposer
+    extends Composer<_$AppDatabase, $MidiMappingsTable> {
+  $$MidiMappingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get songId => $composableBuilder(
+      column: $table.songId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get programChangeNumber => $composableBuilder(
+      column: $table.programChangeNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get controlChanges => $composableBuilder(
+      column: $table.controlChanges,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get timing => $composableBuilder(
+      column: $table.timing, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$MidiMappingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MidiMappingsTable> {
+  $$MidiMappingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get songId => $composableBuilder(
+      column: $table.songId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get programChangeNumber => $composableBuilder(
+      column: $table.programChangeNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get controlChanges => $composableBuilder(
+      column: $table.controlChanges,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get timing => $composableBuilder(
+      column: $table.timing, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$MidiMappingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MidiMappingsTable> {
+  $$MidiMappingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get songId =>
+      $composableBuilder(column: $table.songId, builder: (column) => column);
+
+  GeneratedColumn<int> get programChangeNumber => $composableBuilder(
+      column: $table.programChangeNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get controlChanges => $composableBuilder(
+      column: $table.controlChanges, builder: (column) => column);
+
+  GeneratedColumn<bool> get timing =>
+      $composableBuilder(column: $table.timing, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$MidiMappingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $MidiMappingsTable,
+    MidiMappingModel,
+    $$MidiMappingsTableFilterComposer,
+    $$MidiMappingsTableOrderingComposer,
+    $$MidiMappingsTableAnnotationComposer,
+    $$MidiMappingsTableCreateCompanionBuilder,
+    $$MidiMappingsTableUpdateCompanionBuilder,
+    (
+      MidiMappingModel,
+      BaseReferences<_$AppDatabase, $MidiMappingsTable, MidiMappingModel>
+    ),
+    MidiMappingModel,
+    PrefetchHooks Function()> {
+  $$MidiMappingsTableTableManager(_$AppDatabase db, $MidiMappingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MidiMappingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MidiMappingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MidiMappingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> songId = const Value.absent(),
+            Value<int?> programChangeNumber = const Value.absent(),
+            Value<String> controlChanges = const Value.absent(),
+            Value<bool> timing = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<int> createdAt = const Value.absent(),
+            Value<int> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              MidiMappingsCompanion(
+            id: id,
+            songId: songId,
+            programChangeNumber: programChangeNumber,
+            controlChanges: controlChanges,
+            timing: timing,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String songId,
+            Value<int?> programChangeNumber = const Value.absent(),
+            Value<String> controlChanges = const Value.absent(),
+            Value<bool> timing = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            required int createdAt,
+            required int updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              MidiMappingsCompanion.insert(
+            id: id,
+            songId: songId,
+            programChangeNumber: programChangeNumber,
+            controlChanges: controlChanges,
+            timing: timing,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$MidiMappingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $MidiMappingsTable,
+    MidiMappingModel,
+    $$MidiMappingsTableFilterComposer,
+    $$MidiMappingsTableOrderingComposer,
+    $$MidiMappingsTableAnnotationComposer,
+    $$MidiMappingsTableCreateCompanionBuilder,
+    $$MidiMappingsTableUpdateCompanionBuilder,
+    (
+      MidiMappingModel,
+      BaseReferences<_$AppDatabase, $MidiMappingsTable, MidiMappingModel>
+    ),
+    MidiMappingModel,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1646,6 +2310,8 @@ class $AppDatabaseManager {
       $$SongsTableTableManager(_db, _db.songs);
   $$SetlistsTableTableManager get setlists =>
       $$SetlistsTableTableManager(_db, _db.setlists);
+  $$MidiMappingsTableTableManager get midiMappings =>
+      $$MidiMappingsTableTableManager(_db, _db.midiMappings);
 }
 
 mixin _$SongsDaoMixin on DatabaseAccessor<AppDatabase> {

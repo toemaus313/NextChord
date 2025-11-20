@@ -15,6 +15,7 @@ import '../providers/global_sidebar_provider.dart';
 import '../widgets/tag_edit_dialog.dart';
 import '../widgets/midi_sends_modal.dart';
 import '../../services/midi/midi_service.dart';
+import '../../data/database/app_database.dart';
 
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
@@ -89,13 +90,28 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   }
 
   /// Initialize form fields with existing song data if editing
-  void _initializeFields() {
+  void _initializeFields() async {
     if (widget.song != null) {
       final song = widget.song!;
       _titleController.text = song.title;
       _artistController.text = song.artist;
       _bodyController.text = song.body;
       _bpmController.text = song.bpm.toString();
+
+      // Load MIDI mapping from database
+      try {
+        final songRepository = SongRepository(AppDatabase());
+        _midiMapping = await songRepository.getMidiMapping(song.id);
+        debugPrint(
+            '🎹 Loaded MIDI mapping for song: ${_midiMapping != null ? "Found" : "None"}');
+        // Trigger UI rebuild to show MIDI pills
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (e) {
+        debugPrint('🎹 Error loading MIDI mapping: $e');
+        _midiMapping = null;
+      }
 
       // Apply setlist context adjustments if available
       if (widget.setlistContext != null) {
@@ -929,11 +945,27 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
             updatedAt: DateTime.now(),
           ),
       initialMapping: _midiMapping,
-      onMappingUpdated: (updatedMapping) {
+      onMappingUpdated: (updatedMapping) async {
         setState(() {
           _midiMapping = updatedMapping;
         });
-        debugPrint('🎹 MIDI mapping updated for song');
+
+        // Persist the MIDI mapping to the database
+        try {
+          final songProvider = context.read<SongProvider>();
+          await songProvider.saveMidiMapping(updatedMapping);
+          debugPrint('🎹 MIDI mapping saved for song');
+        } catch (e) {
+          debugPrint('🎹 Error saving MIDI mapping: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error saving MIDI mapping: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       },
     );
   }

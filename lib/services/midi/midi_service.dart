@@ -313,6 +313,29 @@ class MidiService with ChangeNotifier {
     }
   }
 
+  /// Send MIDI Clock message (real-time message: 0xF8)
+  /// Used for timing synchronization with MIDI devices
+  Future<bool> sendMidiClock() async {
+    try {
+      if (!isConnected || _connectedDevice == null) {
+        _setError('No MIDI device connected');
+        return false;
+      }
+
+      debugPrint('🎹 MidiService: Sending MIDI Clock');
+
+      // MIDI Clock is a real-time message (0xF8) - doesn't use channel
+      final midiData = Uint8List.fromList([0xF8]);
+      _midiCommand.sendData(midiData);
+
+      debugPrint('🎹 MidiService: MIDI Clock sent successfully');
+      return true;
+    } catch (e) {
+      _setError('Failed to send MIDI Clock: $e');
+      return false;
+    }
+  }
+
   /// Dispose the MIDI service and clean up resources
   @override
   void dispose() {

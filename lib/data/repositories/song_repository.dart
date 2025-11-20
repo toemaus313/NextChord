@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../../domain/entities/song.dart';
 import '../database/app_database.dart';
+import '../../domain/entities/song.dart';
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -225,6 +227,109 @@ class SongRepository {
       await _db.songsDao.permanentlyDeleteSong(id);
     } catch (e) {
       throw SongRepositoryException('Failed to permanently delete song: $e');
+    }
+  }
+
+  /// Save or update a MIDI mapping for a song
+  Future<void> saveMidiMapping(MidiMapping midiMapping) async {
+    try {
+      final existingMapping = await getMidiMapping(midiMapping.songId);
+
+      if (existingMapping != null) {
+        // Update existing mapping
+        await _db.update(_db.midiMappings).replace(
+              MidiMappingModel(
+                id: existingMapping.id,
+                songId: midiMapping.songId,
+                programChangeNumber: midiMapping.programChangeNumber,
+                controlChanges:
+                    _encodeControlChanges(midiMapping.controlChanges),
+                timing: midiMapping.timing,
+                notes: midiMapping.notes,
+                createdAt: DateTime.now()
+                    .millisecondsSinceEpoch, // Use current time since domain entity doesn't have createdAt
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+      } else {
+        // Insert new mapping
+        await _db.into(_db.midiMappings).insert(
+              MidiMappingModel(
+                id: midiMapping.id,
+                songId: midiMapping.songId,
+                programChangeNumber: midiMapping.programChangeNumber,
+                controlChanges:
+                    _encodeControlChanges(midiMapping.controlChanges),
+                timing: midiMapping.timing,
+                notes: midiMapping.notes,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+      }
+    } catch (e) {
+      throw SongRepositoryException('Failed to save MIDI mapping: $e');
+    }
+  }
+
+  /// Get MIDI mapping for a song
+  Future<MidiMapping?> getMidiMapping(String songId) async {
+    try {
+      final model = await (_db.select(_db.midiMappings)
+            ..where((tbl) => tbl.songId.equals(songId)))
+          .getSingleOrNull();
+
+      if (model == null) return null;
+
+      return MidiMapping(
+        id: model.id,
+        songId: model.songId,
+        programChangeNumber: model.programChangeNumber,
+        controlChanges: _decodeControlChanges(model.controlChanges),
+        timing: model.timing,
+        notes: model.notes,
+      );
+    } catch (e) {
+      throw SongRepositoryException('Failed to get MIDI mapping: $e');
+    }
+  }
+
+  /// Delete MIDI mapping for a song
+  Future<void> deleteMidiMapping(String songId) async {
+    try {
+      await (_db.delete(_db.midiMappings)
+            ..where((tbl) => tbl.songId.equals(songId)))
+          .go();
+    } catch (e) {
+      throw SongRepositoryException('Failed to delete MIDI mapping: $e');
+    }
+  }
+
+  /// Helper method to encode MidiCC list to JSON
+  String _encodeControlChanges(List<MidiCC> controlChanges) {
+    return jsonEncode(controlChanges
+        .map((cc) => {
+              'controller': cc.controller,
+              'value': cc.value,
+              'label': cc.label,
+            })
+        .toList());
+  }
+
+  /// Helper method to decode JSON to MidiCC list
+  List<MidiCC> _decodeControlChanges(String json) {
+    try {
+      final List<dynamic> jsonList = jsonDecode(json);
+      return jsonList
+          .map((item) => MidiCC(
+                controller: item['controller'] as int,
+                value: item['value'] as int,
+                label: item['label'] as String?,
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('Error decoding control changes: $e');
+      return [];
     }
   }
 }

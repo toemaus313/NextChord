@@ -408,6 +408,19 @@ class SongProvider extends ChangeNotifier {
     await loadSongs();
   }
 
+  /// Save or update a MIDI mapping for a song
+  Future<void> saveMidiMapping(MidiMapping midiMapping) async {
+    try {
+      await _repository.saveMidiMapping(midiMapping);
+      debugPrint(
+          '🎹 SongProvider: MIDI mapping saved for song ${midiMapping.songId}');
+    } catch (e) {
+      _errorMessage = 'Failed to save MIDI mapping: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   /// Dispose of the provider and clean up resources
   @override
   void dispose() {
