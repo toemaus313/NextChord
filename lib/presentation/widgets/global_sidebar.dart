@@ -10,6 +10,7 @@ import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
 import '../screens/setlist_editor_screen.dart';
 import '../../domain/entities/song.dart';
+import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
 import 'divider_dialog.dart';
 
@@ -201,15 +202,14 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     if (!wasExpanded && _isSongsExpanded) {
                       try {
                         final provider = context.read<SongProvider>();
-                        // Temporarily load deleted songs to get count
-                        await provider.loadDeletedSongs();
+                        // Get deleted songs count without affecting current songs state
+                        final deletedSongs =
+                            await provider.getDeletedSongsCount();
                         if (mounted) {
                           setState(() {
-                            _deletedSongsCount = provider.songs.length;
+                            _deletedSongsCount = deletedSongs;
                           });
                         }
-                        // Reload regular songs
-                        await provider.loadSongs();
                       } catch (e) {
                         // If error, just set count to 0
                         if (mounted) {
@@ -267,6 +267,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                     isSelected: false,
                                     count: artistsCount,
                                     onTap: () {
+                                      _clearSetlistStateOnNavigation();
                                       context
                                           .read<SongProvider>()
                                           .resetSelectionMode();
@@ -282,6 +283,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                     isSelected: false,
                                     count: tagsCount,
                                     onTap: () {
+                                      _clearSetlistStateOnNavigation();
                                       context
                                           .read<SongProvider>()
                                           .resetSelectionMode();
@@ -301,6 +303,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             isSelected: false,
                             count: _deletedSongsCount,
                             onTap: () async {
+                              _clearSetlistStateOnNavigation();
                               context.read<SongProvider>().resetSelectionMode();
                               setState(() {
                                 _currentView = 'deletedSongs';
@@ -462,6 +465,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     ),
                     onPressed: () {
                       context.read<SongProvider>().resetSelectionMode();
+                      _clearSetlistStateOnNavigation();
                       setState(() {
                         _currentView = 'menu';
                         _searchController.clear();
@@ -606,6 +610,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                         color: Colors.white,
                       ),
                       onPressed: () {
+                        _clearSetlistStateOnNavigation();
                         setState(() {
                           _currentView = 'menu';
                         });
@@ -655,6 +660,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       color: Colors.white,
                     ),
                     onPressed: () {
+                      _clearSetlistStateOnNavigation();
                       setState(() {
                         _currentView = 'menu';
                       });
@@ -793,14 +799,23 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   Widget _buildSetlistSongItem(SetlistSongItem item, Song? song, int index) {
     final title = song?.title ?? 'Unknown song';
     final artist = song?.artist ?? '';
-    final key = song?.key ?? 'C';
+    final baseKey = song?.key ?? 'C';
+
+    // Calculate transposed key if transpose steps are set
+    String displayKey = baseKey;
+    if (item.transposeSteps != null &&
+        item.transposeSteps != 0 &&
+        baseKey.isNotEmpty) {
+      displayKey = ChordProParser.transposeChord(baseKey, item.transposeSteps!);
+    }
+
     final capo = item.capo ?? song?.capo ?? 0;
 
     return GestureDetector(
       key: ValueKey('song_${item.songId}_$index'),
       onTap: () {
         if (song != null) {
-          context.read<GlobalSidebarProvider>().navigateToSong(song);
+          _navigateToSongFromSetlist(song, item, index);
         }
       },
       onSecondaryTap: () => _showSongContextMenu(context, item, song, index),
@@ -852,7 +867,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  key,
+                  displayKey,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -2720,5 +2735,32 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         }
       }
     }
+  }
+
+  /// Navigate to a song from a setlist with proper context
+  void _navigateToSongFromSetlist(
+      Song song, SetlistSongItem item, int index) async {
+    final globalSidebarProvider = context.read<GlobalSidebarProvider>();
+    final setlistProvider = context.read<SetlistProvider>();
+
+    debugPrint('🔗 GlobalSidebar: _navigateToSongFromSetlist called');
+    debugPrint('   - song: ${song.title}');
+    debugPrint('   - setlistId: $_selectedSetlistId');
+    debugPrint('   - index: $index');
+    debugPrint('   - item.transposeSteps: ${item.transposeSteps}');
+    debugPrint('   - item.capo: ${item.capo}');
+
+    // Set the active setlist and current song index
+    await setlistProvider.setActiveSetlist(_selectedSetlistId!, index);
+
+    // Navigate to the song with setlist context
+    globalSidebarProvider.navigateToSongInSetlist(song, index, item);
+  }
+
+  /// Clear setlist state when navigating away from setlist view
+  void _clearSetlistStateOnNavigation() {
+    debugPrint('🔗 GlobalSidebar: _clearSetlistStateOnNavigation called');
+    context.read<GlobalSidebarProvider>().clearActiveSetlist();
+    context.read<SetlistProvider>().clearActiveSetlist();
   }
 }

@@ -3,6 +3,9 @@ import 'dart:async';
 import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 
+/// Enum to track what type of song list is currently loaded
+enum SongListType { all, deleted, filtered }
+
 /// Provider for managing song state and operations
 /// Uses ChangeNotifier for reactive state management with Provider package
 class SongProvider extends ChangeNotifier {
@@ -19,6 +22,7 @@ class SongProvider extends ChangeNotifier {
   bool _selectionMode = false;
   final Set<String> _selectedSongIds = {};
   Timer? _searchTimer;
+  SongListType _currentListType = SongListType.all;
 
   // Getters
   List<Song> get songs => _filteredSongs;
@@ -28,19 +32,28 @@ class SongProvider extends ChangeNotifier {
   bool get isEmpty => _songs.isEmpty && !_isLoading;
   String get searchQuery => _searchQuery;
   bool get selectionMode => _selectionMode;
+  SongListType get currentListType => _currentListType;
   Set<String> get selectedSongIds => Set.unmodifiable(_selectedSongIds);
-  List<Song> get selectedSongs => _songs.where((song) => _selectedSongIds.contains(song.id)).toList();
-  bool get isAllSelected => _filteredSongs.isNotEmpty && _selectedSongIds.length == _filteredSongs.length;
+  List<Song> get selectedSongs =>
+      _songs.where((song) => _selectedSongIds.contains(song.id)).toList();
+  bool get isAllSelected =>
+      _filteredSongs.isNotEmpty &&
+      _selectedSongIds.length == _filteredSongs.length;
   bool get hasSelectedSongs => _selectedSongIds.isNotEmpty;
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
+    debugPrint('🎵 SongProvider: loadSongs() called - STACK TRACE:');
+    debugPrint(StackTrace.current.toString());
+
     _isLoading = true;
     _errorMessage = null;
+    _currentListType = SongListType.all;
     notifyListeners();
 
     try {
       _songs = await _repository.getAllSongs();
+      debugPrint('🎵 SongProvider: loadSongs() loaded ${_songs.length} songs');
       _applySearch();
       _errorMessage = null;
     } on SongRepositoryException catch (e) {
@@ -77,7 +90,8 @@ class SongProvider extends ChangeNotifier {
       _filteredSongs = _songs.where((song) {
         final titleMatch = song.title.toLowerCase().contains(lowerQuery);
         final artistMatch = song.artist.toLowerCase().contains(lowerQuery);
-        final tagMatch = song.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
+        final tagMatch =
+            song.tags.any((tag) => tag.toLowerCase().contains(lowerQuery));
         return titleMatch || artistMatch || tagMatch;
       }).toList();
     }
@@ -163,14 +177,31 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
+  /// Get deleted songs count without affecting current songs state
+  Future<int> getDeletedSongsCount() async {
+    try {
+      final deletedSongs = await _repository.getDeletedSongs();
+      return deletedSongs.length;
+    } catch (e) {
+      debugPrint('Error getting deleted songs count: $e');
+      return 0;
+    }
+  }
+
   /// Load deleted songs
   Future<void> loadDeletedSongs() async {
+    debugPrint('🗑️ SongProvider: loadDeletedSongs() called - STACK TRACE:');
+    debugPrint(StackTrace.current.toString());
+
     _isLoading = true;
     _errorMessage = null;
+    _currentListType = SongListType.deleted;
     notifyListeners();
 
     try {
       _songs = await _repository.getDeletedSongs();
+      debugPrint(
+          '🗑️ SongProvider: loadDeletedSongs() loaded ${_songs.length} deleted songs');
       _applySearch();
       _errorMessage = null;
     } on SongRepositoryException catch (e) {
@@ -282,9 +313,26 @@ class SongProvider extends ChangeNotifier {
   /// Get all unique tags from all songs plus default tags
   Set<String> get allTags {
     final defaultTags = {
-      'Pop', 'Rock', 'Country', 'Latin', 'R&B', 'Blues',
-      'Classical', 'Metal', 'Punk', 'Indie', 'Alternative', 'Jazz',
-      'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'
+      'Pop',
+      'Rock',
+      'Country',
+      'Latin',
+      'R&B',
+      'Blues',
+      'Classical',
+      'Metal',
+      'Punk',
+      'Indie',
+      'Alternative',
+      'Jazz',
+      'Acoustic',
+      'Electric',
+      'Piano',
+      'Guitar',
+      'Bass',
+      'Drums',
+      'Vocals',
+      'Instrumental'
     };
     final allTags = <String>{};
     allTags.addAll(defaultTags);

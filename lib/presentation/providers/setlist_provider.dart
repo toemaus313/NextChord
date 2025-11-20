@@ -12,6 +12,8 @@ class SetlistProvider extends ChangeNotifier {
   List<Setlist> _setlists = [];
   bool _isLoading = false;
   String? _errorMessage;
+  Setlist? _activeSetlist;
+  int _currentSongIndex = -1;
 
   // Getters
   List<Setlist> get setlists => _setlists;
@@ -19,6 +21,9 @@ class SetlistProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get hasError => _errorMessage != null;
   bool get isEmpty => _setlists.isEmpty && !_isLoading;
+  Setlist? get activeSetlist => _activeSetlist;
+  int get currentSongIndex => _currentSongIndex;
+  bool get isSetlistActive => _activeSetlist != null && _currentSongIndex >= 0;
 
   /// Load all setlists from the repository
   Future<void> loadSetlists() async {
@@ -96,5 +101,172 @@ class SetlistProvider extends ChangeNotifier {
   /// Refresh setlists (reload from repository)
   Future<void> refresh() async {
     await loadSetlists();
+  }
+
+  /// Set the active setlist and current song index
+  Future<void> setActiveSetlist(String setlistId, int songIndex) async {
+    try {
+      final setlist = await _repository.getSetlistById(setlistId);
+      if (setlist != null) {
+        _activeSetlist = setlist;
+        _currentSongIndex = songIndex;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('SetlistProvider: Error setting active setlist: $e');
+      _errorMessage = 'Failed to set active setlist: $e';
+      notifyListeners();
+    }
+  }
+
+  /// Update the current song index within the active setlist
+  void updateCurrentSongIndex(int newIndex) {
+    if (_activeSetlist != null &&
+        newIndex >= 0 &&
+        newIndex < _getSongItemsInSetlist().length) {
+      _currentSongIndex = newIndex;
+      notifyListeners();
+    }
+  }
+
+  /// Clear the active setlist
+  void clearActiveSetlist() {
+    debugPrint(
+        '📋 SetlistProvider: clearActiveSetlist called - was active: ${_activeSetlist?.id}');
+    _activeSetlist = null;
+    _currentSongIndex = -1;
+    notifyListeners();
+  }
+
+  /// Get the current song item in the active setlist
+  SetlistSongItem? getCurrentSongItem() {
+    if (!isSetlistActive) return null;
+
+    final songItems = _getSongItemsInSetlist();
+    if (_currentSongIndex < songItems.length) {
+      return songItems[_currentSongIndex];
+    }
+    return null;
+  }
+
+  /// Get the next song item in the setlist, or null if at the end
+  SetlistSongItem? getNextSongItem() {
+    if (!isSetlistActive) return null;
+
+    final songItems = _getSongItemsInSetlist();
+    final nextIndex = _currentSongIndex + 1;
+    if (nextIndex < songItems.length) {
+      return songItems[nextIndex];
+    }
+    return null;
+  }
+
+  /// Get the previous song item in the setlist, or null if at the start
+  SetlistSongItem? getPreviousSongItem() {
+    if (!isSetlistActive) return null;
+
+    final songItems = _getSongItemsInSetlist();
+    final prevIndex = _currentSongIndex - 1;
+    if (prevIndex >= 0 && prevIndex < songItems.length) {
+      return songItems[prevIndex];
+    }
+    return null;
+  }
+
+  /// Update transpose/capo settings for the current song in the setlist
+  Future<void> updateCurrentSongAdjustments({
+    int? transposeSteps,
+    int? capo,
+  }) async {
+    debugPrint('📋 SetlistProvider: updateCurrentSongAdjustments called');
+    debugPrint('   - isSetlistActive: $isSetlistActive');
+    debugPrint('   - activeSetlistId: ${_activeSetlist?.id}');
+    debugPrint(
+        '   - setlistSpecificEditsEnabled: ${_activeSetlist?.setlistSpecificEditsEnabled}');
+    debugPrint('   - transposeSteps: $transposeSteps, capo: $capo');
+
+    if (!isSetlistActive || _activeSetlist == null) {
+      debugPrint('📋 SetlistProvider: ABORT - no active setlist');
+      return;
+    }
+
+    final currentSongItem = getCurrentSongItem();
+    if (currentSongItem == null) {
+      debugPrint('📋 SetlistProvider: ABORT - no current song item');
+      return;
+    }
+
+    // Only update if setlist-specific edits are enabled
+    if (!_activeSetlist!.setlistSpecificEditsEnabled) {
+      debugPrint('📋 SetlistProvider: ABORT - setlist-specific edits disabled');
+      return;
+    }
+
+    final updatedItem = currentSongItem.copyWith(
+      transposeSteps: transposeSteps,
+      capo: capo,
+    );
+
+    debugPrint(
+        '📋 SetlistProvider: Updating setlist song item: ${currentSongItem.songId}');
+
+    // Update the item in the active setlist
+    final updatedActiveItems = List<SetlistItem>.from(_activeSetlist!.items);
+    final activeItemIndex = updatedActiveItems.indexWhere(
+      (item) =>
+          item is SetlistSongItem && item.songId == currentSongItem.songId,
+    );
+
+    if (activeItemIndex != -1) {
+      updatedActiveItems[activeItemIndex] = updatedItem;
+      final updatedActiveSetlist =
+          _activeSetlist!.copyWith(items: updatedActiveItems);
+
+      try {
+        await _repository.updateSetlist(updatedActiveSetlist);
+        _activeSetlist = updatedActiveSetlist;
+        debugPrint(
+            '📋 SetlistProvider: SUCCESS - active setlist updated in database');
+
+        // Also update the item in the main setlists list for sidebar display
+        final mainSetlistIndex = _setlists.indexWhere(
+          (setlist) => setlist.id == _activeSetlist!.id,
+        );
+
+        if (mainSetlistIndex != -1) {
+          final updatedMainItems =
+              List<SetlistItem>.from(_setlists[mainSetlistIndex].items);
+          final mainItemIndex = updatedMainItems.indexWhere(
+            (item) =>
+                item is SetlistSongItem &&
+                item.songId == currentSongItem.songId,
+          );
+
+          if (mainItemIndex != -1) {
+            updatedMainItems[mainItemIndex] = updatedItem;
+            _setlists[mainSetlistIndex] =
+                _setlists[mainSetlistIndex].copyWith(items: updatedMainItems);
+            debugPrint(
+                '📋 SetlistProvider: SUCCESS - main setlist list updated for sidebar');
+          }
+        }
+
+        notifyListeners();
+      } catch (e) {
+        debugPrint('📋 SetlistProvider: ERROR - failed to update setlist: $e');
+        _errorMessage = 'Failed to update song adjustments: $e';
+        notifyListeners();
+      }
+    } else {
+      debugPrint(
+          '📋 SetlistProvider: ERROR - song item not found in active setlist');
+    }
+  }
+
+  /// Get only the song items from the active setlist (filters out dividers)
+  List<SetlistSongItem> _getSongItemsInSetlist() {
+    if (_activeSetlist == null) return [];
+
+    return _activeSetlist!.items.whereType<SetlistSongItem>().toList();
   }
 }

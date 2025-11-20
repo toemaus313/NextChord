@@ -17,8 +17,9 @@ import '../widgets/tag_edit_dialog.dart';
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
   final Song? song; // If null, create new song; if provided, edit existing
+  final SetlistSongItem? setlistContext; // Setlist context for adjustments
 
-  const SongEditorScreen({super.key, this.song});
+  const SongEditorScreen({super.key, this.song, this.setlistContext});
 
   @override
   State<SongEditorScreen> createState() => _SongEditorScreenState();
@@ -84,7 +85,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     _bodyController.addListener(_onBodyTextChanged);
   }
 
-  
   /// Initialize form fields with existing song data if editing
   void _initializeFields() {
     if (widget.song != null) {
@@ -93,8 +93,26 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       _artistController.text = song.artist;
       _bodyController.text = song.body;
       _bpmController.text = song.bpm.toString();
-      _selectedKey = song.key;
-      _selectedCapo = song.capo;
+
+      // Apply setlist context adjustments if available
+      if (widget.setlistContext != null) {
+        // Start with base song key and apply transpose
+        _selectedKey = song.key;
+        if (widget.setlistContext!.transposeSteps != null &&
+            widget.setlistContext!.transposeSteps != 0 &&
+            song.key.isNotEmpty) {
+          _selectedKey = ChordProParser.transposeChord(
+              song.key, widget.setlistContext!.transposeSteps!);
+        }
+
+        // Use setlist capo if set, otherwise use song capo
+        _selectedCapo = widget.setlistContext!.capo ?? song.capo;
+      } else {
+        // No setlist context - use base song values
+        _selectedKey = song.key;
+        _selectedCapo = song.capo;
+      }
+
       _selectedTimeSignature = song.timeSignature;
       _tags = List.from(song.tags);
 
@@ -854,9 +872,53 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               key: _formKey,
               child: Column(
                 children: [
+                  // Setlist mode indicator banner
+                  if (widget.setlistContext != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : Colors.blue.withValues(alpha: 0.05),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isDarkMode
+                                ? Colors.blue.withValues(alpha: 0.3)
+                                : Colors.blue.withValues(alpha: 0.2),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.playlist_play,
+                            size: 16,
+                            color: isDarkMode
+                                ? Colors.blue.shade300
+                                : Colors.blue.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Setlist Mode: Adjusted key and capo are displayed',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode
+                                    ? Colors.blue.shade300
+                                    : Colors.blue.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Scrollable metadata section
                   SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16.0, 60.0, 16.0, 0),
+                    padding: EdgeInsets.fromLTRB(16.0,
+                        widget.setlistContext != null ? 16.0 : 60.0, 16.0, 0),
                     child: Column(
                       children: [
                         // Title field
@@ -919,10 +981,38 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                 initialValue: _selectedKey,
                                 style:
                                     TextStyle(fontSize: 14, color: textColor),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.piano, size: 18),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.piano, size: 18),
+                                  suffixIcon: widget.setlistContext != null
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            'SET',
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                  border: OutlineInputBorder(
+                                    borderSide: widget.setlistContext != null
+                                        ? BorderSide(
+                                            color: Colors.blue, width: 1.5)
+                                        : BorderSide(
+                                            color: isDarkMode
+                                                ? Colors.grey.shade600
+                                                : Colors.grey.shade400,
+                                            width: 1.0),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 8),
                                   isDense: true,
                                 ),
@@ -1004,7 +1094,35 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                       ),
                                     ),
                                   ),
-                                  border: const OutlineInputBorder(),
+                                  suffixIcon: widget.setlistContext != null
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            'SET',
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                  border: OutlineInputBorder(
+                                    borderSide: widget.setlistContext != null
+                                        ? BorderSide(
+                                            color: Colors.blue, width: 1.5)
+                                        : BorderSide(
+                                            color: isDarkMode
+                                                ? Colors.grey.shade600
+                                                : Colors.grey.shade400,
+                                            width: 1.0),
+                                  ),
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 8),
                                   isDense: true,

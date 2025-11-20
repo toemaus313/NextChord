@@ -9,6 +9,7 @@ import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/metronome_provider.dart';
 import '../providers/autoscroll_provider.dart';
+import '../providers/setlist_provider.dart';
 import '../widgets/chord_renderer.dart';
 import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
@@ -370,6 +371,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       _transposeSteps = updated;
       _viewerAdjustments = _viewerAdjustments.copyWith(transposeSteps: updated);
     });
+
+    // Save to setlist if setlist-specific edits are enabled
+    _saveTransposeToSetlist(updated);
   }
 
   void _updateCapo(int delta) {
@@ -379,6 +383,95 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       _currentCapo = updated;
       _viewerAdjustments = _viewerAdjustments.copyWith(capo: updated);
     });
+
+    // Save to setlist if setlist-specific edits are enabled
+    _saveCapoToSetlist(updated);
+  }
+
+  /// Save transpose setting to setlist if applicable
+  void _saveTransposeToSetlist(int transposeSteps) async {
+    debugPrint('🎵 SongViewerScreen: _saveTransposeToSetlist called');
+    debugPrint('   - _hasSetlistContext: $_hasSetlistContext');
+    debugPrint('   - transposeSteps: $transposeSteps');
+
+    if (!_hasSetlistContext) {
+      debugPrint('🎵 SongViewerScreen: ABORT - no setlist context');
+      return;
+    }
+
+    final setlistProvider = context.read<SetlistProvider>();
+    debugPrint(
+        '   - setlistProvider.isSetlistActive: ${setlistProvider.isSetlistActive}');
+
+    if (!setlistProvider.isSetlistActive) {
+      debugPrint('🎵 SongViewerScreen: ABORT - setlist not active');
+      return;
+    }
+
+    // Only save if setlist-specific edits are enabled
+    final activeSetlist = setlistProvider.activeSetlist;
+    debugPrint(
+        '   - setlistSpecificEditsEnabled: ${activeSetlist?.setlistSpecificEditsEnabled}');
+
+    if (activeSetlist?.setlistSpecificEditsEnabled != true) {
+      debugPrint(
+          '🎵 SongViewerScreen: ABORT - setlist-specific edits disabled');
+      return;
+    }
+
+    try {
+      debugPrint('🎵 SongViewerScreen: SAVING transpose to setlist...');
+      await setlistProvider.updateCurrentSongAdjustments(
+        transposeSteps: transposeSteps,
+      );
+      debugPrint('🎵 SongViewerScreen: SUCCESS - transpose saved to setlist');
+    } catch (e) {
+      debugPrint(
+          '🎵 SongViewerScreen: ERROR - failed to save transpose to setlist: $e');
+    }
+  }
+
+  /// Save capo setting to setlist if applicable
+  void _saveCapoToSetlist(int capo) async {
+    debugPrint('🎵 SongViewerScreen: _saveCapoToSetlist called');
+    debugPrint('   - _hasSetlistContext: $_hasSetlistContext');
+    debugPrint('   - capo: $capo');
+
+    if (!_hasSetlistContext) {
+      debugPrint('🎵 SongViewerScreen: ABORT - no setlist context');
+      return;
+    }
+
+    final setlistProvider = context.read<SetlistProvider>();
+    debugPrint(
+        '   - setlistProvider.isSetlistActive: ${setlistProvider.isSetlistActive}');
+
+    if (!setlistProvider.isSetlistActive) {
+      debugPrint('🎵 SongViewerScreen: ABORT - setlist not active');
+      return;
+    }
+
+    // Only save if setlist-specific edits are enabled
+    final activeSetlist = setlistProvider.activeSetlist;
+    debugPrint(
+        '   - setlistSpecificEditsEnabled: ${activeSetlist?.setlistSpecificEditsEnabled}');
+
+    if (activeSetlist?.setlistSpecificEditsEnabled != true) {
+      debugPrint(
+          '🎵 SongViewerScreen: ABORT - setlist-specific edits disabled');
+      return;
+    }
+
+    try {
+      debugPrint('🎵 SongViewerScreen: SAVING capo to setlist...');
+      await setlistProvider.updateCurrentSongAdjustments(
+        capo: capo,
+      );
+      debugPrint('🎵 SongViewerScreen: SUCCESS - capo saved to setlist');
+    } catch (e) {
+      debugPrint(
+          '🎵 SongViewerScreen: ERROR - failed to save capo to setlist: $e');
+    }
   }
 
   void _toggleTransposeFlyout() {
@@ -442,11 +535,106 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     });
   }
 
-  void _onScopeToggle(bool value) {
-    if (!_hasSetlistContext) return;
-    setState(() {
-      _viewerAdjustments = _viewerAdjustments.copyWith(appliesToSetlist: value);
-    });
+  /// Handle horizontal swipe gestures for setlist navigation
+  void _handleHorizontalSwipeEnd(DragEndDetails details) {
+    final setlistProvider = context.read<SetlistProvider>();
+    if (!setlistProvider.isSetlistActive) return;
+
+    // Check velocity and ensure it's a primarily horizontal gesture
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 300) return; // Minimum velocity threshold
+
+    if (velocity > 0) {
+      // Swipe right -> Previous song
+      _navigateToPreviousSong();
+    } else {
+      // Swipe left -> Next song
+      _navigateToNextSong();
+    }
+  }
+
+  /// Navigate to the next song in the setlist
+  void _navigateToNextSong() async {
+    final setlistProvider = context.read<SetlistProvider>();
+    final globalSidebarProvider = context.read<GlobalSidebarProvider>();
+    final songRepository = context.read<SongRepository>();
+
+    final nextSongItem = setlistProvider.getNextSongItem();
+    if (nextSongItem == null) return;
+
+    try {
+      final nextSong = await songRepository.getSongById(nextSongItem.songId);
+      if (nextSong != null && mounted) {
+        // Update setlist provider index
+        setlistProvider
+            .updateCurrentSongIndex(setlistProvider.currentSongIndex + 1);
+
+        // Update global sidebar with new song and context
+        globalSidebarProvider.navigateToSongInSetlist(
+            nextSong, setlistProvider.currentSongIndex, nextSongItem);
+
+        // Update current song state instead of navigating
+        setState(() {
+          _currentSong = nextSong;
+          _transposeSteps = nextSongItem.transposeSteps ?? 0;
+          _currentCapo = nextSongItem.capo ?? nextSong.capo;
+          _initializeViewerAdjustments();
+          _showTransposeFlyout = false;
+          _showCapoFlyout = false;
+          _showAutoscrollFlyout = false;
+        });
+
+        // Reset scroll position and sync settings
+        _scrollController.animateTo(0,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        _syncMetronomeSettings();
+        _initializeAutoscroll();
+      }
+    } catch (e) {
+      debugPrint('Error navigating to next song: $e');
+    }
+  }
+
+  /// Navigate to the previous song in the setlist
+  void _navigateToPreviousSong() async {
+    final setlistProvider = context.read<SetlistProvider>();
+    final globalSidebarProvider = context.read<GlobalSidebarProvider>();
+    final songRepository = context.read<SongRepository>();
+
+    final prevSongItem = setlistProvider.getPreviousSongItem();
+    if (prevSongItem == null) return;
+
+    try {
+      final prevSong = await songRepository.getSongById(prevSongItem.songId);
+      if (prevSong != null && mounted) {
+        // Update setlist provider index
+        setlistProvider
+            .updateCurrentSongIndex(setlistProvider.currentSongIndex - 1);
+
+        // Update global sidebar with new song and context
+        globalSidebarProvider.navigateToSongInSetlist(
+            prevSong, setlistProvider.currentSongIndex, prevSongItem);
+
+        // Update current song state instead of navigating
+        setState(() {
+          _currentSong = prevSong;
+          _transposeSteps = prevSongItem.transposeSteps ?? 0;
+          _currentCapo = prevSongItem.capo ?? prevSong.capo;
+          _initializeViewerAdjustments();
+          _showTransposeFlyout = false;
+          _showCapoFlyout = false;
+          _showAutoscrollFlyout = false;
+        });
+
+        // Reset scroll position and sync settings
+        _scrollController.animateTo(0,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        _syncMetronomeSettings();
+        _initializeAutoscroll();
+      }
+    } catch (e) {
+      debugPrint('Error navigating to previous song: $e');
+    }
   }
 
   /// Reload the song from the database to get fresh data
@@ -638,6 +826,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapDown: (_) => _closeAllFlyouts(),
+                  onHorizontalDragEnd: _handleHorizontalSwipeEnd,
                   child: Column(
                     children: [
                       // Header with song info (always visible)
@@ -743,8 +932,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              SongEditorScreen(song: _currentSong),
+                          builder: (context) => SongEditorScreen(
+                              song: _currentSong,
+                              setlistContext: widget.setlistContext),
                         ),
                       );
 
@@ -835,16 +1025,79 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
       color: backgroundColor, // Match main window background
       child: Center(
-        child: Text(
-          _currentSong.title,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: textColor,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _currentSong.title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            _buildNextSongDisplay(textColor),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildNextSongDisplay(Color textColor) {
+    final setlistProvider = context.read<SetlistProvider>();
+    if (!setlistProvider.isSetlistActive) return const SizedBox.shrink();
+
+    return FutureBuilder<String?>(
+      future: _getNextSongDisplayText(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+
+        return Text(
+          snapshot.data!,
+          style: TextStyle(
+            fontSize: 14,
+            color: textColor.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w500,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _getNextSongDisplayText() async {
+    final setlistProvider = context.read<SetlistProvider>();
+    final songRepository = context.read<SongRepository>();
+
+    final nextSongItem = setlistProvider.getNextSongItem();
+    if (nextSongItem == null) return null;
+
+    try {
+      final nextSong = await songRepository.getSongById(nextSongItem.songId);
+      if (nextSong == null) return null;
+
+      // Calculate the effective key considering transpose/capo
+      String effectiveKey = nextSong.key.trim();
+      if (effectiveKey.isNotEmpty) {
+        final transposeSteps = nextSongItem.transposeSteps ?? 0;
+        final capoOffset = (nextSongItem.capo ?? nextSong.capo) - nextSong.capo;
+        final totalTranspose = transposeSteps + capoOffset;
+
+        if (totalTranspose != 0) {
+          effectiveKey =
+              ChordProParser.transposeChord(effectiveKey, totalTranspose);
+        }
+
+        return 'Next: ${nextSong.title} ($effectiveKey)';
+      } else {
+        return 'Next: ${nextSong.title}';
+      }
+    } catch (e) {
+      debugPrint('Error getting next song display: $e');
+      return null;
+    }
   }
 
   Widget _buildInnerButton({
@@ -1275,27 +1528,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   }
 
   Widget? _buildAdjustmentScopeToggle(bool isDarkMode) {
-    if (!_hasSetlistContext) return null;
-    final labelColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final accent =
-        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Apply to setlist entry',
-            style: TextStyle(fontSize: 11, color: labelColor),
-          ),
-        ),
-        Switch.adaptive(
-          value: _viewerAdjustments.appliesToSetlist,
-          onChanged: _onScopeToggle,
-          activeThumbColor: accent,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
-    );
+    // Remove duplicate "Apply to setlist entry" toggle - this is already handled in Add/Edit Setlist dialog
+    return null;
   }
 
   Widget _buildInlineAdjustmentControl({
