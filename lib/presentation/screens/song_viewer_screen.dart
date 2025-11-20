@@ -8,6 +8,7 @@ import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/metronome_provider.dart';
+import '../providers/autoscroll_provider.dart';
 import '../widgets/chord_renderer.dart';
 import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
@@ -192,7 +193,8 @@ class _ViewerTagWrap extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               'Edit',
-              style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7)),
+              style: TextStyle(
+                  fontSize: 12, color: textColor.withValues(alpha: 0.7)),
             ),
           ],
         ),
@@ -255,8 +257,10 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   int _currentCapo = 0;
   bool _showTransposeFlyout = false;
   bool _showCapoFlyout = false;
+  bool _showAutoscrollFlyout = false;
   late ViewerAdjustmentMetadata _viewerAdjustments;
   late MetronomeProvider _metronome;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -268,6 +272,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncMetronomeSettings();
+      _initializeAutoscroll();
     });
     // Enable landscape mode
     SystemChrome.setPreferredOrientations([
@@ -291,11 +296,18 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     );
   }
 
+  void _initializeAutoscroll() {
+    final autoscroll = context.read<AutoscrollProvider>();
+    autoscroll.initialize(_currentSong.body);
+    autoscroll.setScrollController(_scrollController);
+  }
+
   @override
   void didUpdateWidget(covariant SongViewerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     final songChanged = oldWidget.song.id != widget.song.id;
-    final setlistChanged = oldWidget.setlistContext?.songId != widget.setlistContext?.songId;
+    final setlistChanged =
+        oldWidget.setlistContext?.songId != widget.setlistContext?.songId;
     if (songChanged || setlistChanged) {
       setState(() {
         _currentSong = widget.song;
@@ -304,10 +316,12 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         _initializeViewerAdjustments();
         _showTransposeFlyout = false;
         _showCapoFlyout = false;
+        _showAutoscrollFlyout = false;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _syncMetronomeSettings();
+        _initializeAutoscroll();
       });
     }
   }
@@ -345,10 +359,12 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     return 'Key of $transposed (${_formatSignedValue(steps)})';
   }
 
-  String _formatSignedValue(int value) => value > 0 ? '+$value' : value.toString();
+  String _formatSignedValue(int value) =>
+      value > 0 ? '+$value' : value.toString();
 
   void _updateTranspose(int delta) {
-    final int updated = (_transposeSteps + delta).clamp(_minTranspose, _maxTranspose);
+    final int updated =
+        (_transposeSteps + delta).clamp(_minTranspose, _maxTranspose);
     if (updated == _transposeSteps) return;
     setState(() {
       _transposeSteps = updated;
@@ -379,16 +395,37 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       _showCapoFlyout = !_showCapoFlyout;
       if (_showCapoFlyout) {
         _showTransposeFlyout = false;
+        _showAutoscrollFlyout = false;
+      }
+    });
+  }
+
+  void _toggleAutoscrollFlyout() {
+    final autoscroll = context.read<AutoscrollProvider>();
+    setState(() {
+      // If autoscroll is active, don't close the flyout when toggling
+      if (autoscroll.isActive) {
+        _showAutoscrollFlyout = true;
+      } else {
+        _showAutoscrollFlyout = !_showAutoscrollFlyout;
+        if (_showAutoscrollFlyout) {
+          _showTransposeFlyout = false;
+          _showCapoFlyout = false;
+        }
       }
     });
   }
 
   void _closeAllFlyouts() {
-    if (!_showSettingsFlyout && !_showTransposeFlyout && !_showCapoFlyout) return;
+    if (!_showSettingsFlyout &&
+        !_showTransposeFlyout &&
+        !_showCapoFlyout &&
+        !_showAutoscrollFlyout) return;
     setState(() {
       _showSettingsFlyout = false;
       _showTransposeFlyout = false;
       _showCapoFlyout = false;
+      _showAutoscrollFlyout = false;
     });
   }
 
@@ -418,7 +455,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   void _syncMetronomeSettings() {
     if (!mounted) return;
     final bpm = _currentSong.bpm > 0 ? _currentSong.bpm : 120;
-    final timeSig = _currentSong.timeSignature.isNotEmpty ? _currentSong.timeSignature : '4/4';
+    final timeSig = _currentSong.timeSignature.isNotEmpty
+        ? _currentSong.timeSignature
+        : '4/4';
     _metronome
       ..setTempo(bpm)
       ..setTimeSignature(timeSig);
@@ -426,12 +465,24 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
 
   /// Get color for a tag based on whether it's an instrument tag
   (Color, Color) _getTagColors(String tag, BuildContext context) {
-    const instrumentTags = {'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'};
-    
+    const instrumentTags = {
+      'Acoustic',
+      'Electric',
+      'Piano',
+      'Guitar',
+      'Bass',
+      'Drums',
+      'Vocals',
+      'Instrumental'
+    };
+
     if (instrumentTags.contains(tag)) {
       return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
     } else {
-      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
+      return (
+        Theme.of(context).colorScheme.primaryContainer,
+        Theme.of(context).colorScheme.onPrimaryContainer
+      );
     }
   }
 
@@ -447,7 +498,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
           final repository = context.read<SongRepository>();
           final updatedSong = _currentSong.copyWith(tags: updatedTags);
           await repository.updateSong(updatedSong);
-          
+
           // Reload the song to get fresh data
           await _reloadSong();
         },
@@ -504,7 +555,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             content: Text('Song deleted successfully'),
           ),
         );
-        
+
         // Clear the current song from global state
         if (context.mounted) {
           context.read<GlobalSidebarProvider>().clearCurrentSong();
@@ -525,6 +576,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   @override
   void dispose() {
     _metronome.stop();
+    _scrollController.dispose();
     // Reset to portrait only when leaving
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -568,331 +620,386 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               });
             },
             child: Stack(
-            children: [
-              // Main content - scrollable lyrics/chords
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => _closeAllFlyouts(),
-                child: Column(
-                  children: [
-                    // Header with song info (always visible)
-                    _buildHeader(textColor),
+              children: [
+                // Main content - scrollable lyrics/chords
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (_) => _closeAllFlyouts(),
+                  child: Column(
+                    children: [
+                      // Header with song info (always visible)
+                      _buildHeader(textColor),
 
-                    // Scrollable song body
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Song metadata section
-                            _buildSongMetadata(textColor),
-                            const SizedBox(height: 24),
-                            // Song content
-                            ChordRenderer(
-                              chordProText: _currentSong.body,
-                              fontSize: _fontSize,
-                              isDarkMode: isDarkMode,
-                              transposeSteps: _effectiveTransposeSteps,
-                            ),
-                          ],
+                      // Scrollable song body
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Song metadata section
+                              _buildSongMetadata(textColor),
+                              const SizedBox(height: 24),
+                              // Song content
+                              ChordRenderer(
+                                chordProText: _currentSong.body,
+                                fontSize: _fontSize,
+                                isDarkMode: isDarkMode,
+                                transposeSteps: _effectiveTransposeSteps,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+
+                // Sidebar toggle button (always visible - static)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.menu,
+                      color: textColor,
+                      size: 28,
                     ),
-                  ],
-                ),
-              ),
-
-              // Sidebar toggle button (always visible - static)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.menu,
-                    color: textColor,
-                    size: 28,
+                    onPressed: () {
+                      context.read<GlobalSidebarProvider>().toggleSidebar();
+                    },
+                    tooltip: 'Toggle sidebar',
                   ),
-                  onPressed: () {
-                    context.read<GlobalSidebarProvider>().toggleSidebar();
-                  },
-                  tooltip: 'Toggle sidebar',
                 ),
-              ),
 
-              // Share button (always visible)
-              Positioned(
-                top: 8,
-                right: 104,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.share,
-                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
-                    size: 28,
+                // Share button (always visible)
+                Positioned(
+                  top: 8,
+                  right: 104,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.share,
+                      color: isDarkMode
+                          ? const Color(0xFF00D9FF)
+                          : const Color(0xFF0468cc),
+                      size: 28,
+                    ),
+                    onPressed: () {
+                      // TODO: Implement share
+                    },
+                    tooltip: 'Share song',
                   ),
-                  onPressed: () {
-                    // TODO: Implement share
-                  },
-                  tooltip: 'Share song',
                 ),
-              ),
 
-              // Delete button (always visible)
-              Positioned(
-                top: 8,
-                right: 56,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.delete,
-                    color: Colors.red,
-                    size: 28,
+                // Delete button (always visible)
+                Positioned(
+                  top: 8,
+                  right: 56,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                      size: 28,
+                    ),
+                    onPressed: _deleteSong,
+                    tooltip: 'Delete song',
                   ),
-                  onPressed: _deleteSong,
-                  tooltip: 'Delete song',
                 ),
-              ),
 
-              // Edit button (always visible)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.edit,
-                    color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
-                    size: 28,
-                  ),
-                  onPressed: () async {
-                        // Notify home screen that song is being edited
-                        widget.onSongEdit?.call();
-                        
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                SongEditorScreen(song: _currentSong),
-                          ),
-                        );
-                        
-                        // Handle the return from editor
-                        if (mounted) {
-                          if (result == 'deleted') {
-                            // Song was deleted - clear it from global state
-                            if (context.mounted) {
-                              context.read<GlobalSidebarProvider>().clearCurrentSong();
-                            }
-                          } else if (result == true) {
-                            // Song was updated, reload it
-                            final reloaded = await _reloadSong();
-                            if (!reloaded && context.mounted) {
-                              // Song was deleted while editing, clear it
-                              context.read<GlobalSidebarProvider>().clearCurrentSong();
-                            } else if (context.mounted) {
-                              // Update the song in global state with the reloaded version
-                              context.read<GlobalSidebarProvider>().navigateToSong(_currentSong);
-                            }
+                // Edit button (always visible)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.edit,
+                      color: isDarkMode
+                          ? const Color(0xFF00D9FF)
+                          : const Color(0xFF0468cc),
+                      size: 28,
+                    ),
+                    onPressed: () async {
+                      // Notify home screen that song is being edited
+                      widget.onSongEdit?.call();
+
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SongEditorScreen(song: _currentSong),
+                        ),
+                      );
+
+                      // Handle the return from editor
+                      if (mounted) {
+                        if (result == 'deleted') {
+                          // Song was deleted - clear it from global state
+                          if (context.mounted) {
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .clearCurrentSong();
+                          }
+                        } else if (result == true) {
+                          // Song was updated, reload it
+                          final reloaded = await _reloadSong();
+                          if (!reloaded && context.mounted) {
+                            // Song was deleted while editing, clear it
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .clearCurrentSong();
+                          } else if (context.mounted) {
+                            // Update the song in global state with the reloaded version
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .navigateToSong(_currentSong);
                           }
                         }
-                  },
-                  tooltip: 'Edit song',
+                      }
+                    },
+                    tooltip: 'Edit song',
+                  ),
                 ),
-              ),
 
-              // Floating action buttons (bottom right)
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    SizedBox(
-                      width: 96, // Fixed width to prevent shifting
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, wrapperValue, child) {
-                          return GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              // Absorb taps to prevent propagation to parent
-                            },
-                            child: SizedBox(
-                              width: 96,
-                              height: 40,
-                            child: Stack(
-                              alignment: Alignment.centerRight,
-                              clipBehavior: Clip.none,
-                              children: [
-                          // Expanding container (positioned to grow left)
-                          Positioned(
-                            right: 0,
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, child) {
-                                // Calculate width based on expansion - starts at 40 (circular), expands by 56 for second button
-                                final expandedWidth = 40.0 + (value * 56.0);
-                                
-                                return Container(
-                                  width: expandedWidth,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode 
-                                        ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
-                                        : Colors.white.withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-                                      width: 1.0,
-                                    ),
-                                    boxShadow: isDarkMode ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.4),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                        spreadRadius: 1,
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.2),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.white.withValues(alpha: 0.05),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, -1),
-                                      ),
-                                    ] : [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                        spreadRadius: 1,
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.08),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Stack(
-                                      children: [
-                                        // Theme toggle button (fades in/out) - positioned on left
-                                        if (value > 0.3) // Start showing when 30% expanded
-                                          Positioned(
-                                            left: 0,
-                                            top: 0,
-                                            bottom: 0,
-                                            child: Center(
-                                              child: Opacity(
-                                                opacity: ((value - 0.3) / 0.7).clamp(0.0, 1.0),
-                                                child: GestureDetector(
-                                                  onTap: () {
-                                                    // Prevent tap from propagating to parent
-                                                  },
-                                                  child: Builder(
-                                                    builder: (btnContext) => _buildInnerButton(
-                                                      icon: isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                                                      tooltip: 'Toggle Theme',
-                                                      onPressed: () {
-                                                        btnContext.read<ThemeProvider>().toggleTheme();
-                                                      },
-                                                      isDarkMode: isDarkMode,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        // Settings icon button - fixed position from right
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: 40,
-                                          child: Center(
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                onTap: () {
-                                                  setState(() {
-                                                    _showSettingsFlyout = !_showSettingsFlyout;
-                                                  });
-                                                },
-                                                customBorder: const CircleBorder(),
-                                                child: SizedBox(
-                                                  width: 40,
-                                                  height: 40,
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.settings,
-                                                      color: isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc),
-                                                      size: 20,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
+                // Floating action buttons (bottom right)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 96, // Fixed width to prevent shifting
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(
+                              begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, wrapperValue, child) {
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                // Absorb taps to prevent propagation to parent
                               },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _buildTransposeButton(),
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _buildCapoButton(),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: 96, // Fixed width to prevent shifting
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildFloatingButton(
-                          icon: Icons.play_arrow,
-                          tooltip: 'AutoScroll',
-                          onPressed: () {
-                            // TODO: Implement autoscroll
+                              child: SizedBox(
+                                width: 96,
+                                height: 40,
+                                child: Stack(
+                                  alignment: Alignment.centerRight,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    // Expanding container (positioned to grow left)
+                                    Positioned(
+                                      right: 0,
+                                      child: TweenAnimationBuilder<double>(
+                                        tween: Tween(
+                                            begin: 0.0,
+                                            end: _showSettingsFlyout
+                                                ? 1.0
+                                                : 0.0),
+                                        duration:
+                                            const Duration(milliseconds: 250),
+                                        curve: Curves.easeOutCubic,
+                                        builder: (context, value, child) {
+                                          // Calculate width based on expansion - starts at 40 (circular), expands by 56 for second button
+                                          final expandedWidth =
+                                              40.0 + (value * 56.0);
+
+                                          return Container(
+                                            width: expandedWidth,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              color: isDarkMode
+                                                  ? const Color(0xFF0A0A0A)
+                                                      .withValues(alpha: 0.7)
+                                                  : Colors.white
+                                                      .withValues(alpha: 0.9),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: isDarkMode
+                                                    ? Colors.grey.shade700
+                                                    : Colors.grey.shade400,
+                                                width: 1.0,
+                                              ),
+                                              boxShadow: isDarkMode
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha: 0.4),
+                                                        blurRadius: 10,
+                                                        offset:
+                                                            const Offset(0, 4),
+                                                        spreadRadius: 1,
+                                                      ),
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha: 0.2),
+                                                        blurRadius: 20,
+                                                        offset:
+                                                            const Offset(0, 8),
+                                                      ),
+                                                      BoxShadow(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                                alpha: 0.05),
+                                                        blurRadius: 4,
+                                                        offset:
+                                                            const Offset(0, -1),
+                                                      ),
+                                                    ]
+                                                  : [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha: 0.15),
+                                                        blurRadius: 10,
+                                                        offset:
+                                                            const Offset(0, 4),
+                                                        spreadRadius: 1,
+                                                      ),
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                                alpha: 0.08),
+                                                        blurRadius: 20,
+                                                        offset:
+                                                            const Offset(0, 8),
+                                                      ),
+                                                    ],
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              child: Stack(
+                                                children: [
+                                                  // Theme toggle button (fades in/out) - positioned on left
+                                                  if (value >
+                                                      0.3) // Start showing when 30% expanded
+                                                    Positioned(
+                                                      left: 0,
+                                                      top: 0,
+                                                      bottom: 0,
+                                                      child: Center(
+                                                        child: Opacity(
+                                                          opacity: ((value -
+                                                                      0.3) /
+                                                                  0.7)
+                                                              .clamp(0.0, 1.0),
+                                                          child:
+                                                              GestureDetector(
+                                                            onTap: () {
+                                                              // Prevent tap from propagating to parent
+                                                            },
+                                                            child: Builder(
+                                                              builder:
+                                                                  (btnContext) =>
+                                                                      _buildInnerButton(
+                                                                icon: isDarkMode
+                                                                    ? Icons
+                                                                        .dark_mode
+                                                                    : Icons
+                                                                        .light_mode,
+                                                                tooltip:
+                                                                    'Toggle Theme',
+                                                                onPressed: () {
+                                                                  btnContext
+                                                                      .read<
+                                                                          ThemeProvider>()
+                                                                      .toggleTheme();
+                                                                },
+                                                                isDarkMode:
+                                                                    isDarkMode,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  // Settings icon button - fixed position from right
+                                                  Positioned(
+                                                    right: 0,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    width: 40,
+                                                    child: Center(
+                                                      child: Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        child: InkWell(
+                                                          onTap: () {
+                                                            setState(() {
+                                                              _showSettingsFlyout =
+                                                                  !_showSettingsFlyout;
+                                                            });
+                                                          },
+                                                          customBorder:
+                                                              const CircleBorder(),
+                                                          child: SizedBox(
+                                                            width: 40,
+                                                            height: 40,
+                                                            child: Center(
+                                                              child: Icon(
+                                                                Icons.settings,
+                                                                color: isDarkMode
+                                                                    ? const Color(
+                                                                        0xFF00D9FF)
+                                                                    : const Color(
+                                                                        0xFF0468cc),
+                                                                size: 20,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: 96, // Fixed width to prevent shifting
-                      child: Align(
+                      const SizedBox(height: 12),
+                      Align(
                         alignment: Alignment.centerRight,
-                        child: _buildMetronomeButton(),
+                        child: _buildTransposeButton(),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildCapoButton(),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildAutoscrollButton(),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 96, // Fixed width to prevent shifting
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _buildMetronomeButton(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const _MetronomeFlashOverlay(),
-            ],
-          ),
+                const _MetronomeFlashOverlay(),
+              ],
+            ),
           ),
         ),
       ),
@@ -928,7 +1035,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     required bool isDarkMode,
   }) {
     const glowColor = Color(0xFF00D9FF);
-    
+
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -938,8 +1045,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
           color: Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isDarkMode 
-                ? Colors.grey.shade700.withValues(alpha: 0.3) // Very faint border
+            color: isDarkMode
+                ? Colors.grey.shade700
+                    .withValues(alpha: 0.3) // Very faint border
                 : Colors.grey.shade400.withValues(alpha: 0.3),
             width: 0.5,
           ),
@@ -957,78 +1065,11 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     );
   }
 
-  Widget _buildFloatingButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    final themeProvider = context.read<ThemeProvider>();
-    final isDarkMode = themeProvider.isDarkMode;
-    const glowColor = Color(0xFF00D9FF); // Bright cyan
-    
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDarkMode 
-            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7) // Semi-transparent dark interior
-            : Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-          width: 1.0, // Thinner border
-        ),
-        boxShadow: isDarkMode ? [
-          // Main shadow for elevation
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          // Secondary shadow for depth
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          // Subtle top highlight for raised effect
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ] : [
-          // Main shadow for elevation
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          // Secondary shadow for depth
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon),
-        color: isDarkMode ? glowColor : const Color(0xFF0468cc),
-        iconSize: 20,
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
-        tooltip: tooltip,
-      ),
-    );
-  }
-
   Widget _buildCapoButton() {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    final iconColor = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final iconColor =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return _buildAdjustmentFlyout(
       isDarkMode: isDarkMode,
@@ -1048,10 +1089,60 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     );
   }
 
+  Widget _buildAutoscrollButton() {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    final accent =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+
+    return Consumer<AutoscrollProvider>(
+      builder: (context, autoscroll, child) {
+        return _buildAdjustmentFlyout(
+          isDarkMode: isDarkMode,
+          isOpen: _showAutoscrollFlyout,
+          onToggle: () {
+            final wasActive = autoscroll.isActive;
+            final wasFlyoutOpen = _showAutoscrollFlyout;
+            autoscroll.toggle();
+            // Open flyout when autoscroll starts
+            // Close flyout when stopping from open state
+            // Keep flyout closed when stopping from closed state
+            if (autoscroll.isActive) {
+              setState(() {
+                _showAutoscrollFlyout = true;
+                _showTransposeFlyout = false;
+                _showCapoFlyout = false;
+              });
+            } else if (wasActive && !wasFlyoutOpen) {
+              // Was active with flyout closed, now stopping - keep flyout closed
+              // Do nothing
+            } else {
+              // Normal toggle behavior
+              _toggleAutoscrollFlyout();
+            }
+          },
+          icon: Icon(
+            autoscroll.isActive ? Icons.pause : Icons.play_arrow,
+            color: autoscroll.isActive ? Colors.white : accent,
+            size: 18,
+          ),
+          displayValue: autoscroll.durationDisplay,
+          semanticsLabel: 'Autoscroll duration ${autoscroll.durationDisplay}',
+          onIncrement: () => autoscroll.adjustDuration(15),
+          onDecrement: () => autoscroll.adjustDuration(-15),
+          canIncrement: autoscroll.durationSeconds < 600,
+          canDecrement: autoscroll.durationSeconds > 30,
+          isActive: autoscroll.isActive,
+        );
+      },
+    );
+  }
+
   Widget _buildTransposeButton() {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final accent =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     final icon = Row(
       mainAxisSize: MainAxisSize.min,
@@ -1138,13 +1229,16 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     bool canIncrement = true,
     bool canDecrement = true,
     Widget? extraContent,
+    bool isActive = false,
   }) {
     final backgroundColor = isDarkMode
         ? const Color(0xFF0A0A0A).withValues(alpha: 0.85)
         : Colors.white.withValues(alpha: 0.95);
-    final borderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
+    final borderColor =
+        isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
-    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final accent =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return SizedBox(
       width: 220,
@@ -1179,15 +1273,21 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                         accentColor: accent,
                       ),
                       Expanded(
-                        child: Center(
-                          child: Semantics(
-                            label: semanticsLabel ?? displayValue,
-                            child: Text(
-                              displayValue,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            // Absorb taps on the display value to prevent propagation
+                          },
+                          child: Center(
+                            child: Semantics(
+                              label: semanticsLabel ?? displayValue,
+                              child: Text(
+                                displayValue,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
                               ),
                             ),
                           ),
@@ -1214,16 +1314,23 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 opacity: isOpen ? 1 : 0,
                 child: IgnorePointer(
                   ignoring: !isOpen,
-                  child: Container(
-                    width: 180,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: borderColor, width: 1.0),
-                      boxShadow: _buildFloatingShadows(isDarkMode),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      // Absorb taps to prevent propagation to parent
+                    },
+                    child: Container(
+                      width: 180,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: borderColor, width: 1.0),
+                        boxShadow: _buildFloatingShadows(isDarkMode),
+                      ),
+                      child: extraContent,
                     ),
-                    child: extraContent,
                   ),
                 ),
               ),
@@ -1236,11 +1343,16 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isDarkMode
-                      ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
-                      : Colors.white.withValues(alpha: 0.9),
+                  color: isActive
+                      ? Colors.blue.withValues(alpha: 0.8)
+                      : (isDarkMode
+                          ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                          : Colors.white.withValues(alpha: 0.9)),
                   shape: BoxShape.circle,
-                  border: Border.all(color: borderColor, width: 1.0),
+                  border: Border.all(
+                    color: isActive ? Colors.blue : borderColor,
+                    width: 1.0,
+                  ),
                   boxShadow: _buildFloatingShadows(isDarkMode),
                 ),
                 child: Center(child: icon),
@@ -1255,7 +1367,8 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   Widget? _buildAdjustmentScopeToggle(bool isDarkMode) {
     if (!_hasSetlistContext) return null;
     final labelColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final accent = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final accent =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return Row(
       children: [
@@ -1453,39 +1566,43 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
             color: backgroundColor,
             shape: BoxShape.circle,
             border: Border.all(
-              color: isActive ? accent : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
+              color: isActive
+                  ? accent
+                  : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
               width: isActive ? 2.0 : 1.0,
             ),
-            boxShadow: isDarkMode ? [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-                spreadRadius: 1,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, -1),
-              ),
-            ] : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-                spreadRadius: 1,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            boxShadow: isDarkMode
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 1,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, -1),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 1,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: Material(
             color: Colors.transparent,
@@ -1506,7 +1623,6 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       },
     );
   }
-
 }
 
 class _MetronomeFlashOverlay extends StatelessWidget {

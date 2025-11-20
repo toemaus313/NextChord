@@ -90,12 +90,14 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
 
     final regex = RegExp('\\{$directive:[^}]*\\}', caseSensitive: false);
     if (regex.hasMatch(body)) {
-      return body.replaceFirst(regex, '{${directive.toLowerCase()}:$trimmedValue}');
+      return body.replaceFirst(
+          regex, '{${directive.toLowerCase()}:$trimmedValue}');
     }
 
     final lines = body.split('\n');
     int insertIndex = 0;
-    while (insertIndex < lines.length && lines[insertIndex].trim().startsWith('{')) {
+    while (insertIndex < lines.length &&
+        lines[insertIndex].trim().startsWith('{')) {
       insertIndex++;
     }
     lines.insert(insertIndex, '{${directive.toLowerCase()}:$trimmedValue}');
@@ -114,7 +116,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       _selectedCapo = song.capo;
       _selectedTimeSignature = song.timeSignature;
       _tags = List.from(song.tags);
-      
+
       // Extract duration from ChordPro metadata if available
       final metadata = ChordProParser.extractMetadata(song.body);
       if (metadata.duration != null) {
@@ -158,7 +160,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     if (currentText.trim().isEmpty) return;
 
     final selection = _bodyController.selection;
-    final updatedText = ChordProParser.transposeChordProText(currentText, semitones);
+    final updatedText =
+        ChordProParser.transposeChordProText(currentText, semitones);
     _bodyController.text = updatedText;
 
     int baseOffset = selection.baseOffset;
@@ -208,42 +211,42 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   void _onBodyTextChanged() {
     // Avoid recursive calls during auto-completion
     if (_isAutoCompleting) return;
-    
+
     final currentText = _bodyController.text;
-    
+
     // Only process if text actually changed
     if (currentText == _lastBodyText) {
       return;
     }
-    
+
     // Check if user just completed typing {sot}
     // We detect this by checking if the text ends with {sot} at the cursor position
     if (currentText.length > _lastBodyText.length) {
       final cursorPos = _bodyController.selection.baseOffset;
-      
+
       // Check if we just typed the closing } of {sot}
       if (cursorPos >= 5) {
         final beforeCursor = currentText.substring(0, cursorPos);
         if (beforeCursor.endsWith('{sot}')) {
           // Check if there's already a matching {eot} after this position
           final hasMatchingEot = _hasMatchingEot(currentText, cursorPos);
-          
+
           if (!hasMatchingEot) {
             _insertEotAfterSot(cursorPos);
           }
         }
       }
     }
-    
+
     _lastBodyText = currentText;
   }
-  
+
   /// Check if there's a matching {eot} for the {sot} at the given position
   bool _hasMatchingEot(String text, int sotEndPos) {
     // Look ahead for {eot} within reasonable distance (50 lines)
     final afterSot = text.substring(sotEndPos);
     final lines = afterSot.split('\n');
-    
+
     // Check up to 50 lines ahead
     final linesToCheck = lines.take(50).join('\n');
     return linesToCheck.toLowerCase().contains('{eot}');
@@ -254,23 +257,23 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   /// Otherwise, insert {eot} with space for typing
   void _insertEotAfterSot(int sotEndPos) {
     _isAutoCompleting = true;
-    
+
     try {
       final currentText = _bodyController.text;
       final before = currentText.substring(0, sotEndPos);
       final after = currentText.substring(sotEndPos);
-      
+
       // Split the text after {sot} into lines
       final afterLines = after.split('\n');
-      
+
       // Check if there's tab content in the next few lines
       int tabEndLineIndex = -1;
       bool foundTab = false;
       int emptyLineCount = 0;
-      
+
       for (int i = 0; i < afterLines.length && i < 20; i++) {
         final line = afterLines[i].trim();
-        
+
         // Count empty lines before finding first tab
         if (!foundTab && line.isEmpty) {
           emptyLineCount++;
@@ -280,7 +283,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           }
           continue;
         }
-        
+
         // Check if this line looks like tab
         if (_looksLikeTabLine(line)) {
           if (!foundTab) {
@@ -300,15 +303,15 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           }
         }
       }
-      
+
       String newText;
       int newCursorPos;
-      
+
       if (foundTab && tabEndLineIndex >= 0) {
         // Tab content exists - insert {eot} after the last tab line
         final beforeTab = afterLines.sublist(0, tabEndLineIndex + 1).join('\n');
         final afterTab = afterLines.sublist(tabEndLineIndex + 1).join('\n');
-        
+
         newText = '$before$beforeTab\n{eot}$afterTab';
         // Keep cursor at current position (after {sot})
         newCursorPos = sotEndPos;
@@ -318,10 +321,10 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         // Position cursor right after {sot} and the newline, ready to type tab
         newCursorPos = sotEndPos + 1;
       }
-      
+
       _bodyController.text = newText;
       _lastBodyText = newText;
-      
+
       _bodyController.selection = TextSelection.fromPosition(
         TextPosition(offset: newCursorPos),
       );
@@ -329,20 +332,20 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       _isAutoCompleting = false;
     }
   }
-  
+
   /// Check if a line looks like guitar tablature
   bool _looksLikeTabLine(String line) {
     if (line.isEmpty) return false;
-    
+
     // Check for standard guitar string notation (E|, A|, D|, G|, B|, e|)
     final tabLineRegex = RegExp(r'^[EADGBe]\|[\-0-9|]+', caseSensitive: true);
     if (tabLineRegex.hasMatch(line)) return true;
-    
+
     // Also check for lines that are mostly dashes, numbers, and pipes
     final tabChars = RegExp(r'[\-0-9|]');
     final nonSpaceChars = line.replaceAll(' ', '');
     if (nonSpaceChars.length < 3) return false;
-    
+
     final tabCharCount = tabChars.allMatches(nonSpaceChars).length;
     return tabCharCount / nonSpaceChars.length > 0.5;
   }
@@ -363,31 +366,33 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       // Update ChordPro body with duration if provided
       String updatedBody = _bodyController.text.trim();
       final duration = _durationController.text.trim();
-      
+
       if (duration.isNotEmpty) {
         // Check if duration directive already exists
-        final durationRegex = RegExp(r'\{duration:[^}]*\}', caseSensitive: false);
+        final durationRegex =
+            RegExp(r'\{duration:[^}]*\}', caseSensitive: false);
         if (durationRegex.hasMatch(updatedBody)) {
           // Update existing duration
-          updatedBody = updatedBody.replaceFirst(durationRegex, '{duration:$duration}');
+          updatedBody =
+              updatedBody.replaceFirst(durationRegex, '{duration:$duration}');
         } else {
           // Add duration directive at the beginning (after title/artist if present)
           final lines = updatedBody.split('\n');
           int insertIndex = 0;
-          
+
           // Find position after title/artist/key directives
           for (int i = 0; i < lines.length; i++) {
-            if (lines[i].trim().startsWith('{') && 
-                (lines[i].contains('title:') || 
-                 lines[i].contains('artist:') || 
-                 lines[i].contains('subtitle:') ||
-                 lines[i].contains('key:'))) {
+            if (lines[i].trim().startsWith('{') &&
+                (lines[i].contains('title:') ||
+                    lines[i].contains('artist:') ||
+                    lines[i].contains('subtitle:') ||
+                    lines[i].contains('key:'))) {
               insertIndex = i + 1;
             } else if (!lines[i].trim().startsWith('{')) {
               break;
             }
           }
-          
+
           lines.insert(insertIndex, '{duration:$duration}');
           updatedBody = lines.join('\n');
         }
@@ -442,7 +447,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         Navigator.of(context).pop(true); // Return true to indicate success
       }
     } catch (e) {
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -473,14 +477,14 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       if (result != null && result.files.single.path != null) {
         final filePath = result.files.single.path!;
         final fileName = result.files.single.name;
-        
+
         // Parse as ChordPro text file
         final file = File(filePath);
         final content = await file.readAsString();
-        
+
         // Extract metadata from ChordPro
         final metadata = ChordProParser.extractMetadata(content);
-        
+
         // Update UI with initial metadata
         setState(() {
           if (metadata.title != null) {
@@ -501,17 +505,18 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               _bpmController.text = tempo.toString();
             }
           }
-          if (metadata.time != null && _timeSignatures.contains(metadata.time)) {
+          if (metadata.time != null &&
+              _timeSignatures.contains(metadata.time)) {
             _selectedTimeSignature = metadata.time!;
           }
           if (metadata.duration != null) {
             _durationController.text = metadata.duration!;
           }
-          
+
           // Set the body content
           _bodyController.text = content;
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -536,7 +541,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   /// Convert pasted Ultimate Guitar text to ChordPro format
   Future<void> _convertToChordPro() async {
     final currentText = _bodyController.text.trim();
-    
+
     if (currentText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -546,13 +551,13 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       );
       return;
     }
-    
+
     try {
       // Convert the text
       final result = UGTextConverter.convertToChordPro(currentText);
       final chordProContent = result['chordpro'] as String;
       final metadata = result['metadata'] as Map<String, String>;
-      
+
       setState(() {
         // Populate metadata fields
         if (metadata['title'] != null && _titleController.text.isEmpty) {
@@ -576,14 +581,15 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
             _bpmController.text = tempo.toString();
           }
         }
-        if (metadata['timeSignature'] != null && _timeSignatures.contains(metadata['timeSignature'])) {
+        if (metadata['timeSignature'] != null &&
+            _timeSignatures.contains(metadata['timeSignature'])) {
           _selectedTimeSignature = metadata['timeSignature']!;
         }
-        
+
         // Replace the body with converted content
         _bodyController.text = chordProContent;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -607,7 +613,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   /// Import from Ultimate Guitar URL
   Future<void> _importFromUltimateGuitar() async {
     final urlController = TextEditingController();
-    
+
     // Show dialog to get URL
     final url = await showDialog<String>(
       context: context,
@@ -751,12 +757,24 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
 
   /// Get color for a tag based on whether it's an instrument tag
   (Color, Color) _getTagColors(String tag, BuildContext context) {
-    const instrumentTags = {'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 'Drums', 'Vocals', 'Instrumental'};
-    
+    const instrumentTags = {
+      'Acoustic',
+      'Electric',
+      'Piano',
+      'Guitar',
+      'Bass',
+      'Drums',
+      'Vocals',
+      'Instrumental'
+    };
+
     if (instrumentTags.contains(tag)) {
       return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
     } else {
-      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
+      return (
+        Theme.of(context).colorScheme.primaryContainer,
+        Theme.of(context).colorScheme.onPrimaryContainer
+      );
     }
   }
 
@@ -842,7 +860,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     final isDarkMode = themeProvider.isDarkMode;
     final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
-    final actionColor = isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final actionColor =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -859,335 +878,369 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     padding: const EdgeInsets.fromLTRB(16.0, 60.0, 16.0, 0),
                     child: Column(
                       children: [
-            // Title field
-            TextFormField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                labelStyle: TextStyle(fontSize: 13),
-                hintText: 'Enter song title',
-                hintStyle: TextStyle(fontSize: 13),
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.music_note, size: 20),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                isDense: true,
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Artist field
-            TextFormField(
-              controller: _artistController,
-              style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
-                labelText: 'Artist',
-                labelStyle: TextStyle(fontSize: 13),
-                hintText: 'Enter artist name',
-                hintStyle: TextStyle(fontSize: 13),
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person, size: 20),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                isDense: true,
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Artist is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Single row with Key, BPM, Capo, Time Signature, Duration
-            Row(
-              children: [
-                // Key dropdown
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedKey,
-                    style: TextStyle(fontSize: 14, color: textColor),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.piano, size: 18),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    items: _keys.map((key) {
-                      return DropdownMenuItem(
-                        value: key,
-                        child: Text(key, style: const TextStyle(fontSize: 13)),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        _handleKeySelection(value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // BPM field
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _bpmController,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: CustomPaint(
-                          size: const Size(18, 18),
-                          painter: MetronomeIconPainter(
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                        // Title field
+                        TextFormField(
+                          controller: _titleController,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: 'Title',
+                            labelStyle: TextStyle(fontSize: 13),
+                            hintText: 'Enter song title',
+                            hintStyle: TextStyle(fontSize: 13),
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.music_note, size: 20),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            isDense: true,
                           ),
+                          textCapitalization: TextCapitalization.words,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Title is required';
+                            }
+                            return null;
+                          },
                         ),
-                      ),
-                      hintText: '120',
-                      hintStyle: const TextStyle(fontSize: 12),
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Required';
-                      }
-                      final bpm = int.tryParse(value.trim());
-                      if (bpm == null || bpm < 1 || bpm > 300) {
-                        return 'Invalid';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
+                        const SizedBox(height: 12),
 
-                // Capo dropdown
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _selectedCapo,
-                    style: TextStyle(fontSize: 14, color: textColor),
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: CustomPaint(
-                          size: const Size(18, 18),
-                          painter: CapoIconPainter(
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                        // Artist field
+                        TextFormField(
+                          controller: _artistController,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: const InputDecoration(
+                            labelText: 'Artist',
+                            labelStyle: TextStyle(fontSize: 13),
+                            hintText: 'Enter artist name',
+                            hintStyle: TextStyle(fontSize: 13),
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person, size: 20),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            isDense: true,
                           ),
+                          textCapitalization: TextCapitalization.words,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Artist is required';
+                            }
+                            return null;
+                          },
                         ),
-                      ),
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    items: List.generate(13, (index) => index).map((capo) {
-                      return DropdownMenuItem(
-                        value: capo,
-                        child: Text(capo.toString(), style: const TextStyle(fontSize: 13)),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        _handleCapoSelection(value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
+                        const SizedBox(height: 12),
 
-                // Time Signature dropdown
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedTimeSignature,
-                    style: TextStyle(fontSize: 14, color: textColor),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.timer, size: 18),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    items: _timeSignatures.map((sig) {
-                      return DropdownMenuItem(
-                        value: sig,
-                        child: Text(sig, style: const TextStyle(fontSize: 13)),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedTimeSignature = value;
-                        });
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Duration field
-                Expanded(
-                  flex: 3,
-                  child: TextFormField(
-                    controller: _durationController,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.play_arrow, size: 18),
-                      hintText: '3:45',
-                      hintStyle: TextStyle(fontSize: 12),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.text,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return null;
-                      }
-                      final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
-                      if (!pattern.hasMatch(value.trim())) {
-                        return 'Invalid';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Tags row matching viewer behavior
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-                  width: 1.0,
-                ),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    'Tags',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  if (_tags.isNotEmpty)
-                    ..._tags.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final tag = entry.value;
-                      final (bgColor, tagTextColor) = _getTagColors(tag, context);
-                      return DragTarget<int>(
-                        onWillAccept: (dragIndex) => dragIndex != index,
-                        onAccept: (dragIndex) {
-                          setState(() {
-                            final tagToMove = _tags.removeAt(dragIndex);
-                            _tags.insert(index, tagToMove);
-                          });
-                        },
-                        builder: (context, candidate, rejected) {
-                          return Draggable<int>(
-                            data: index,
-                            feedback: Opacity(
-                              opacity: 0.7,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: _TagChip(
-                                  key: ValueKey('drag_tag_$tag'),
-                                  tag: tag,
-                                  bgColor: bgColor,
-                                  textColor: tagTextColor,
-                                  onRemove: () {},
+                        // Single row with Key, BPM, Capo, Time Signature, Duration
+                        Row(
+                          children: [
+                            // Key dropdown
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _selectedKey,
+                                style:
+                                    TextStyle(fontSize: 14, color: textColor),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.piano, size: 18),
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
                                 ),
-                              ),
-                            ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: _TagChip(
-                                key: ValueKey('tag_drag_${index}_$tag'),
-                                tag: tag,
-                                bgColor: bgColor,
-                                textColor: tagTextColor,
-                                onRemove: () {
-                                  setState(() {
-                                    _tags.removeAt(index);
-                                  });
+                                items: _keys.map((key) {
+                                  return DropdownMenuItem(
+                                    value: key,
+                                    child: Text(key,
+                                        style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _handleKeySelection(value);
+                                  }
                                 },
                               ),
                             ),
-                            child: _TagChip(
-                              key: ValueKey('tag_${index}_$tag'),
-                              tag: tag,
-                              bgColor: bgColor,
-                              textColor: tagTextColor,
-                              onRemove: () {
-                                setState(() {
-                                  _tags.removeAt(index);
-                                });
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    })
-                  else
-                    Text(
-                      'No tags yet',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: textColor.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  GestureDetector(
-                    onTap: _openTagsDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: textColor.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.edit, size: 14, color: textColor.withValues(alpha: 0.7)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Edit',
-                            style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.7)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                            const SizedBox(width: 8),
 
+                            // BPM field
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: _bpmController,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: InputDecoration(
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: CustomPaint(
+                                      size: const Size(18, 18),
+                                      painter: MetronomeIconPainter(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                  hintText: '120',
+                                  hintStyle: const TextStyle(fontSize: 12),
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Required';
+                                  }
+                                  final bpm = int.tryParse(value.trim());
+                                  if (bpm == null || bpm < 1 || bpm > 300) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Capo dropdown
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<int>(
+                                initialValue: _selectedCapo,
+                                style:
+                                    TextStyle(fontSize: 14, color: textColor),
+                                decoration: InputDecoration(
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: CustomPaint(
+                                      size: const Size(18, 18),
+                                      painter: CapoIconPainter(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                items: List.generate(13, (index) => index)
+                                    .map((capo) {
+                                  return DropdownMenuItem(
+                                    value: capo,
+                                    child: Text(capo.toString(),
+                                        style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _handleCapoSelection(value);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Time Signature dropdown
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _selectedTimeSignature,
+                                style:
+                                    TextStyle(fontSize: 14, color: textColor),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.timer, size: 18),
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                items: _timeSignatures.map((sig) {
+                                  return DropdownMenuItem(
+                                    value: sig,
+                                    child: Text(sig,
+                                        style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedTimeSignature = value;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Duration field
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                controller: _durationController,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.play_arrow, size: 18),
+                                  hintText: '3:00',
+                                  hintStyle: TextStyle(fontSize: 12),
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                keyboardType: TextInputType.text,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final pattern =
+                                      RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
+                                  if (!pattern.hasMatch(value.trim())) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Tags row matching viewer behavior
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade400,
+                              width: 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                'Tags',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              if (_tags.isNotEmpty)
+                                ..._tags.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final tag = entry.value;
+                                  final (bgColor, tagTextColor) =
+                                      _getTagColors(tag, context);
+                                  return DragTarget<int>(
+                                    onWillAccept: (dragIndex) =>
+                                        dragIndex != index,
+                                    onAccept: (dragIndex) {
+                                      setState(() {
+                                        final tagToMove =
+                                            _tags.removeAt(dragIndex);
+                                        _tags.insert(index, tagToMove);
+                                      });
+                                    },
+                                    builder: (context, candidate, rejected) {
+                                      return Draggable<int>(
+                                        data: index,
+                                        feedback: Opacity(
+                                          opacity: 0.7,
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: _TagChip(
+                                              key: ValueKey('drag_tag_$tag'),
+                                              tag: tag,
+                                              bgColor: bgColor,
+                                              textColor: tagTextColor,
+                                              onRemove: () {},
+                                            ),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.3,
+                                          child: _TagChip(
+                                            key: ValueKey(
+                                                'tag_drag_${index}_$tag'),
+                                            tag: tag,
+                                            bgColor: bgColor,
+                                            textColor: tagTextColor,
+                                            onRemove: () {
+                                              setState(() {
+                                                _tags.removeAt(index);
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        child: _TagChip(
+                                          key: ValueKey('tag_${index}_$tag'),
+                                          tag: tag,
+                                          bgColor: bgColor,
+                                          textColor: tagTextColor,
+                                          onRemove: () {
+                                            setState(() {
+                                              _tags.removeAt(index);
+                                            });
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  );
+                                })
+                              else
+                                Text(
+                                  'No tags yet',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textColor.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              GestureDetector(
+                                onTap: _openTagsDialog,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                        color:
+                                            textColor.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.edit,
+                                          size: 14,
+                                          color:
+                                              textColor.withValues(alpha: 0.7)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Edit',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: textColor.withValues(
+                                                alpha: 0.7)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -1197,10 +1250,14 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                       padding: const EdgeInsets.all(16.0),
                       child: TextFormField(
                         controller: _bodyController,
-                        style: const TextStyle(fontSize: 14, fontFamily: 'monospace'),
+                        style: const TextStyle(
+                            fontSize: 14, fontFamily: 'monospace'),
                         decoration: InputDecoration(
-                          hintText: '[C]Amazing [G]grace, how [Am]sweet the [F]sound\n[C]That saved a [G]wretch like [C]me',
-                          hintStyle: TextStyle(fontSize: 13, color: textColor.withValues(alpha: 0.3)),
+                          hintText:
+                              '[C]Amazing [G]grace, how [Am]sweet the [F]sound\n[C]That saved a [G]wretch like [C]me',
+                          hintStyle: TextStyle(
+                              fontSize: 13,
+                              color: textColor.withValues(alpha: 0.3)),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
@@ -1222,7 +1279,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 ],
               ),
             ),
-            
+
             // Header with title
             Positioned(
               top: 0,
@@ -1230,7 +1287,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               right: 0,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
                 color: backgroundColor,
                 child: Center(
                   child: Text(
@@ -1244,7 +1302,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 ),
               ),
             ),
-            
+
             // Back button (top left)
             Positioned(
               top: 8,
@@ -1257,7 +1315,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 isDarkMode: isDarkMode,
               ),
             ),
-            
+
             // Convert button available in both create & edit modes
             Positioned(
               top: 8,
@@ -1270,7 +1328,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 isDarkMode: isDarkMode,
               ),
             ),
-            
+
             // Delete button (top right, only when editing)
             if (isEditing)
               Positioned(
@@ -1310,7 +1368,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                 ),
               ),
             ],
-            
+
             // Save button (top right)
             Positioned(
               top: 8,
@@ -1325,39 +1383,43 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                             : Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+                          color: isDarkMode
+                              ? Colors.grey.shade700
+                              : Colors.grey.shade400,
                           width: 1.0,
                         ),
-                        boxShadow: isDarkMode ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                            spreadRadius: 1,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, -1),
-                          ),
-                        ] : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                            spreadRadius: 1,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                        boxShadow: isDarkMode
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                  spreadRadius: 1,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, -1),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                  spreadRadius: 1,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                       ),
                       child: Center(
                         child: SizedBox(
@@ -1365,7 +1427,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(actionColor),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(actionColor),
                           ),
                         ),
                       ),
@@ -1383,7 +1446,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       ),
     );
   }
-  
+
   Widget _buildActionButton({
     required IconData icon,
     required String tooltip,
@@ -1403,36 +1466,38 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
           color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
           width: 1.0,
         ),
-        boxShadow: isDarkMode ? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: isDarkMode
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, -1),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                  spreadRadius: 1,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: IconButton(
         icon: Icon(icon),
@@ -1528,7 +1593,7 @@ class _ReorderableWrapState extends State<ReorderableWrap> {
       children: widget.children.asMap().entries.map((entry) {
         final index = entry.key;
         final child = entry.value;
-        
+
         return DragTarget<int>(
           onWillAcceptWithDetails: (details) {
             return details.data != index;

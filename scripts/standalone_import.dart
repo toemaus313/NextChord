@@ -118,6 +118,7 @@ void main(List<String> args) async {
         final timeSignature = (songJson['timeSignature'] as String? ?? '4/4')
             .replaceAll(r'\/', '/');
         final tempo = songJson['tempo'] as String?;
+        final duration = songJson['duration'] as String?;
         final tags =
             (songJson['tags'] as List?)?.whereType<String>().toList() ??
                 const <String>[];
@@ -142,7 +143,7 @@ void main(List<String> args) async {
 
         // Convert to ChordPro
         final body = _convertToChordPro(
-            rawData, title, artist, key, timeSignature, tempo);
+            rawData, title, artist, key, timeSignature, tempo, duration);
 
         // Generate UUID
         final id = const Uuid().v4();
@@ -355,7 +356,7 @@ Future<String?> _findDatabasePath() async {
 
 /// Convert Justchords rawData to ChordPro format
 String _convertToChordPro(String rawData, String title, String artist,
-    String key, String timeSignature, String? tempo) {
+    String key, String timeSignature, String? tempo, String? duration) {
   final buffer = StringBuffer();
 
   if (title.isNotEmpty) {
@@ -372,6 +373,9 @@ String _convertToChordPro(String rawData, String title, String artist,
   }
   if (tempo != null && tempo.isNotEmpty) {
     buffer.writeln('{tempo:$tempo}');
+  }
+  if (duration != null && duration.isNotEmpty) {
+    buffer.writeln('{duration:$duration}');
   }
 
   buffer.writeln();
