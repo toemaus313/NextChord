@@ -416,6 +416,17 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     });
   }
 
+  void _toggleSettingsFlyout() {
+    setState(() {
+      _showSettingsFlyout = !_showSettingsFlyout;
+      if (_showSettingsFlyout) {
+        _showTransposeFlyout = false;
+        _showCapoFlyout = false;
+        _showAutoscrollFlyout = false;
+      }
+    });
+  }
+
   void _closeAllFlyouts() {
     if (!_showSettingsFlyout &&
         !_showTransposeFlyout &&
@@ -769,207 +780,9 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      SizedBox(
-                        width: 96, // Fixed width to prevent shifting
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween(
-                              begin: 0.0, end: _showSettingsFlyout ? 1.0 : 0.0),
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, wrapperValue, child) {
-                            return GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                // Absorb taps to prevent propagation to parent
-                              },
-                              child: SizedBox(
-                                width: 96,
-                                height: 40,
-                                child: Stack(
-                                  alignment: Alignment.centerRight,
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    // Expanding container (positioned to grow left)
-                                    Positioned(
-                                      right: 0,
-                                      child: TweenAnimationBuilder<double>(
-                                        tween: Tween(
-                                            begin: 0.0,
-                                            end: _showSettingsFlyout
-                                                ? 1.0
-                                                : 0.0),
-                                        duration:
-                                            const Duration(milliseconds: 250),
-                                        curve: Curves.easeOutCubic,
-                                        builder: (context, value, child) {
-                                          // Calculate width based on expansion - starts at 40 (circular), expands by 56 for second button
-                                          final expandedWidth =
-                                              40.0 + (value * 56.0);
-
-                                          return Container(
-                                            width: expandedWidth,
-                                            height: 40,
-                                            decoration: BoxDecoration(
-                                              color: isDarkMode
-                                                  ? const Color(0xFF0A0A0A)
-                                                      .withValues(alpha: 0.7)
-                                                  : Colors.white
-                                                      .withValues(alpha: 0.9),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: isDarkMode
-                                                    ? Colors.grey.shade700
-                                                    : Colors.grey.shade400,
-                                                width: 1.0,
-                                              ),
-                                              boxShadow: isDarkMode
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                                alpha: 0.4),
-                                                        blurRadius: 10,
-                                                        offset:
-                                                            const Offset(0, 4),
-                                                        spreadRadius: 1,
-                                                      ),
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                                alpha: 0.2),
-                                                        blurRadius: 20,
-                                                        offset:
-                                                            const Offset(0, 8),
-                                                      ),
-                                                      BoxShadow(
-                                                        color: Colors.white
-                                                            .withValues(
-                                                                alpha: 0.05),
-                                                        blurRadius: 4,
-                                                        offset:
-                                                            const Offset(0, -1),
-                                                      ),
-                                                    ]
-                                                  : [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                                alpha: 0.15),
-                                                        blurRadius: 10,
-                                                        offset:
-                                                            const Offset(0, 4),
-                                                        spreadRadius: 1,
-                                                      ),
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                                alpha: 0.08),
-                                                        blurRadius: 20,
-                                                        offset:
-                                                            const Offset(0, 8),
-                                                      ),
-                                                    ],
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              child: Stack(
-                                                children: [
-                                                  // Theme toggle button (fades in/out) - positioned on left
-                                                  if (value >
-                                                      0.3) // Start showing when 30% expanded
-                                                    Positioned(
-                                                      left: 0,
-                                                      top: 0,
-                                                      bottom: 0,
-                                                      child: Center(
-                                                        child: Opacity(
-                                                          opacity: ((value -
-                                                                      0.3) /
-                                                                  0.7)
-                                                              .clamp(0.0, 1.0),
-                                                          child:
-                                                              GestureDetector(
-                                                            onTap: () {
-                                                              // Prevent tap from propagating to parent
-                                                            },
-                                                            child: Builder(
-                                                              builder:
-                                                                  (btnContext) =>
-                                                                      _buildInnerButton(
-                                                                icon: isDarkMode
-                                                                    ? Icons
-                                                                        .dark_mode
-                                                                    : Icons
-                                                                        .light_mode,
-                                                                tooltip:
-                                                                    'Toggle Theme',
-                                                                onPressed: () {
-                                                                  btnContext
-                                                                      .read<
-                                                                          ThemeProvider>()
-                                                                      .toggleTheme();
-                                                                },
-                                                                isDarkMode:
-                                                                    isDarkMode,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  // Settings icon button - fixed position from right
-                                                  Positioned(
-                                                    right: 0,
-                                                    top: 0,
-                                                    bottom: 0,
-                                                    width: 40,
-                                                    child: Center(
-                                                      child: Material(
-                                                        color:
-                                                            Colors.transparent,
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            setState(() {
-                                                              _showSettingsFlyout =
-                                                                  !_showSettingsFlyout;
-                                                            });
-                                                          },
-                                                          customBorder:
-                                                              const CircleBorder(),
-                                                          child: SizedBox(
-                                                            width: 40,
-                                                            height: 40,
-                                                            child: Center(
-                                                              child: Icon(
-                                                                Icons.settings,
-                                                                color: isDarkMode
-                                                                    ? const Color(
-                                                                        0xFF00D9FF)
-                                                                    : const Color(
-                                                                        0xFF0468cc),
-                                                                size: 20,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildSettingsFlyoutButton(isDarkMode),
                       ),
                       const SizedBox(height: 12),
                       Align(
@@ -1061,6 +874,97 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
           onPressed: onPressed,
           tooltip: tooltip,
         ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsFlyoutButton(bool isDarkMode) {
+    final backgroundColor = isDarkMode
+        ? const Color(0xFF0A0A0A).withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.95);
+    final borderColor =
+        isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final accent =
+        isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+
+    return SizedBox(
+      width: 220,
+      height: 40,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.centerRight,
+        children: [
+          Positioned(
+            right: 52,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _showSettingsFlyout ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !_showSettingsFlyout,
+                child: Container(
+                  width: 148,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderColor, width: 1.0),
+                    boxShadow: _buildFloatingShadows(isDarkMode),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildInnerButton(
+                        icon: isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                        tooltip: 'Toggle theme',
+                        onPressed: () {
+                          context.read<ThemeProvider>().toggleTheme();
+                        },
+                        isDarkMode: isDarkMode,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Theme',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            child: GestureDetector(
+              onTap: _toggleSettingsFlyout,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                      : Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor, width: 1.0),
+                  boxShadow: _buildFloatingShadows(isDarkMode),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.settings,
+                    color: accent,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
