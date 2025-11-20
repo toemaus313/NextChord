@@ -214,11 +214,30 @@ class UGTextConverter {
     // Parse the song content starting from contentStartIndex
     bool insideExplicitTabBlock = false;
     for (int i = contentStartIndex; i < lines.length; i++) {
-      final line = lines[i];
-      final trimmedLine = line.trim();
+      String line = lines[i];
+      String trimmedLine = line.trim();
 
       // Skip page markers like "Page 1/4"
       if (_isPageMarker(trimmedLine)) {
+        continue;
+      }
+
+      // Clean page markers from lines that contain them with other content
+      final cleanedLine = _cleanPageMarkersFromLine(trimmedLine);
+      if (cleanedLine != trimmedLine) {
+        // If we cleaned something, use the cleaned line
+        if (cleanedLine.trim().isEmpty) {
+          // If the line is now empty after cleaning, skip it
+          continue;
+        }
+        // Otherwise, continue processing with the cleaned line
+        line = cleanedLine;
+        trimmedLine = cleanedLine.trim();
+      }
+
+      // Skip strumming pattern numbers and symbols (single digits, &, etc.)
+      if (trimmedLine.length <= 6 &&
+          RegExp(r'^[\d&]+$', caseSensitive: false).hasMatch(trimmedLine)) {
         continue;
       }
 
@@ -304,6 +323,13 @@ class UGTextConverter {
         // Look ahead to see if next line is lyrics
         if (i + 1 < lines.length) {
           final nextLine = lines[i + 1].trim();
+          // Skip if next line is a page marker
+          if (_isPageMarker(nextLine)) {
+            // Process current chord line as standalone, then skip page marker
+            chordProLines.add(_processChordLine(trimmedLine));
+            i++; // Skip the page marker line
+            continue;
+          }
           if (nextLine.isNotEmpty &&
               !_isChordOnlyLine(nextLine) &&
               !nextLine.startsWith('[')) {
@@ -528,6 +554,22 @@ class UGTextConverter {
     }
 
     return result.toString().trim();
+  }
+
+  /// Clean page markers from a line that contains them along with other content
+  static String _cleanPageMarkersFromLine(String line) {
+    final trimmed = line.trim();
+
+    // Remove page markers from the end or middle of lines
+    // Handle formats like "GPage 3/3", "Page 3/3", "G 3/3", etc.
+    final cleaned = trimmed
+        .replaceAll(
+            RegExp(r'\s*Page\s+\d+\s*/\s*\d+\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'Page\s+\d+\s*/\s*\d+', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s*\d+\s*/\s*\d+\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\d+\s*/\s*\d+', caseSensitive: false), '');
+
+    return cleaned;
   }
 }
 

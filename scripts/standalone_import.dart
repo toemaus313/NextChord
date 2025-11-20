@@ -10,19 +10,20 @@ import 'package:uuid/uuid.dart';
 /// Directly writes to the SQLite database
 void main(List<String> args) async {
   print('🎵 Justchords to NextChord - Standalone Importer\n');
-  
-  final libraryPath = _resolveLibraryPath(args.isNotEmpty ? args.first : null);
+
+  final cliOptions = _parseCliOptions(args);
+  final libraryPath = _resolveLibraryPath(cliOptions.libraryPath);
   final dbPath = await _findDatabasePath();
-  
+
   if (dbPath == null) {
     print('❌ Could not find NextChord database.');
     print('💡 Run the app at least once to create the database.');
     exit(1);
   }
-  
+
   print('📂 Reading from: $libraryPath');
   print('💾 Database: $dbPath\n');
-  
+
   try {
     // Read and parse library.json
     final file = File(libraryPath);
@@ -30,79 +31,105 @@ void main(List<String> args) async {
       print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
-    
+
     final jsonString = await file.readAsString();
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    
+
     final songsJson = data['songs'] as List<dynamic>?;
     if (songsJson == null || songsJson.isEmpty) {
       print('❌ Error: No songs found in library.json');
       exit(1);
     }
-    
+
     print('📊 Total songs in library: ${songsJson.length}\n');
-    
-    // Select 20 random songs
-    final random = Random();
-    final availableIndices = List.generate(songsJson.length, (i) => i);
-    availableIndices.shuffle(random);
-    
+
     final selectedSongs = <Map<String, dynamic>>[];
-    for (final index in availableIndices) {
-      if (selectedSongs.length >= 20) break;
-      
-      final song = songsJson[index] as Map<String, dynamic>;
-      final title = song['title'] as String? ?? '';
-      final rawData = song['rawData'] as String? ?? '';
-      
-      if (title.isNotEmpty && rawData.isNotEmpty) {
-        selectedSongs.add(song);
+    if (cliOptions.titleFilter != null) {
+      final normalizedFilter = cliOptions.titleFilter!.trim().toLowerCase();
+      print('🎯 Filtering titles containing: "${cliOptions.titleFilter}"');
+      for (final song in songsJson.whereType<Map<String, dynamic>>()) {
+        final title = (song['title'] as String? ?? '').trim();
+        final rawData = song['rawData'] as String? ?? '';
+        if (title.isEmpty || rawData.isEmpty) continue;
+        if (title.toLowerCase().contains(normalizedFilter)) {
+          selectedSongs.add(song);
+        }
+      }
+
+      if (selectedSongs.isEmpty) {
+        print(
+            '❌ No songs matched the title filter "${cliOptions.titleFilter}".');
+        exit(1);
+      }
+    } else {
+      // Select a random subset of songs when no filter is provided
+      final targetCount = cliOptions.songsToImport;
+      final random = Random();
+      final availableIndices = List.generate(songsJson.length, (i) => i)
+        ..shuffle(random);
+
+      for (final index in availableIndices) {
+        if (selectedSongs.length >= targetCount) break;
+
+        final song = songsJson[index] as Map<String, dynamic>;
+        final title = song['title'] as String? ?? '';
+        final rawData = song['rawData'] as String? ?? '';
+
+        if (title.isNotEmpty && rawData.isNotEmpty) {
+          selectedSongs.add(song);
+        }
       }
     }
-    
+
     print('✅ Selected ${selectedSongs.length} songs:\n');
-    
+
     // Display selected songs
     for (var i = 0; i < selectedSongs.length; i++) {
       final song = selectedSongs[i];
       final title = song['title'] as String? ?? 'Untitled';
-      final artist = song['subtitle'] as String? ?? song['artist'] as String? ?? 'Unknown';
+      final artist =
+          song['subtitle'] as String? ?? song['artist'] as String? ?? 'Unknown';
       print('${i + 1}. "$title" by $artist');
     }
-    
+
     print('\n💾 Would you like to import these songs to the database? (y/n)');
     final response = stdin.readLineSync()?.toLowerCase();
-    
+
     if (response != 'y' && response != 'yes') {
       print('\n❌ Import cancelled.');
       exit(0);
     }
-    
+
     print('\n📝 Importing songs...\n');
-    
+
     // Open database
     final db = sqlite3.open(dbPath);
-    
+
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
       var imported = 0;
-      
+
       for (final songJson in selectedSongs) {
         final title = songJson['title'] as String? ?? 'Untitled';
-        final artist = songJson['subtitle'] as String? ?? songJson['artist'] as String? ?? 'Unknown';
+        final artist = songJson['subtitle'] as String? ??
+            songJson['artist'] as String? ??
+            'Unknown';
         final rawData = songJson['rawData'] as String? ?? '';
-        final timeSignature = (songJson['timeSignature'] as String? ?? '4/4').replaceAll(r'\/', '/');
+        final timeSignature = (songJson['timeSignature'] as String? ?? '4/4')
+            .replaceAll(r'\/', '/');
         final tempo = songJson['tempo'] as String?;
-        final tags = (songJson['tags'] as List?)?.whereType<String>().toList() ?? const <String>[];
+        final tags =
+            (songJson['tags'] as List?)?.whereType<String>().toList() ??
+                const <String>[];
         final tagsJson = jsonEncode(tags);
-        
+
         // Extract key
         String key = 'C';
         if (songJson['keyChord'] != null) {
           final keyChord = songJson['keyChord'] as Map<String, dynamic>;
           key = keyChord['key'] as String? ?? 'C';
         }
-        
+
         // Parse BPM
         int bpm = 120;
         if (tempo != null && tempo.isNotEmpty) {
@@ -112,13 +139,14 @@ void main(List<String> args) async {
             bpm = 120;
           }
         }
-        
+
         // Convert to ChordPro
-        final body = _convertToChordPro(rawData, title, artist, key, timeSignature, tempo);
-        
+        final body = _convertToChordPro(
+            rawData, title, artist, key, timeSignature, tempo);
+
         // Generate UUID
         final id = const Uuid().v4();
-        
+
         // Insert into database
         db.execute('''
           INSERT INTO songs (
@@ -141,17 +169,15 @@ void main(List<String> args) async {
           now,
           0, // is_deleted (false)
         ]);
-        
+
         imported++;
         print('   ✓ Imported: $title');
       }
-      
+
       print('\n✅ Successfully imported $imported songs!');
-      
     } finally {
       db.dispose();
     }
-    
   } catch (e, stackTrace) {
     print('❌ Error: $e');
     print('Stack trace: $stackTrace');
@@ -190,7 +216,82 @@ String _resolveLibraryPath(String? cliArgument) {
   }
 
   // Fall back to the last candidate so the error message shows the repo path
-  return candidates.isNotEmpty ? candidates.last : p.join(repoRoot.path, 'examples', 'library.json');
+  return candidates.isNotEmpty
+      ? candidates.last
+      : p.join(repoRoot.path, 'examples', 'library.json');
+}
+
+class _CliOptions {
+  final String? libraryPath;
+  final String? titleFilter;
+  final int songsToImport;
+
+  const _CliOptions({
+    this.libraryPath,
+    this.titleFilter,
+    this.songsToImport = 20,
+  });
+}
+
+_CliOptions _parseCliOptions(List<String> args) {
+  String? libraryPath;
+  String? titleFilter;
+  int? songsToImport;
+
+  for (var i = 0; i < args.length; i++) {
+    final arg = args[i];
+
+    if (arg == '--title' || arg == '-t') {
+      if (i + 1 >= args.length) {
+        print('❌ Missing value for --title option.');
+        exit(64);
+      }
+      titleFilter = args[++i];
+      continue;
+    }
+
+    if (arg.startsWith('--title=')) {
+      titleFilter = arg.substring('--title='.length);
+      continue;
+    }
+
+    if (arg == '--songs' || arg == '-n') {
+      if (i + 1 >= args.length) {
+        print('❌ Missing value for --songs option.');
+        exit(64);
+      }
+      final value = args[++i];
+      final parsed = int.tryParse(value);
+      if (parsed == null || parsed <= 0) {
+        print(
+            '❌ Invalid value for --songs: "$value". Must be a positive integer.');
+        exit(64);
+      }
+      songsToImport = parsed;
+      continue;
+    }
+
+    if (arg.startsWith('--songs=')) {
+      final value = arg.substring('--songs='.length);
+      final parsed = int.tryParse(value);
+      if (parsed == null || parsed <= 0) {
+        print(
+            '❌ Invalid value for --songs: "$value". Must be a positive integer.');
+        exit(64);
+      }
+      songsToImport = parsed;
+      continue;
+    }
+
+    // Treat the first non-option argument as a custom library path
+    libraryPath ??= arg;
+  }
+
+  return _CliOptions(
+    libraryPath: libraryPath,
+    titleFilter: titleFilter?.trim().isEmpty == true ? null : titleFilter,
+    songsToImport: songsToImport ?? 20,
+  );
 }
 
 /// Find the NextChord database file
@@ -240,7 +341,8 @@ Future<String?> _findDatabasePath() async {
   print('   ✗ Not found in standard locations\n');
 
   if (deepSearchRoot != null && await deepSearchRoot.exists()) {
-    await for (final entity in deepSearchRoot.list(recursive: true, followLinks: false)) {
+    await for (final entity
+        in deepSearchRoot.list(recursive: true, followLinks: false)) {
       if (entity is File && entity.path.endsWith('nextchord_db.sqlite')) {
         print('   ✓ Found at: ${entity.path}\n');
         return entity.path;
@@ -252,9 +354,10 @@ Future<String?> _findDatabasePath() async {
 }
 
 /// Convert Justchords rawData to ChordPro format
-String _convertToChordPro(String rawData, String title, String artist, String key, String timeSignature, String? tempo) {
+String _convertToChordPro(String rawData, String title, String artist,
+    String key, String timeSignature, String? tempo) {
   final buffer = StringBuffer();
-  
+
   if (title.isNotEmpty) {
     buffer.writeln('{title:$title}');
   }
@@ -270,12 +373,12 @@ String _convertToChordPro(String rawData, String title, String artist, String ke
   if (tempo != null && tempo.isNotEmpty) {
     buffer.writeln('{tempo:$tempo}');
   }
-  
+
   buffer.writeln();
-  
+
   // Convert section markers
   String converted = rawData;
-  
+
   converted = converted.replaceAllMapped(
     RegExp(r'\[([^\]]+)\]'),
     (match) {
@@ -294,10 +397,11 @@ String _convertToChordPro(String rawData, String title, String artist, String ke
       return '[$section]';
     },
   );
-  
-  converted = converted.replaceAll(RegExp(r'# Created using SongSheet Pro:.*'), '');
-  
+
+  converted =
+      converted.replaceAll(RegExp(r'# Created using SongSheet Pro:.*'), '');
+
   buffer.write(converted.trim());
-  
+
   return buffer.toString();
 }
