@@ -1,0 +1,42 @@
+{
+    "[dart]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.rulers": [
+            80
+        ],
+        "editor.selectionHighlight": false,
+        "editor.tabCompletion": "onlySnippets",
+        "editor.wordBasedSuggestions": "off"
+    },
+    "terminal.integrated.tabs.defaultColor": "terminal.ansiGreen",
+    "terminal.integrated.localEchoStyle": "dim",
+    "terminal.integrated.colors": {
+        "terminal.background": "#1E1E1E",
+        "terminal.foreground": "#00FF00",
+        "terminalCursor.foreground": "#00FF00",
+        "terminalCursor.background": "#1E1E1E",
+        "terminal.ansiBlack": "#1E1E1E",
+        "terminal.ansiRed": "#FF3B30",
+        "terminal.ansiGreen": "#4CD964",
+        "terminal.ansiYellow": "#FFCC00",
+        "terminal.ansiBlue": "#0095FF",
+        "terminal.ansiMagenta": "#AF52DE",
+        "terminal.ansiCyan": "#5AC8FA",
+        "terminal.ansiWhite": "#F0F0F0",
+        "terminal.ansiBrightBlack": "#686868",
+        "terminal.ansiBrightRed": "#FF453A",
+        "terminal.ansiBrightGreen": "#30D158",
+        "terminal.ansiBrightYellow": "#FFD60A",
+        "terminal.ansiBrightBlue": "#0A84FF",
+        "terminal.ansiBrightMagenta": "#BF5AF2",
+        "terminal.ansiBrightCyan": "#64D2FF",
+        "terminal.ansiBrightWhite": "#FFFFFF"
+    },
+    "workbench.colorCustomizations": {
+        "terminal.background": "#1E1E1E",
+        "terminal.foreground": "#00FF00",
+        "terminal.selectionBackground": "#40404080",
+        "terminal.inactiveSelectionBackground": "#202020"
+    }
+}

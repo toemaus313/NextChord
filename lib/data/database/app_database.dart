@@ -24,7 +24,8 @@ class Songs extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get createdAt => integer()(); // Stored as epoch milliseconds
   IntColumn get updatedAt => integer()(); // Stored as epoch milliseconds
-  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))(); // Soft delete flag
+  BoolColumn get isDeleted =>
+      boolean().withDefault(const Constant(false))(); // Soft delete flag
 
   @override
   Set<Column> get primaryKey => {id};
@@ -38,6 +39,8 @@ class Setlists extends Table {
   TextColumn get items => text()(); // JSON array of SetlistItems
   TextColumn get notes => text().nullable()();
   TextColumn get imagePath => text().nullable()(); // Path to 200x200px image
+  BoolColumn get setlistSpecificEditsEnabled =>
+      boolean().withDefault(const Constant(true))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
 
@@ -51,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Get the DAO for Songs
   late final songsDao = SongsDao(this);
@@ -75,6 +78,10 @@ class AppDatabase extends _$AppDatabase {
         if (from <= 2 && to >= 3) {
           // Add imagePath column to setlists table
           await m.addColumn(setlists, setlists.imagePath);
+        }
+        if (from <= 3 && to >= 4) {
+          // Add setlistSpecificEditsEnabled column with default true
+          await m.addColumn(setlists, setlists.setlistSpecificEditsEnabled);
         }
       },
     );
@@ -110,7 +117,7 @@ class SongsDao extends DatabaseAccessor<AppDatabase> with _$SongsDaoMixin {
     return (select(songs)
           ..where((tbl) =>
               (tbl.title.lower().like('%$lowerQuery%') |
-              tbl.artist.lower().like('%$lowerQuery%')) &
+                  tbl.artist.lower().like('%$lowerQuery%')) &
               tbl.isDeleted.equals(false))
           ..orderBy([
             (t) =>
@@ -249,10 +256,10 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
-    
+
     // Debug: Print database location
     print('📁 Database location: ${file.path}');
-    
+
     return NativeDatabase(file);
   });
 }

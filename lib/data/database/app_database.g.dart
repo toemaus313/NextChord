@@ -702,6 +702,17 @@ class $SetlistsTable extends Setlists
   late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
       'image_path', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _setlistSpecificEditsEnabledMeta =
+      const VerificationMeta('setlistSpecificEditsEnabled');
+  @override
+  late final GeneratedColumn<bool> setlistSpecificEditsEnabled =
+      GeneratedColumn<bool>(
+          'setlist_specific_edits_enabled', aliasedName, false,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("setlist_specific_edits_enabled" IN (0, 1))'),
+          defaultValue: const Constant(true));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -715,8 +726,16 @@ class $SetlistsTable extends Setlists
       'updated_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, name, items, notes, imagePath, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        items,
+        notes,
+        imagePath,
+        setlistSpecificEditsEnabled,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -752,6 +771,13 @@ class $SetlistsTable extends Setlists
       context.handle(_imagePathMeta,
           imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
     }
+    if (data.containsKey('setlist_specific_edits_enabled')) {
+      context.handle(
+          _setlistSpecificEditsEnabledMeta,
+          setlistSpecificEditsEnabled.isAcceptableOrUnknown(
+              data['setlist_specific_edits_enabled']!,
+              _setlistSpecificEditsEnabledMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -783,6 +809,9 @@ class $SetlistsTable extends Setlists
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       imagePath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}image_path']),
+      setlistSpecificEditsEnabled: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}setlist_specific_edits_enabled'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -802,6 +831,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
   final String items;
   final String? notes;
   final String? imagePath;
+  final bool setlistSpecificEditsEnabled;
   final int createdAt;
   final int updatedAt;
   const SetlistModel(
@@ -810,6 +840,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       required this.items,
       this.notes,
       this.imagePath,
+      required this.setlistSpecificEditsEnabled,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -824,6 +855,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
     if (!nullToAbsent || imagePath != null) {
       map['image_path'] = Variable<String>(imagePath);
     }
+    map['setlist_specific_edits_enabled'] =
+        Variable<bool>(setlistSpecificEditsEnabled);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -839,6 +872,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       imagePath: imagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePath),
+      setlistSpecificEditsEnabled: Value(setlistSpecificEditsEnabled),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -853,6 +887,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       items: serializer.fromJson<String>(json['items']),
       notes: serializer.fromJson<String?>(json['notes']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
+      setlistSpecificEditsEnabled:
+          serializer.fromJson<bool>(json['setlistSpecificEditsEnabled']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -866,6 +902,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       'items': serializer.toJson<String>(items),
       'notes': serializer.toJson<String?>(notes),
       'imagePath': serializer.toJson<String?>(imagePath),
+      'setlistSpecificEditsEnabled':
+          serializer.toJson<bool>(setlistSpecificEditsEnabled),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -877,6 +915,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           String? items,
           Value<String?> notes = const Value.absent(),
           Value<String?> imagePath = const Value.absent(),
+          bool? setlistSpecificEditsEnabled,
           int? createdAt,
           int? updatedAt}) =>
       SetlistModel(
@@ -885,6 +924,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
         items: items ?? this.items,
         notes: notes.present ? notes.value : this.notes,
         imagePath: imagePath.present ? imagePath.value : this.imagePath,
+        setlistSpecificEditsEnabled:
+            setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -895,6 +936,9 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       items: data.items.present ? data.items.value : this.items,
       notes: data.notes.present ? data.notes.value : this.notes,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      setlistSpecificEditsEnabled: data.setlistSpecificEditsEnabled.present
+          ? data.setlistSpecificEditsEnabled.value
+          : this.setlistSpecificEditsEnabled,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -908,6 +952,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           ..write('items: $items, ')
           ..write('notes: $notes, ')
           ..write('imagePath: $imagePath, ')
+          ..write('setlistSpecificEditsEnabled: $setlistSpecificEditsEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -915,8 +960,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, items, notes, imagePath, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, name, items, notes, imagePath,
+      setlistSpecificEditsEnabled, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -926,6 +971,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           other.items == this.items &&
           other.notes == this.notes &&
           other.imagePath == this.imagePath &&
+          other.setlistSpecificEditsEnabled ==
+              this.setlistSpecificEditsEnabled &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -936,6 +983,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
   final Value<String> items;
   final Value<String?> notes;
   final Value<String?> imagePath;
+  final Value<bool> setlistSpecificEditsEnabled;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -945,6 +993,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     this.items = const Value.absent(),
     this.notes = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.setlistSpecificEditsEnabled = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -955,6 +1004,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     required String items,
     this.notes = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.setlistSpecificEditsEnabled = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.rowid = const Value.absent(),
@@ -969,6 +1019,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     Expression<String>? items,
     Expression<String>? notes,
     Expression<String>? imagePath,
+    Expression<bool>? setlistSpecificEditsEnabled,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -979,6 +1030,8 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       if (items != null) 'items': items,
       if (notes != null) 'notes': notes,
       if (imagePath != null) 'image_path': imagePath,
+      if (setlistSpecificEditsEnabled != null)
+        'setlist_specific_edits_enabled': setlistSpecificEditsEnabled,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -991,6 +1044,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       Value<String>? items,
       Value<String?>? notes,
       Value<String?>? imagePath,
+      Value<bool>? setlistSpecificEditsEnabled,
       Value<int>? createdAt,
       Value<int>? updatedAt,
       Value<int>? rowid}) {
@@ -1000,6 +1054,8 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       items: items ?? this.items,
       notes: notes ?? this.notes,
       imagePath: imagePath ?? this.imagePath,
+      setlistSpecificEditsEnabled:
+          setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1024,6 +1080,10 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     if (imagePath.present) {
       map['image_path'] = Variable<String>(imagePath.value);
     }
+    if (setlistSpecificEditsEnabled.present) {
+      map['setlist_specific_edits_enabled'] =
+          Variable<bool>(setlistSpecificEditsEnabled.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -1044,6 +1104,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
           ..write('items: $items, ')
           ..write('notes: $notes, ')
           ..write('imagePath: $imagePath, ')
+          ..write('setlistSpecificEditsEnabled: $setlistSpecificEditsEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1371,6 +1432,7 @@ typedef $$SetlistsTableCreateCompanionBuilder = SetlistsCompanion Function({
   required String items,
   Value<String?> notes,
   Value<String?> imagePath,
+  Value<bool> setlistSpecificEditsEnabled,
   required int createdAt,
   required int updatedAt,
   Value<int> rowid,
@@ -1381,6 +1443,7 @@ typedef $$SetlistsTableUpdateCompanionBuilder = SetlistsCompanion Function({
   Value<String> items,
   Value<String?> notes,
   Value<String?> imagePath,
+  Value<bool> setlistSpecificEditsEnabled,
   Value<int> createdAt,
   Value<int> updatedAt,
   Value<int> rowid,
@@ -1409,6 +1472,10 @@ class $$SetlistsTableFilterComposer
 
   ColumnFilters<String> get imagePath => $composableBuilder(
       column: $table.imagePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get setlistSpecificEditsEnabled => $composableBuilder(
+      column: $table.setlistSpecificEditsEnabled,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -1441,6 +1508,10 @@ class $$SetlistsTableOrderingComposer
   ColumnOrderings<String> get imagePath => $composableBuilder(
       column: $table.imagePath, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get setlistSpecificEditsEnabled => $composableBuilder(
+      column: $table.setlistSpecificEditsEnabled,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -1471,6 +1542,9 @@ class $$SetlistsTableAnnotationComposer
 
   GeneratedColumn<String> get imagePath =>
       $composableBuilder(column: $table.imagePath, builder: (column) => column);
+
+  GeneratedColumn<bool> get setlistSpecificEditsEnabled => $composableBuilder(
+      column: $table.setlistSpecificEditsEnabled, builder: (column) => column);
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1507,6 +1581,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             Value<String> items = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
+            Value<bool> setlistSpecificEditsEnabled = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -1517,6 +1592,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             items: items,
             notes: notes,
             imagePath: imagePath,
+            setlistSpecificEditsEnabled: setlistSpecificEditsEnabled,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -1527,6 +1603,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             required String items,
             Value<String?> notes = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
+            Value<bool> setlistSpecificEditsEnabled = const Value.absent(),
             required int createdAt,
             required int updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -1537,6 +1614,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             items: items,
             notes: notes,
             imagePath: imagePath,
+            setlistSpecificEditsEnabled: setlistSpecificEditsEnabled,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,

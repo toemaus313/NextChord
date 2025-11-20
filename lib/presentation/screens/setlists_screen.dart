@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
@@ -122,13 +124,7 @@ class _SetlistsScreenState extends State<SetlistsScreen> {
             AspectRatio(
               aspectRatio: 1.0,
               child: setlist.imagePath != null
-                  ? Image.asset(
-                      setlist.imagePath!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildPlaceholderImage();
-                      },
-                    )
+                  ? _buildSetlistImage(setlist.imagePath!)
                   : _buildPlaceholderImage(),
             ),
             // Setlist info
@@ -178,24 +174,38 @@ class _SetlistsScreenState extends State<SetlistsScreen> {
     );
   }
 
-  void _createNewSetlist() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SetlistEditorScreen(),
-      ),
+  Widget _buildSetlistImage(String path) {
+    if (path.startsWith('assets/')) {
+      return Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+      );
+    }
+
+    final file = File(path);
+    if (!file.existsSync()) {
+      return _buildPlaceholderImage();
+    }
+
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
     );
+  }
+
+  void _createNewSetlist() async {
+    final result = await SetlistEditorDialog.show(context);
     if (result == true && mounted) {
       context.read<SetlistProvider>().loadSetlists();
     }
   }
 
   void _openSetlist(Setlist setlist) async {
-    final result = await Navigator.push(
+    final result = await SetlistEditorDialog.show(
       context,
-      MaterialPageRoute(
-        builder: (context) => SetlistEditorScreen(setlist: setlist),
-      ),
+      setlist: setlist,
     );
     if (result == true && mounted) {
       context.read<SetlistProvider>().loadSetlists();

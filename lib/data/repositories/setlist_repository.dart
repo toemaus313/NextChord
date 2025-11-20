@@ -17,6 +17,7 @@ class SetlistRepository {
       items: jsonEncode(_serializeItems(setlist.items)),
       notes: setlist.notes,
       imagePath: setlist.imagePath,
+      setlistSpecificEditsEnabled: setlist.setlistSpecificEditsEnabled,
       createdAt: setlist.createdAt.millisecondsSinceEpoch,
       updatedAt: setlist.updatedAt.millisecondsSinceEpoch,
     );
@@ -32,6 +33,7 @@ class SetlistRepository {
       items: items,
       notes: model.notes,
       imagePath: model.imagePath,
+      setlistSpecificEditsEnabled: model.setlistSpecificEditsEnabled,
       createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
     );
@@ -63,7 +65,7 @@ class SetlistRepository {
   List<SetlistItem> _deserializeItems(String itemsJson) {
     try {
       final List<dynamic> itemsList = jsonDecode(itemsJson);
-      return itemsList.map((item) {
+      final parsedItems = itemsList.map((item) {
         final type = item['type'] as String;
         if (type == 'song') {
           return SetlistSongItem(
@@ -80,10 +82,22 @@ class SetlistRepository {
         }
         throw Exception('Unknown item type: $type');
       }).toList();
+      parsedItems.sort((a, b) => _itemOrder(a).compareTo(_itemOrder(b)));
+      return parsedItems;
     } catch (e) {
       // If parsing fails, return empty list
       return [];
     }
+  }
+
+  int _itemOrder(SetlistItem item) {
+    if (item is SetlistSongItem) {
+      return item.order;
+    }
+    if (item is SetlistDividerItem) {
+      return item.order;
+    }
+    return 0;
   }
 
   /// Fetch all setlists

@@ -45,7 +45,7 @@ app.*.map.json
 /android/app/release
 
 #build directories - need to keep them local
-windows/
-macos/
-ios/    
+windows/**
+macos/**
+iOS/**
 SCRATCHPAD.md

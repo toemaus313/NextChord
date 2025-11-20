@@ -12,7 +12,7 @@ class AppWrapper extends StatelessWidget {
       children: [
         // Global sidebar (animated width)
         GlobalSidebar(),
-        
+
         // Main app content (takes remaining space)
         Expanded(
           child: HomeScreen(),

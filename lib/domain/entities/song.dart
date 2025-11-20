@@ -95,6 +95,7 @@ class Setlist extends Equatable {
   final List<SetlistItem> items; // Ordered list of songs/dividers
   final String? notes;
   final String? imagePath; // Path to 200x200px setlist image
+  final bool setlistSpecificEditsEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -104,6 +105,7 @@ class Setlist extends Equatable {
     required this.items,
     this.notes,
     this.imagePath,
+    this.setlistSpecificEditsEnabled = true,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -114,6 +116,7 @@ class Setlist extends Equatable {
     List<SetlistItem>? items,
     String? notes,
     String? imagePath,
+    bool? setlistSpecificEditsEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -123,13 +126,24 @@ class Setlist extends Equatable {
       items: items ?? this.items,
       notes: notes ?? this.notes,
       imagePath: imagePath ?? this.imagePath,
+      setlistSpecificEditsEnabled:
+          setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, items, notes, imagePath, createdAt, updatedAt];
+  List<Object?> get props => [
+        id,
+        name,
+        items,
+        notes,
+        imagePath,
+        setlistSpecificEditsEnabled,
+        createdAt,
+        updatedAt
+      ];
 }
 
 /// An item in a setlist - can be a song or a divider
@@ -141,7 +155,8 @@ abstract class SetlistItem extends Equatable {
 class SetlistSongItem extends SetlistItem {
   final String songId;
   final int order;
-  final int? transposeSteps; // Setlist-specific transpose (null = use song default)
+  final int?
+      transposeSteps; // Setlist-specific transpose (null = use song default)
   final int? capo; // Setlist-specific capo (null = use song default)
 
   const SetlistSongItem({
