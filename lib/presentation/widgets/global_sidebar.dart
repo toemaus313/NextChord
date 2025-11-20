@@ -559,7 +559,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                 ),
                 onChanged: (value) {
                   context.read<SongProvider>().searchSongs(value);
-                  setState(() {}); // Rebuild to show/hide clear button
                 },
               ),
             ],
@@ -1776,7 +1775,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                   color: Colors.white70, size: 14),
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() {});
+                                context.read<SongProvider>().searchSongs('');
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -2002,7 +2001,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     ),
                     onChanged: (value) {
                       context.read<SongProvider>().searchSongs(value);
-                      setState(() {}); // Rebuild to show/hide clear button
+                      // Rebuild handled by Consumer
                     },
                   ),
                 ],
@@ -2107,7 +2106,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                                   color: Colors.white70, size: 14),
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() {});
+                                context.read<SongProvider>().searchSongs('');
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -2344,7 +2343,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                     ),
                     onChanged: (value) {
                       context.read<SongProvider>().searchSongs(value);
-                      setState(() {}); // Rebuild to show/hide clear button
+                      // Rebuild handled by Consumer
                     },
                   ),
                 ],

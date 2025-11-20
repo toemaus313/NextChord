@@ -132,7 +132,6 @@ class SetlistEditorDialog extends StatefulWidget {
                                         onPressed: () {
                                           searchController.clear();
                                           provider.searchSongs('');
-                                          setState(() {});
                                         },
                                       )
                                     : null,
@@ -154,7 +153,6 @@ class SetlistEditorDialog extends StatefulWidget {
                               ),
                               onChanged: (value) {
                                 provider.searchSongs(value);
-                                setState(() {});
                               },
                             );
                           },

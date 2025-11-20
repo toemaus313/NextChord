@@ -13,8 +13,8 @@ class MetronomeProvider extends ChangeNotifier {
   static const int _maxTempo = 320;
   static const Duration _flashDuration = Duration(milliseconds: 140);
 
-  final AudioPlayer _player = AudioPlayer(); // base beat (lo)
-  final AudioPlayer _accentPlayer = AudioPlayer(); // accent beat (hi)
+  AudioPlayer? _player; // base beat (lo)
+  AudioPlayer? _accentPlayer; // accent beat (hi)
   final Map<String, MetronomeTickAction> _tickActions = {};
 
   Timer? _tickTimer;
@@ -27,6 +27,7 @@ class MetronomeProvider extends ChangeNotifier {
   bool _isRunning = false;
   bool _flashActive = false;
   bool _isDisposed = false;
+  bool _audioAvailable = true; // Track if audio is working
 
   MetronomeProvider() {
     _ensurePlayerReady();
@@ -73,8 +74,8 @@ class MetronomeProvider extends ChangeNotifier {
     _flashTimer = null;
     _flashActive = false;
     _isRunning = false;
-    unawaited(_player.stop());
-    unawaited(_accentPlayer.stop());
+    unawaited(_player?.stop());
+    unawaited(_accentPlayer?.stop());
     if (notifyListeners) {
       _safeNotifyListeners();
     }
@@ -110,13 +111,23 @@ class MetronomeProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     stop(notifyListeners: false);
-    _player.dispose();
-    _accentPlayer.dispose();
+    // Only dispose audio players if they were successfully initialized
+    if (_audioAvailable) {
+      try {
+        _player?.dispose();
+        _accentPlayer?.dispose();
+      } catch (e) {
+        debugPrint('Error disposing audio players: $e');
+      }
+    }
     super.dispose();
   }
 
   Future<void> _ensurePlayerReady() async {
-    if (_player.audioSource != null && _accentPlayer.audioSource != null) {
+    if (!_audioAvailable) {
+      return; // Skip audio setup if plugin failed
+    }
+    if (_player?.audioSource != null && _accentPlayer?.audioSource != null) {
       return;
     }
     if (_loadingCompleter != null) {
@@ -126,17 +137,25 @@ class MetronomeProvider extends ChangeNotifier {
 
     _loadingCompleter = Completer<void>();
     try {
-      if (_player.audioSource == null) {
-        await _player.setAsset('assets/audio/Synth_Block_B_lo.wav');
-        await _player.setVolume(0.9);
+      // Lazily create players so platform initialization (which can throw
+      // MissingPluginException when the plugin isn't registered) is contained
+      // in this try/catch and won't crash the app.
+      _player ??= AudioPlayer();
+      _accentPlayer ??= AudioPlayer();
+
+      if (_player!.audioSource == null) {
+        await _player!.setAsset('assets/audio/Synth_Block_B_lo.wav');
+        await _player!.setVolume(0.9);
       }
-      if (_accentPlayer.audioSource == null) {
-        await _accentPlayer.setAsset('assets/audio/Synth_Block_B_hi.wav');
-        await _accentPlayer.setVolume(1.0);
+      if (_accentPlayer!.audioSource == null) {
+        await _accentPlayer!.setAsset('assets/audio/Synth_Block_B_hi.wav');
+        await _accentPlayer!.setVolume(1.0);
       }
     } catch (e, stack) {
       debugPrint('Metronome audio failed to load: $e');
+      debugPrint('Audio plugin may not be available on this platform');
       debugPrint(stack.toString());
+      _audioAvailable = false; // Disable audio on failure
     } finally {
       _loadingCompleter?.complete();
       _loadingCompleter = null;
@@ -181,18 +200,23 @@ class MetronomeProvider extends ChangeNotifier {
   }
 
   Future<void> _playClick({required bool isAccent}) async {
+    if (!_audioAvailable) {
+      return; // Skip audio if plugin failed
+    }
+
     try {
-      if (_player.audioSource == null || _accentPlayer.audioSource == null) {
+      if (_player?.audioSource == null || _accentPlayer?.audioSource == null) {
         await _ensurePlayerReady();
       }
 
       if (isAccent) {
-        unawaited(_playSample(_accentPlayer));
+        if (_accentPlayer != null) unawaited(_playSample(_accentPlayer!));
       }
-      await _playSample(_player);
+      if (_player != null) await _playSample(_player!);
     } catch (e, stack) {
       debugPrint('Metronome playback failed: $e');
       debugPrint(stack.toString());
+      _audioAvailable = false; // Disable audio on playback failure
     }
   }
 

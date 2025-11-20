@@ -398,6 +398,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "just_audio_windows",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/just_audio_windows-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
       "name": "leak_tracker",
       "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker-11.0.2",
       "packageUri": "lib/",

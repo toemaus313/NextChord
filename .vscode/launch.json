@@ -1,24 +1,41 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": [ 
+    "configurations": [
         {
-            "name": "NextChord",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "NextChord (profile mode)",
+            "name": "NextChord Windows",
             "request": "launch",
             "type": "dart",
+            "deviceId": "windows",
+            "toolArgs": ["--verbose"]
+        },
+        {
+            "name": "NextChord Windows (Profile)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "windows",
             "flutterMode": "profile"
         },
         {
-            "name": "NextChord (release mode)",
+            "name": "NextChord Windows (No Debug)",
             "request": "launch",
             "type": "dart",
+            "deviceId": "windows",
+            "noDebug": true
+        },
+        {
+            "name": "NextChord Windows (Debug Enhanced)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "windows",
+            "flutterMode": "debug",
+            "toolArgs": ["--verbose", "--start-paused"],
+            "vmAdditionalArgs": ["--pause-isolates-on-start"]
+        },
+        {
+            "name": "NextChord Windows (Release)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "windows",
             "flutterMode": "release"
         }
     ]
