@@ -57,6 +57,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Assets (for future use - chord diagrams, icons, etc.)
-  # assets:
-  #   - assets/
+  # Assets
+  assets:
+    - assets/audio/Perc_HeadKnock_hi.wav
+    - assets/audio/Perc_HeadKnock_lo.wav

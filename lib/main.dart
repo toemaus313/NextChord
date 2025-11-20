@@ -5,6 +5,7 @@ import 'data/repositories/song_repository.dart';
 import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/global_sidebar_provider.dart';
+import 'presentation/providers/metronome_provider.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
@@ -42,6 +43,9 @@ class NextChordApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => GlobalSidebarProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MetronomeProvider(),
         ),
       ],
       child: Consumer<ThemeProvider>(

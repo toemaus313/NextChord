@@ -19,6 +19,7 @@ class UGTextConverter {
     // Parse metadata from the beginning
     int contentStartIndex = 0;
     
+    bool contentStartFound = false;
     for (int i = 0; i < lines.length && i < 30; i++) {
       final line = lines[i].trim();
       
@@ -162,8 +163,18 @@ class UGTextConverter {
       // Check if we've reached content (section markers or chord lines)
       if (line.startsWith('[') && line.contains(']')) {
         contentStartIndex = i;
+        contentStartFound = true;
         break;
       }
+
+      // First non-metadata content line encountered
+      contentStartIndex = i;
+      contentStartFound = true;
+      break;
+    }
+
+    if (!contentStartFound) {
+      contentStartIndex = 0;
     }
     
     // Build ChordPro metadata directives
@@ -195,6 +206,7 @@ class UGTextConverter {
     chordProLines.add(''); // Empty line after metadata
     
     // Parse the song content starting from contentStartIndex
+    bool insideExplicitTabBlock = false;
     for (int i = contentStartIndex; i < lines.length; i++) {
       final line = lines[i];
       final trimmedLine = line.trim();
@@ -206,9 +218,51 @@ class UGTextConverter {
       
       // Skip empty lines initially
       if (trimmedLine.isEmpty) {
-        if (chordProLines.length > 5) { // Only add after we have content
+        if (insideExplicitTabBlock) {
+          chordProLines.add('');
+        } else if (chordProLines.length > 5) { // Only add after we have content
           chordProLines.add('');
         }
+        continue;
+      }
+
+      final lowerTrimmed = trimmedLine.toLowerCase();
+      if (lowerTrimmed == '{sot}') {
+        insideExplicitTabBlock = true;
+        chordProLines.add('{sot}');
+        continue;
+      }
+      if (lowerTrimmed == '{eot}') {
+        insideExplicitTabBlock = false;
+        chordProLines.add('{eot}');
+        continue;
+      }
+
+      if (!insideExplicitTabBlock && _looksLikeTabLine(trimmedLine)) {
+        final tabLines = <String>[];
+        final nextIndex = _collectTabBlock(lines, i, tabLines);
+        if (tabLines.isNotEmpty) {
+          chordProLines.add('{sot}');
+          chordProLines.addAll(tabLines);
+          chordProLines.add('{eot}');
+          i = nextIndex - 1;
+          continue;
+        }
+      }
+
+      // Normalize comment directives like {comment: Verse}
+      final commentDirectiveMatch = RegExp(r'^\{comment:\s*([^}]+)\}\s*$', caseSensitive: false)
+          .firstMatch(trimmedLine);
+      if (commentDirectiveMatch != null) {
+        final commentText = commentDirectiveMatch.group(1)?.trim() ?? '';
+        if (commentText.isNotEmpty) {
+          final convertedDirective = _convertSectionToChordPro(commentText);
+          if (convertedDirective != '{comment: $commentText}') {
+            chordProLines.add(convertedDirective);
+            continue;
+          }
+        }
+        chordProLines.add(trimmedLine);
         continue;
       }
       
@@ -216,16 +270,21 @@ class UGTextConverter {
       final sectionMatch = RegExp(r'^\[([^\]]+)\](.*)$').firstMatch(trimmedLine);
       if (sectionMatch != null) {
         final sectionName = sectionMatch.group(1)!.trim();
-        final restOfLine = sectionMatch.group(2)!.trim();
-        
+        final restOfLine = sectionMatch.group(2) ?? '';
+
+        // If the bracket contents look like a chord, this is actually a chord/lyric line
+        if (_looksLikeChord(sectionName)) {
+          chordProLines.add(_processChordLine(line));
+          continue;
+        }
+
         // Convert to ChordPro section directive
         final chordProSection = _convertSectionToChordPro(sectionName);
         chordProLines.add(chordProSection);
-        
+
         // If there's content after the section marker, process it
-        if (restOfLine.isNotEmpty) {
-          // This line has chords/lyrics, process it
-          chordProLines.add(_processChordLine(restOfLine));
+        if (restOfLine.trim().isNotEmpty) {
+          chordProLines.add(_processChordLine(restOfLine.trimLeft()));
         }
         continue;
       }
@@ -261,57 +320,70 @@ class UGTextConverter {
   /// Convert section name to ChordPro directive
   static String _convertSectionToChordPro(String sectionName) {
     final lower = sectionName.toLowerCase();
+    final normalized = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '');
     
     // Check for post-chorus FIRST (before checking for "chorus" alone)
-    if (lower.contains('post-chorus') || lower.contains('post chorus')) {
+    if (normalized.contains('postchorus')) {
       return '{comment: Post-Chorus}';
     }
     
     // Check for pre-chorus (before checking for "chorus" alone)
-    if (lower.contains('pre-chorus') || lower.contains('prechorus')) {
+    if (normalized.contains('prechorus')) {
       return '{comment: Pre-Chorus}';
     }
     
     // Check for verse variations
-    if (lower.contains('verse')) {
+    if (normalized.contains('verse')) {
       if (sectionName.contains(RegExp(r'\d'))) {
-        return '{start_of_verse: $sectionName}';
+        return '{verse: $sectionName}';
       }
-      return '{start_of_verse}';
+      return '{verse}';
     }
-    
+
     // Check for chorus
-    if (lower.contains('chorus')) {
-      return '{start_of_chorus}';
+    if (normalized.contains('chorus')) {
+      if (sectionName.contains(RegExp(r'\d'))) {
+        return '{chorus: $sectionName}';
+      }
+      return '{chorus}';
     }
-    
+
     // Check for bridge
-    if (lower.contains('bridge')) {
-      return '{start_of_bridge}';
+    if (normalized.contains('bridge')) {
+      if (sectionName.contains(RegExp(r'\d'))) {
+        return '{bridge: $sectionName}';
+      }
+      return '{bridge}';
     }
-    
+
     // Check for intro
-    if (lower.contains('intro')) {
-      return '{comment: Intro}';
+    if (normalized.contains('intro')) {
+      if (sectionName.contains(RegExp(r'\d'))) {
+        return '{intro: $sectionName}';
+      }
+      return '{intro}';
     }
-    
+
     // Check for outro
-    if (lower.contains('outro')) {
-      return '{comment: Outro}';
+    if (normalized.contains('outro')) {
+      if (sectionName.contains(RegExp(r'\d'))) {
+        return '{outro: $sectionName}';
+      }
+      return '{outro}';
     }
-    
+
     // Check for solo
-    if (lower.contains('solo')) {
+    if (normalized.contains('solo')) {
       return '{comment: Solo}';
     }
-    
+
     // Check for interlude
-    if (lower.contains('interlude')) {
+    if (normalized.contains('interlude')) {
       return '{comment: Interlude}';
     }
-    
+
     // Check for fade-out
-    if (lower.contains('fade')) {
+    if (normalized.contains('fade')) {
       return '{comment: Fade-Out}';
     }
     
@@ -331,22 +403,20 @@ class UGTextConverter {
       return line;
     }
     
-    // Split line into tokens, preserving whitespace
-    final tokens = line.split(RegExp(r'(\s+)'));
-    final result = StringBuffer();
-    
-    for (int i = 0; i < tokens.length; i++) {
-      final token = tokens[i];
-      
-      // Check if token is a chord
-      if (_looksLikeChord(token)) {
-        result.write('[$token]');
+    final tokenRegex = RegExp(r'\S+|\s+');
+    final buffer = StringBuffer();
+    for (final match in tokenRegex.allMatches(line)) {
+      final token = match.group(0)!;
+      if (token.trim().isEmpty) {
+        buffer.write(token);
+      } else if (_looksLikeChord(token)) {
+        buffer.write('[$token]');
       } else {
-        result.write(token);
+        buffer.write(token);
       }
     }
     
-    return result.toString();
+    return buffer.toString();
   }
   
   /// Check if a token looks like a chord
@@ -447,6 +517,57 @@ class UGTextConverter {
     
     return result.toString().trim();
   }
+}
+
+int _collectTabBlock(List<String> lines, int startIndex, List<String> tabLines) {
+  int consecutiveEmptyLines = 0;
+  int consumed = startIndex;
+
+  for (; consumed < lines.length && consumed - startIndex < 20; consumed++) {
+    final rawLine = lines[consumed];
+    final trimmed = rawLine.trim();
+
+    if (trimmed.isEmpty) {
+      if (tabLines.isEmpty) {
+        break;
+      }
+      consecutiveEmptyLines++;
+      if (consecutiveEmptyLines > 2) {
+        break;
+      }
+      tabLines.add('');
+      continue;
+    }
+
+    if (trimmed.startsWith('{') && (trimmed.toLowerCase().contains('sot') || trimmed.toLowerCase().contains('eot'))) {
+      break;
+    }
+
+    if (_looksLikeTabLine(trimmed)) {
+      consecutiveEmptyLines = 0;
+      tabLines.add(rawLine.trimRight());
+      continue;
+    }
+
+    break;
+  }
+
+  return consumed;
+}
+
+bool _looksLikeTabLine(String line) {
+  final trimmed = line.trim();
+  if (trimmed.isEmpty) return false;
+
+  final tabLineRegex = RegExp(r'^[EADGBe]\|[\-0-9|]+', caseSensitive: true);
+  if (tabLineRegex.hasMatch(trimmed)) return true;
+
+  final nonSpaceChars = trimmed.replaceAll(' ', '');
+  if (nonSpaceChars.length < 3) return false;
+
+  final tabChars = RegExp(r'[\-0-9|]');
+  final tabCharCount = tabChars.allMatches(nonSpaceChars).length;
+  return tabCharCount / nonSpaceChars.length > 0.5;
 }
 
 bool _isPageMarker(String line) {

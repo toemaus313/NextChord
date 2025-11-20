@@ -7,9 +7,12 @@ import '../../data/repositories/song_repository.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
+import '../providers/metronome_provider.dart';
 import '../widgets/chord_renderer.dart';
 import '../widgets/tag_edit_dialog.dart';
 import 'song_editor_screen.dart';
+
+const Color _sidebarTopColor = Color(0xFF0468cc);
 
 /// Full-screen song viewer for live performance
 /// Displays lyrics/chords with adjustable font size and theme toggle
@@ -253,6 +256,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   bool _showTransposeFlyout = false;
   bool _showCapoFlyout = false;
   late ViewerAdjustmentMetadata _viewerAdjustments;
+  late MetronomeProvider _metronome;
 
   @override
   void initState() {
@@ -261,12 +265,22 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     _transposeSteps = widget.setlistContext?.transposeSteps ?? 0;
     _currentCapo = widget.setlistContext?.capo ?? widget.song.capo;
     _initializeViewerAdjustments();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncMetronomeSettings();
+    });
     // Enable landscape mode
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _metronome = context.read<MetronomeProvider>();
   }
 
   void _initializeViewerAdjustments() {
@@ -290,6 +304,10 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         _initializeViewerAdjustments();
         _showTransposeFlyout = false;
         _showCapoFlyout = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncMetronomeSettings();
       });
     }
   }
@@ -390,10 +408,20 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       setState(() {
         _currentSong = updatedSong;
       });
+      _syncMetronomeSettings();
       return true;
     }
     // Song was deleted
     return false;
+  }
+
+  void _syncMetronomeSettings() {
+    if (!mounted) return;
+    final bpm = _currentSong.bpm > 0 ? _currentSong.bpm : 120;
+    final timeSig = _currentSong.timeSignature.isNotEmpty ? _currentSong.timeSignature : '4/4';
+    _metronome
+      ..setTempo(bpm)
+      ..setTimeSignature(timeSig);
   }
 
   /// Get color for a tag based on whether it's an instrument tag
@@ -496,6 +524,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
 
   @override
   void dispose() {
+    _metronome.stop();
     // Reset to portrait only when leaving
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -861,6 +890,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
                   ],
                 ),
               ),
+              const _MetronomeFlashOverlay(),
             ],
           ),
           ),
@@ -1405,67 +1435,104 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     const glowColor = Color(0xFF00D9FF);
-    
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: isDarkMode 
-            ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
-            : Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-          width: 1.0,
-        ),
-        boxShadow: isDarkMode ? [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
+
+    return Consumer<MetronomeProvider>(
+      builder: (context, metronome, _) {
+        final isActive = metronome.isRunning;
+        final accent = isDarkMode ? glowColor : const Color(0xFF0468cc);
+        final backgroundColor = isActive
+            ? accent.withOpacity(0.15)
+            : isDarkMode
+                ? const Color(0xFF0A0A0A).withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.9);
+
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isActive ? accent : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
+              width: isActive ? 2.0 : 1.0,
+            ),
+            boxShadow: isDarkMode ? [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, -1),
+              ),
+            ] : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // TODO: Implement metronome
-          },
-          customBorder: const CircleBorder(),
-          child: Center(
-            child: CustomPaint(
-              size: const Size(16, 16),
-              painter: MetronomeIconPainter(
-                color: isDarkMode ? glowColor : const Color(0xFF0468cc),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: metronome.toggle,
+              customBorder: const CircleBorder(),
+              child: Center(
+                child: CustomPaint(
+                  size: const Size(16, 16),
+                  painter: MetronomeIconPainter(
+                    color: accent,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+
+}
+
+class _MetronomeFlashOverlay extends StatelessWidget {
+  const _MetronomeFlashOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<MetronomeProvider, bool>(
+      selector: (_, provider) => provider.flashActive,
+      builder: (context, isFlashing, _) {
+        return IgnorePointer(
+          ignoring: true,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 80),
+            opacity: isFlashing ? 1.0 : 0.0,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _sidebarTopColor.withOpacity(0.5),
+                  width: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
+import '../../core/constants/music_constants.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../../core/utils/ug_text_converter.dart';
 import '../../services/import/ultimate_guitar_import_service.dart';
@@ -67,13 +68,38 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     'Bm'
   ];
 
-  static const List<String> _timeSignatures = ['4/4', '3/4', '6/8'];
+  static const List<String> _timeSignatures = ['4/4', '3/4', '6/8', '2/4'];
+  static const Map<String, String> _flatToSharpMap = {
+    'Db': 'C#',
+    'Eb': 'D#',
+    'Gb': 'F#',
+    'Ab': 'G#',
+    'Bb': 'A#',
+  };
 
   @override
   void initState() {
     super.initState();
     _initializeFields();
     _bodyController.addListener(_onBodyTextChanged);
+  }
+
+  String _ensureDirectiveValue(String body, String directive, String value) {
+    final trimmedValue = value.trim();
+    if (trimmedValue.isEmpty) return body;
+
+    final regex = RegExp('\\{$directive:[^}]*\\}', caseSensitive: false);
+    if (regex.hasMatch(body)) {
+      return body.replaceFirst(regex, '{${directive.toLowerCase()}:$trimmedValue}');
+    }
+
+    final lines = body.split('\n');
+    int insertIndex = 0;
+    while (insertIndex < lines.length && lines[insertIndex].trim().startsWith('{')) {
+      insertIndex++;
+    }
+    lines.insert(insertIndex, '{${directive.toLowerCase()}:$trimmedValue}');
+    return lines.join('\n');
   }
 
   /// Initialize form fields with existing song data if editing
@@ -98,6 +124,73 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       // Default values for new song
       _bpmController.text = '120';
     }
+  }
+
+  int? _keyToSemitone(String key) {
+    final trimmed = key.trim();
+    if (trimmed.isEmpty) return null;
+    final match = RegExp(r'^([A-Ga-g])([#b]?)(.*)$').firstMatch(trimmed);
+    if (match == null) return null;
+
+    final rootLetter = match.group(1)!.toUpperCase();
+    final accidental = match.group(2) ?? '';
+    String root = '$rootLetter$accidental';
+    root = _flatToSharpMap[root] ?? root;
+
+    return MusicConstants.chromaticScale.indexOf(root);
+  }
+
+  int? _calculateKeyDifference(String fromKey, String toKey) {
+    final fromIndex = _keyToSemitone(fromKey);
+    final toIndex = _keyToSemitone(toKey);
+    if (fromIndex == null || toIndex == null) return null;
+
+    int diff = toIndex - fromIndex;
+    if (diff.abs() > 6) {
+      diff += diff > 0 ? -12 : 12;
+    }
+    return diff;
+  }
+
+  void _transposeBody(int semitones) {
+    if (semitones == 0) return;
+    final currentText = _bodyController.text;
+    if (currentText.trim().isEmpty) return;
+
+    final selection = _bodyController.selection;
+    final updatedText = ChordProParser.transposeChordProText(currentText, semitones);
+    _bodyController.text = updatedText;
+
+    int baseOffset = selection.baseOffset;
+    if (!selection.isValid) {
+      baseOffset = updatedText.length;
+    } else {
+      baseOffset = baseOffset.clamp(0, updatedText.length);
+    }
+    _bodyController.selection = TextSelection.collapsed(offset: baseOffset);
+    _lastBodyText = updatedText;
+  }
+
+  void _handleKeySelection(String newKey) {
+    if (newKey == _selectedKey) return;
+    final diff = _calculateKeyDifference(_selectedKey, newKey);
+    if (diff != null && diff != 0) {
+      _transposeBody(diff);
+    }
+    setState(() {
+      _selectedKey = newKey;
+    });
+  }
+
+  void _handleCapoSelection(int newCapo) {
+    if (newCapo == _selectedCapo) return;
+    final diff = _selectedCapo - newCapo;
+    if (diff != 0) {
+      _transposeBody(diff);
+    }
+    setState(() {
+      _selectedCapo = newCapo;
+    });
   }
 
   @override
@@ -837,9 +930,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() {
-                          _selectedKey = value;
-                        });
+                        _handleKeySelection(value);
                       }
                     },
                   ),
@@ -914,9 +1005,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() {
-                          _selectedCapo = value;
-                        });
+                        _handleCapoSelection(value);
                       }
                     },
                   ),
@@ -1169,6 +1258,19 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               ),
             ),
             
+            // Convert button available in both create & edit modes
+            Positioned(
+              top: 8,
+              right: 152,
+              child: _buildActionButton(
+                icon: Icons.auto_fix_high,
+                tooltip: 'Convert to ChordPro',
+                onPressed: _convertToChordPro,
+                color: actionColor,
+                isDarkMode: isDarkMode,
+              ),
+            ),
+            
             // Delete button (top right, only when editing)
             if (isEditing)
               Positioned(
@@ -1182,20 +1284,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                   isDarkMode: isDarkMode,
                 ),
               ),
-            
+
             // Import buttons (top right, only when creating)
             if (!isEditing) ...[
-              Positioned(
-                top: 8,
-                right: 152,
-                child: _buildActionButton(
-                  icon: Icons.auto_fix_high,
-                  tooltip: 'Convert to ChordPro',
-                  onPressed: _convertToChordPro,
-                  color: actionColor,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
               Positioned(
                 top: 8,
                 right: 104,
