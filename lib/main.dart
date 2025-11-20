@@ -9,6 +9,7 @@ import 'presentation/providers/global_sidebar_provider.dart';
 import 'presentation/providers/metronome_provider.dart';
 import 'presentation/providers/autoscroll_provider.dart';
 import 'presentation/providers/setlist_provider.dart';
+import 'services/midi/midi_service.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
@@ -64,6 +65,9 @@ class NextChordApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => AutoscrollProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MidiService(),
         ),
       ],
       child: Consumer<ThemeProvider>(

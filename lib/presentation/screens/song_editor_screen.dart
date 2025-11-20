@@ -13,6 +13,8 @@ import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../widgets/tag_edit_dialog.dart';
+import '../widgets/midi_sends_modal.dart';
+import '../../services/midi/midi_service.dart';
 
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
@@ -40,6 +42,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   bool _isSaving = false;
   String _lastBodyText = '';
   bool _isAutoCompleting = false;
+  MidiMapping? _midiMapping;
 
   // Available options
   static const List<String> _keys = [
@@ -793,6 +796,148 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     );
   }
 
+  /// Build the MIDI sends area widget
+  Widget _buildMidiSendsArea() {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDarkMode = themeProvider.isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    return Consumer<MidiService>(
+      builder: (context, midiService, child) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'MIDI Sends',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+            if (_midiMapping != null &&
+                (_midiMapping!.programChangeNumber != null ||
+                    _midiMapping!.controlChanges.isNotEmpty ||
+                    _midiMapping!.timing))
+              ..._buildMidiSendChips()
+            else
+              Text(
+                'No sends',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textColor.withValues(alpha: 0.5),
+                ),
+              ),
+            GestureDetector(
+              onTap: () => _openMidiSendsDialog(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: textColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.piano,
+                      size: 14,
+                      color: textColor.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Edit',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Build MIDI send chips for display
+  List<Widget> _buildMidiSendChips() {
+    final chips = <Widget>[];
+
+    if (_midiMapping?.timing == true) {
+      chips.add(_buildMidiChip('timing'));
+    }
+
+    if (_midiMapping?.programChangeNumber != null) {
+      chips.add(_buildMidiChip('PC${_midiMapping!.programChangeNumber}'));
+    }
+
+    for (final cc in _midiMapping?.controlChanges ?? []) {
+      // Handle PC commands stored as CC with controller -1
+      if (cc.controller == -1) {
+        final label = cc.label != null ? ' - ${cc.label}' : '';
+        chips.add(_buildMidiChip('PC${cc.value}$label'));
+      } else {
+        final label = cc.label != null ? ' - ${cc.label}' : '';
+        chips.add(_buildMidiChip('CC${cc.controller}:${cc.value}$label'));
+      }
+    }
+
+    return chips;
+  }
+
+  /// Build a single MIDI chip widget
+  Widget _buildMidiChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.purple.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.purple.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Colors.purple,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  /// Open the MIDI Sends dialog
+  Future<void> _openMidiSendsDialog() async {
+    await MidiSendsModal.show(
+      context,
+      song: widget.song ??
+          Song(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: _titleController.text,
+            artist: _artistController.text,
+            body: _bodyController.text,
+            key: _selectedKey,
+            capo: _selectedCapo,
+            timeSignature: _selectedTimeSignature,
+            bpm: int.tryParse(_bpmController.text) ?? 120,
+            tags: _tags,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+      initialMapping: _midiMapping,
+      onMappingUpdated: (updatedMapping) {
+        setState(() {
+          _midiMapping = updatedMapping;
+        });
+        debugPrint('🎹 MIDI mapping updated for song');
+      },
+    );
+  }
+
   /// Delete the current song
   Future<void> _deleteSong() async {
     // Show confirmation dialog
@@ -1205,139 +1350,343 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                 },
                               ),
                             ),
+                            const SizedBox(width: 8),
+
+                            // BPM field
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: _bpmController,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: InputDecoration(
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: CustomPaint(
+                                      size: const Size(18, 18),
+                                      painter: MetronomeIconPainter(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                  hintText: '120',
+                                  hintStyle: const TextStyle(fontSize: 12),
+                                  border: const OutlineInputBorder(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Required';
+                                  }
+                                  final bpm = int.tryParse(value.trim());
+                                  if (bpm == null || bpm < 1 || bpm > 300) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Capo dropdown
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<int>(
+                                initialValue: _selectedCapo,
+                                style:
+                                    TextStyle(fontSize: 14, color: textColor),
+                                decoration: InputDecoration(
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: CustomPaint(
+                                      size: const Size(18, 18),
+                                      painter: CapoIconPainter(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ),
+                                  suffixIcon: widget.setlistContext != null
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            'SET',
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                  border: OutlineInputBorder(
+                                    borderSide: widget.setlistContext != null
+                                        ? BorderSide(
+                                            color: Colors.blue, width: 1.5)
+                                        : BorderSide(
+                                            color: isDarkMode
+                                                ? Colors.grey.shade600
+                                                : Colors.grey.shade400,
+                                            width: 1.0),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                items: List.generate(13, (index) => index)
+                                    .map((capo) {
+                                  return DropdownMenuItem(
+                                    value: capo,
+                                    child: Text(capo.toString(),
+                                        style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _handleCapoSelection(value);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Time Signature dropdown
+                            Expanded(
+                              flex: 2,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _selectedTimeSignature,
+                                style:
+                                    TextStyle(fontSize: 14, color: textColor),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.timer, size: 18),
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                items: _timeSignatures.map((sig) {
+                                  return DropdownMenuItem(
+                                    value: sig,
+                                    child: Text(sig,
+                                        style: const TextStyle(fontSize: 13)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedTimeSignature = value;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Duration field
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                controller: _durationController,
+                                style: const TextStyle(fontSize: 14),
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.play_arrow, size: 18),
+                                  hintText: '3:00',
+                                  hintStyle: TextStyle(fontSize: 12),
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  isDense: true,
+                                ),
+                                keyboardType: TextInputType.text,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final pattern =
+                                      RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
+                                  if (!pattern.hasMatch(value.trim())) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
 
-                        // Tags row matching viewer behavior
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? Colors.grey.shade700
-                                  : Colors.grey.shade400,
-                              width: 1.0,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                'Tags',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
+                        // MIDI Sends and Tags in the same row
+                        Row(
+                          children: [
+                            // MIDI Sends section - left half
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade400,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
+                                child: _buildMidiSendsArea(),
                               ),
-                              if (_tags.isNotEmpty)
-                                ..._tags.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final tag = entry.value;
-                                  final (bgColor, tagTextColor) =
-                                      _getTagColors(tag, context);
-                                  return DragTarget<int>(
-                                    onWillAcceptWithDetails: (details) =>
-                                        details.data != index,
-                                    onAcceptWithDetails: (details) {
-                                      setState(() {
-                                        final tagToMove =
-                                            _tags.removeAt(details.data);
-                                        _tags.insert(index, tagToMove);
-                                      });
-                                    },
-                                    builder: (context, candidate, rejected) {
-                                      return Draggable<int>(
-                                        data: index,
-                                        feedback: Opacity(
-                                          opacity: 0.7,
-                                          child: Material(
-                                            color: Colors.transparent,
-                                            child: _TagChip(
-                                              key: ValueKey('drag_tag_$tag'),
-                                              tag: tag,
-                                              bgColor: bgColor,
-                                              textColor: tagTextColor,
-                                              onRemove: () {},
-                                            ),
-                                          ),
-                                        ),
-                                        childWhenDragging: Opacity(
-                                          opacity: 0.3,
-                                          child: _TagChip(
-                                            key: ValueKey(
-                                                'tag_drag_${index}_$tag'),
-                                            tag: tag,
-                                            bgColor: bgColor,
-                                            textColor: tagTextColor,
-                                            onRemove: () {
-                                              setState(() {
-                                                _tags.removeAt(index);
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        child: _TagChip(
-                                          key: ValueKey('tag_${index}_$tag'),
-                                          tag: tag,
-                                          bgColor: bgColor,
-                                          textColor: tagTextColor,
-                                          onRemove: () {
+                            ),
+                            const SizedBox(width: 12),
+                            // Tags section - right half
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade400,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Tags',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    if (_tags.isNotEmpty)
+                                      ..._tags.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final tag = entry.value;
+                                        final (bgColor, tagTextColor) =
+                                            _getTagColors(tag, context);
+                                        return DragTarget<int>(
+                                          onWillAcceptWithDetails: (details) =>
+                                              details.data != index,
+                                          onAcceptWithDetails: (details) {
                                             setState(() {
-                                              _tags.removeAt(index);
+                                              final tagToMove =
+                                                  _tags.removeAt(details.data);
+                                              _tags.insert(index, tagToMove);
                                             });
                                           },
-                                        ),
-                                      );
-                                    },
-                                  );
-                                })
-                              else
-                                Text(
-                                  'No tags yet',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: textColor.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              GestureDetector(
-                                onTap: _openTagsDialog,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                        color:
-                                            textColor.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.edit,
-                                          size: 14,
-                                          color:
-                                              textColor.withValues(alpha: 0.7)),
-                                      const SizedBox(width: 4),
+                                          builder:
+                                              (context, candidate, rejected) {
+                                            return Draggable<int>(
+                                              data: index,
+                                              feedback: Opacity(
+                                                opacity: 0.7,
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: _TagChip(
+                                                    key: ValueKey(
+                                                        'drag_tag_$tag'),
+                                                    tag: tag,
+                                                    bgColor: bgColor,
+                                                    textColor: tagTextColor,
+                                                    onRemove: () {},
+                                                  ),
+                                                ),
+                                              ),
+                                              childWhenDragging: Opacity(
+                                                opacity: 0.3,
+                                                child: _TagChip(
+                                                  key: ValueKey(
+                                                      'tag_drag_${index}_$tag'),
+                                                  tag: tag,
+                                                  bgColor: bgColor,
+                                                  textColor: tagTextColor,
+                                                  onRemove: () {
+                                                    setState(() {
+                                                      _tags.removeAt(index);
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              child: _TagChip(
+                                                key: ValueKey(
+                                                    'tag_${index}_$tag'),
+                                                tag: tag,
+                                                bgColor: bgColor,
+                                                textColor: tagTextColor,
+                                                onRemove: () {
+                                                  setState(() {
+                                                    _tags.removeAt(index);
+                                                  });
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      })
+                                    else
                                       Text(
-                                        'Edit',
+                                        'No tags yet',
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: textColor.withValues(
-                                                alpha: 0.7)),
+                                          fontSize: 12,
+                                          color:
+                                              textColor.withValues(alpha: 0.5),
+                                        ),
                                       ),
-                                    ],
-                                  ),
+                                    GestureDetector(
+                                      onTap: _openTagsDialog,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                              color: textColor.withValues(
+                                                  alpha: 0.3)),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.edit,
+                                                size: 14,
+                                                color: textColor.withValues(
+                                                    alpha: 0.7)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Edit',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: textColor.withValues(
+                                                      alpha: 0.7)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                       ],

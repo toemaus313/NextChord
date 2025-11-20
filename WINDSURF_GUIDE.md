@@ -298,6 +298,8 @@ Please create lib/services/midi/midi_service.dart with a MidiService class that:
 
 Make it a singleton so it can be accessed from anywhere in the app.
 
+Make the Settings menu in the global sidebar active with the same look and feel as Songs and Setlists. i.e. when it is clicked, it should expand, and in that Settings submenu I would like a MIDI Options button. Any settings related to MIDI will go there
+
 Include comments explaining:
 - What Program Change does (selects a preset/patch)
 - What Control Change does (adjusts a parameter)
@@ -332,17 +334,17 @@ Please create:
 
 ```
 I have:
-- Song viewer screen (lib/presentation/screens/song_viewer_screen.dart)
+- Song editor screen (lib/presentation/screens/song_editor_screen.dart)
 - MIDI service (lib/services/midi/midi_service.dart)
 - MIDI mappings in database
 
-Please modify the song viewer to:
+Please modify the song editor to:
 1. Load the MIDI mapping for the current song
-2. Add a "Send MIDI" button that sends:
-   - Program Change (if configured)
-   - All Control Changes (if configured)
-3. Show which MIDI device is active
-4. Handle errors gracefully (show toast if no device connected)
+2. In the left half of the row with Tags, Add a "MIDI Sends" area:
+   - Create a similar data entry style to the Tags section (default text saying "No sends" and an Edit button)
+   - Using the same style as the Edit Tags modal, create a midi_sends_modal.dart with the same text entry box and general design
+   - Apply any necessary framework to the modal that will enable tab-to-complete and enter-to-save functionality like the Edit Tags in the future
+3. Handle errors gracefully (show toast if no device connected)
 ```
 
 ---

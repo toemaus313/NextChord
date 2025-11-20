@@ -9,6 +9,7 @@ import '../providers/theme_provider.dart';
 import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
 import '../screens/setlist_editor_screen.dart';
+import 'midi_settings_modal.dart';
 import '../../domain/entities/song.dart';
 import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
@@ -28,6 +29,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   late Animation<double> _animation;
   bool _isSongsExpanded = false;
   bool _isSetlistsExpanded = false;
+  bool _isSettingsExpanded = false;
   String _currentView =
       'menu'; // 'menu', 'allSongs', 'deletedSongs', 'artistsList', 'artistSongs', 'tagsList', 'tagSongs', 'setlistView'
   String? _selectedArtist;
@@ -435,7 +437,25 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                   icon: Icons.settings,
                   title: 'Settings',
                   isSelected: false,
-                  onTap: () {},
+                  onTap: () {
+                    setState(() {
+                      _isSettingsExpanded = !_isSettingsExpanded;
+                    });
+                  },
+                  isExpanded: _isSettingsExpanded,
+                  children: _isSettingsExpanded
+                      ? [
+                          _buildSubMenuItem(
+                            context,
+                            title: 'MIDI Options',
+                            isSelected: false,
+                            onTap: () async {
+                              debugPrint('🎹 Opening MIDI Settings...');
+                              await MidiSettingsModal.show(context);
+                            },
+                          ),
+                        ]
+                      : null,
                 ),
               ],
             ),

@@ -219,6 +219,7 @@ class MidiMapping extends Equatable {
   final String songId;
   final int? programChangeNumber; // 0-127
   final List<MidiCC> controlChanges; // List of CC messages
+  final bool timing; // MIDI clock timing enable/disable
   final String? notes;
 
   const MidiMapping({
@@ -226,6 +227,7 @@ class MidiMapping extends Equatable {
     required this.songId,
     this.programChangeNumber,
     this.controlChanges = const [],
+    this.timing = false,
     this.notes,
   });
 
@@ -234,6 +236,7 @@ class MidiMapping extends Equatable {
     String? songId,
     int? programChangeNumber,
     List<MidiCC>? controlChanges,
+    bool? timing,
     String? notes,
   }) {
     return MidiMapping(
@@ -241,13 +244,14 @@ class MidiMapping extends Equatable {
       songId: songId ?? this.songId,
       programChangeNumber: programChangeNumber ?? this.programChangeNumber,
       controlChanges: controlChanges ?? this.controlChanges,
+      timing: timing ?? this.timing,
       notes: notes ?? this.notes,
     );
   }
 
   @override
   List<Object?> get props =>
-      [id, songId, programChangeNumber, controlChanges, notes];
+      [id, songId, programChangeNumber, controlChanges, timing, notes];
 }
 
 /// A MIDI Control Change message
