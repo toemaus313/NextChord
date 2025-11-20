@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
 /// Domain entity for a musical Song
 class Song extends Equatable {
@@ -188,14 +189,28 @@ class SetlistSongItem extends SetlistItem {
 class SetlistDividerItem extends SetlistItem {
   final String label;
   final int order;
+  final Color color;
 
   const SetlistDividerItem({
     required this.label,
     required this.order,
+    this.color = Colors.white,
   });
 
+  SetlistDividerItem copyWith({
+    String? label,
+    int? order,
+    Color? color,
+  }) {
+    return SetlistDividerItem(
+      label: label ?? this.label,
+      order: order ?? this.order,
+      color: color ?? this.color,
+    );
+  }
+
   @override
-  List<Object?> get props => [label, order];
+  List<Object?> get props => [label, order, color];
 }
 
 /// MIDI mapping for a song (what MIDI messages to send)

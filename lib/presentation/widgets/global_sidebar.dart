@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/setlist_provider.dart';
@@ -7,8 +9,9 @@ import '../providers/theme_provider.dart';
 import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
 import '../screens/setlist_editor_screen.dart';
-import '../screens/setlists_screen.dart';
+import '../../domain/entities/song.dart';
 import 'sidebar_select_all_bar.dart';
+import 'divider_dialog.dart';
 
 /// Global sidebar widget that can overlay any screen
 class GlobalSidebar extends StatefulWidget {
@@ -25,9 +28,10 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   bool _isSongsExpanded = false;
   bool _isSetlistsExpanded = false;
   String _currentView =
-      'menu'; // 'menu', 'allSongs', 'deletedSongs', 'artistsList', 'artistSongs', 'tagsList', 'tagSongs'
+      'menu'; // 'menu', 'allSongs', 'deletedSongs', 'artistsList', 'artistSongs', 'tagsList', 'tagSongs', 'setlistView'
   String? _selectedArtist;
   String? _selectedTag;
+  String? _selectedSetlistId; // Track which setlist is being viewed
   int _deletedSongsCount = 0;
   final TextEditingController _searchController = TextEditingController();
 
@@ -119,7 +123,9 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             ? _buildTagsListView(context)
                             : _currentView == 'tagSongs'
                                 ? _buildTagSongsView(context)
-                                : _buildMenuView(context),
+                                : _currentView == 'setlistView'
+                                    ? _buildSetlistView(context)
+                                    : _buildMenuView(context),
       ),
     );
   }
@@ -383,21 +389,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                               // Add existing setlists
                               for (final setlist in setlists) {
                                 widgets.add(
-                                  _buildSubMenuItem(
-                                    context,
-                                    title: setlist.name,
-                                    isSelected: false,
-                                    onTap: () {
-                                      // Navigate to setlist editor
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SetlistsScreen(),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  _buildSetlistMenuItem(context, setlist),
                                 );
                               }
 
@@ -586,6 +578,735 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         ),
       ],
     );
+  }
+
+  Widget _buildSetlistView(BuildContext context) {
+    return Consumer<SetlistProvider>(
+      builder: (context, setlistProvider, child) {
+        // Get the current setlist by ID
+        final currentSetlist = _selectedSetlistId != null
+            ? setlistProvider.setlists
+                .where((s) => s.id == _selectedSetlistId)
+                .firstOrNull
+            : null;
+
+        if (currentSetlist == null) {
+          return Column(
+            children: [
+              // Header with back button
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(20),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _currentView = 'menu';
+                        });
+                      },
+                      tooltip: 'Back to menu',
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Setlist',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Empty state
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'No setlist selected',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            // Header with back button and edit button
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(20),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _currentView = 'menu';
+                      });
+                    },
+                    tooltip: 'Back to menu',
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Setlist',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final result = await SetlistEditorDialog.show(
+                        context,
+                        setlist: currentSetlist,
+                      );
+                      if (result == true && context.mounted) {
+                        await setlistProvider.loadSetlists();
+                      }
+                    },
+                    tooltip: 'Edit setlist',
+                  ),
+                ],
+              ),
+            ),
+            // Logo area (200x200 placeholder)
+            Container(
+              height: 200,
+              width: 200,
+              margin: const EdgeInsets.symmetric(vertical: 16),
+              child: currentSetlist.imagePath != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(
+                        File(currentSetlist.imagePath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildLogoPlaceholder(),
+                      ),
+                    )
+                  : _buildLogoPlaceholder(),
+            ),
+            // Setlist title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                currentSetlist.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Setlist items
+            Expanded(
+              child: Consumer<SongProvider>(
+                builder: (context, songProvider, child) {
+                  final songsMap = {
+                    for (final song in songProvider.songs) song.id: song,
+                  };
+
+                  if (currentSetlist.items.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No songs in this setlist',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ReorderableListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: currentSetlist.items.length,
+                          onReorder: (oldIndex, newIndex) =>
+                              _reorderSetlistItems(oldIndex, newIndex,
+                                  currentSetlist, setlistProvider),
+                          buildDefaultDragHandles: false,
+                          itemBuilder: (context, index) {
+                            final item = currentSetlist.items[index];
+                            if (item is SetlistSongItem) {
+                              final song = songsMap[item.songId];
+                              return _buildSetlistSongItem(item, song, index);
+                            } else if (item is SetlistDividerItem) {
+                              return _buildSetlistDividerItem(item, index);
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                      _buildAddButton(context, currentSetlist),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLogoPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.playlist_play,
+          color: Colors.white54,
+          size: 64,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSetlistSongItem(SetlistSongItem item, Song? song, int index) {
+    final title = song?.title ?? 'Unknown song';
+    final artist = song?.artist ?? '';
+    final key = song?.key ?? 'C';
+    final capo = item.capo ?? song?.capo ?? 0;
+
+    return GestureDetector(
+      key: ValueKey('song_${item.songId}_$index'),
+      onSecondaryTap: () => _showSongContextMenu(context, item, song, index),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // Drag handle
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(
+                Icons.drag_indicator,
+                color: Colors.white54,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Song info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (artist.isNotEmpty)
+                    Text(
+                      artist,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Key and capo info
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  key,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (capo > 0)
+                  Text(
+                    'CAPO $capo',
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSongContextMenu(
+      BuildContext context, SetlistSongItem item, Song? song, int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text(
+                  'Delete from Setlist',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteSongFromSetlist(context, item, index);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteSongFromSetlist(
+      BuildContext context, SetlistSongItem item, int index) async {
+    try {
+      final setlistProvider = context.read<SetlistProvider>();
+      final currentSetlist = setlistProvider.setlists
+          .where((s) => s.id == _selectedSetlistId)
+          .firstOrNull;
+
+      if (currentSetlist != null) {
+        final updatedItems = <SetlistItem>[];
+        for (int i = 0; i < currentSetlist.items.length; i++) {
+          if (i != index) {
+            updatedItems.add(currentSetlist.items[i]);
+          }
+        }
+
+        final updatedSetlist = currentSetlist.copyWith(
+          items: updatedItems,
+          updatedAt: DateTime.now(),
+        );
+
+        await setlistProvider.updateSetlist(updatedSetlist);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Song removed from setlist'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to remove song: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildSetlistDividerItem(SetlistDividerItem item, int index) {
+    return GestureDetector(
+      key: ValueKey('divider_${item.order}_$index'),
+      onSecondaryTap: () => _showDividerContextMenu(context, item, index),
+      onLongPress: () => _showDividerContextMenu(context, item, index),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            // Drag handle
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(
+                Icons.drag_indicator,
+                color: Colors.white54,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  color: item.color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDividerContextMenu(
+      BuildContext context, SetlistDividerItem divider, int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Divider'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editDivider(context, divider, index);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Divider',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteDivider(context, divider, index);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _editDivider(
+      BuildContext context, SetlistDividerItem divider, int index) async {
+    final result = await DividerDialog.show(
+      context,
+      existingDivider: divider,
+    );
+
+    if (result != null && context.mounted) {
+      final setlistProvider = context.read<SetlistProvider>();
+      final currentSetlist = setlistProvider.setlists
+          .where((s) => s.id == _selectedSetlistId)
+          .firstOrNull;
+
+      if (currentSetlist != null) {
+        // Update the divider in the setlist, preserving the original order
+        final updatedItems = <SetlistItem>[];
+        for (int i = 0; i < currentSetlist.items.length; i++) {
+          final currentItem = currentSetlist.items[i];
+          if (i == index && currentItem is SetlistDividerItem) {
+            updatedItems.add(result.copyWith(order: currentItem.order));
+          } else {
+            updatedItems.add(currentItem);
+          }
+        }
+
+        final updatedSetlist = currentSetlist.copyWith(
+          items: updatedItems,
+          updatedAt: DateTime.now(),
+        );
+
+        await setlistProvider.updateSetlist(updatedSetlist);
+      }
+    }
+  }
+
+  void _deleteDivider(
+      BuildContext context, SetlistDividerItem divider, int index) async {
+    final setlistProvider = context.read<SetlistProvider>();
+    final currentSetlist = setlistProvider.setlists
+        .where((s) => s.id == _selectedSetlistId)
+        .firstOrNull;
+
+    if (currentSetlist != null) {
+      // Remove the divider from the setlist
+      final updatedItems = <SetlistItem>[];
+      for (int i = 0; i < currentSetlist.items.length; i++) {
+        if (i != index) {
+          updatedItems.add(currentSetlist.items[i]);
+        }
+      }
+
+      // Update order for remaining items
+      final reorderedItems = <SetlistItem>[];
+      for (int i = 0; i < updatedItems.length; i++) {
+        final item = updatedItems[i];
+        if (item is SetlistSongItem) {
+          reorderedItems.add(item.copyWith(order: i));
+        } else if (item is SetlistDividerItem) {
+          reorderedItems.add(item.copyWith(order: i));
+        }
+      }
+
+      final updatedSetlist = currentSetlist.copyWith(
+        items: reorderedItems,
+        updatedAt: DateTime.now(),
+      );
+
+      await setlistProvider.updateSetlist(updatedSetlist);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Divider deleted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _reorderSetlistItems(int oldIndex, int newIndex,
+      Setlist currentSetlist, SetlistProvider setlistProvider) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    // Create a new list of items with the reordered items
+    final newItems = List<SetlistItem>.from(currentSetlist.items);
+    final item = newItems.removeAt(oldIndex);
+    newItems.insert(newIndex, item);
+
+    // Update the order field for all items
+    final reorderedItems = <SetlistItem>[];
+    for (int i = 0; i < newItems.length; i++) {
+      final currentItem = newItems[i];
+      if (currentItem is SetlistSongItem) {
+        reorderedItems.add(currentItem.copyWith(order: i));
+      } else if (currentItem is SetlistDividerItem) {
+        reorderedItems.add(currentItem.copyWith(order: i));
+      }
+    }
+
+    // Update the setlist with the new order
+    final updatedSetlist = currentSetlist.copyWith(
+      items: reorderedItems,
+      updatedAt: DateTime.now(),
+    );
+
+    try {
+      await setlistProvider.updateSetlist(updatedSetlist);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reorder items: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildAddButton(BuildContext context, Setlist setlist) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showAddMenu(context, setlist),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.add, color: Colors.white54, size: 16),
+                SizedBox(width: 8),
+                Text(
+                  'Add...',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddMenu(BuildContext context, Setlist setlist) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.music_note),
+                title: const Text('Songs...'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAddSongsModal(context, setlist);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.horizontal_rule),
+                title: const Text('Divider'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDividerDialog(context, setlist);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openAddSongsModal(BuildContext context, Setlist setlist) async {
+    debugPrint('Sidebar: _openAddSongsModal called for setlist ${setlist.id}');
+
+    // Get provider references before opening modal to avoid deactivated widget issues
+    final setlistProvider = context.read<SetlistProvider>();
+    final currentSongItems =
+        setlist.items.whereType<SetlistSongItem>().toList();
+    final selectedSongIds =
+        await SetlistEditorDialog.showAddSongs(context, currentSongItems);
+
+    debugPrint('Sidebar: Modal returned selectedSongIds: $selectedSongIds');
+    if (!mounted || selectedSongIds == null || selectedSongIds.isEmpty) {
+      debugPrint(
+          'Sidebar: No songs selected or context not mounted, returning');
+      return;
+    }
+
+    // Add selected songs to the setlist
+    try {
+      debugPrint('Sidebar: Starting to add songs to setlist');
+      final currentSetlist =
+          setlistProvider.setlists.where((s) => s.id == setlist.id).firstOrNull;
+
+      debugPrint('Sidebar: Found currentSetlist: ${currentSetlist?.name}');
+      if (currentSetlist != null) {
+        final newItems = List<SetlistItem>.from(currentSetlist.items);
+        for (final songId in selectedSongIds) {
+          if (!newItems.any(
+              (item) => item is SetlistSongItem && item.songId == songId)) {
+            newItems.add(SetlistSongItem(
+              songId: songId,
+              order: newItems.length,
+            ));
+            debugPrint('Sidebar: Added song $songId to newItems');
+          }
+        }
+
+        final updatedSetlist = currentSetlist.copyWith(
+          items: newItems,
+          updatedAt: DateTime.now(),
+        );
+
+        debugPrint(
+            'Sidebar: About to call updateSetlist with ${newItems.length} items');
+        await setlistProvider.updateSetlist(updatedSetlist);
+        debugPrint('Sidebar: updateSetlist completed successfully');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Added ${selectedSongIds.length} song${selectedSongIds.length == 1 ? '' : 's'} to setlist'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Sidebar: Error adding songs to setlist: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add songs: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDividerDialog(BuildContext context, Setlist setlist) async {
+    final setlistProvider = context.read<SetlistProvider>();
+
+    final divider = await DividerDialog.show(context);
+
+    if (divider == null) {
+      return;
+    }
+
+    try {
+      final newItems = List<SetlistItem>.from(setlist.items);
+      final newDivider = divider.copyWith(order: newItems.length);
+      newItems.add(newDivider);
+
+      final updatedSetlist = setlist.copyWith(
+        items: newItems,
+        updatedAt: DateTime.now(),
+      );
+
+      await setlistProvider.updateSetlist(updatedSetlist);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Divider added successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add divider: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildDeletedSongsView(BuildContext context) {
@@ -1853,5 +2574,137 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         ),
       ),
     );
+  }
+
+  Widget _buildSetlistMenuItem(BuildContext context, Setlist setlist) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to setlist view in sidebar
+        setState(() {
+          _selectedSetlistId = setlist.id;
+          _currentView = 'setlistView';
+          _isSetlistsExpanded = false;
+        });
+      },
+      onSecondaryTap: () => _showSetlistContextMenu(context, setlist, null),
+      onLongPress: () => _showSetlistContextMenu(context, setlist, null),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.only(left: 44, right: 16, top: 8, bottom: 8),
+        decoration: const BoxDecoration(
+          color: Colors.transparent,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                setlist.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            Text(
+              '${setlist.items.length} songs',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSetlistContextMenu(
+      BuildContext context, Setlist setlist, TapDownDetails? details) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editSetlist(context, setlist);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title:
+                    const Text('Delete', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteSetlist(context, setlist);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _editSetlist(BuildContext context, Setlist setlist) async {
+    final result = await SetlistEditorDialog.show(context, setlist: setlist);
+    if (result == true && context.mounted) {
+      await context.read<SetlistProvider>().loadSetlists();
+    }
+  }
+
+  void _deleteSetlist(BuildContext context, Setlist setlist) async {
+    final setlistProvider = context.read<SetlistProvider>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Setlist'),
+        content: Text(
+            'Are you sure you want to delete "${setlist.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await setlistProvider.deleteSetlist(setlist.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Deleted "${setlist.name}"'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 }

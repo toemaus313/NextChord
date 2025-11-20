@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
 import '../database/app_database.dart';
 
@@ -55,6 +56,7 @@ class SetlistRepository {
           'type': 'divider',
           'label': item.label,
           'order': item.order,
+          'color': item.color.value,
         };
       }
       throw Exception('Unknown SetlistItem type');
@@ -78,6 +80,7 @@ class SetlistRepository {
           return SetlistDividerItem(
             label: item['label'] as String,
             order: item['order'] as int,
+            color: Color(item['color'] as int? ?? 0xFFFFFFFF),
           );
         }
         throw Exception('Unknown item type: $type');

@@ -33,6 +33,350 @@ class SetlistEditorDialog extends StatefulWidget {
     );
   }
 
+  /// Show dialog to add songs to a setlist
+  static Future<List<String>?> showAddSongs(
+      BuildContext context, List<SetlistSongItem> currentItems) async {
+    final songProvider = context.read<SongProvider>();
+    final searchController = TextEditingController();
+
+    // Reset selection mode and load songs if needed
+    songProvider.resetSelectionMode();
+    // Enable selection mode by default
+    songProvider.toggleSelectionMode();
+    if (songProvider.songs.isEmpty && !songProvider.isLoading) {
+      await songProvider.loadSongs();
+    }
+
+    final selectedSongIds = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (builderContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.8,
+              maxChildSize: 0.95,
+              minChildSize: 0.5,
+              expand: false,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF0468cc),
+                        Color.fromARGB(150, 3, 73, 153)
+                      ],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Handle bar
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(100),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Add Songs to Setlist',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.close, color: Colors.white),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Search box
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Consumer<SongProvider>(
+                          builder: (context, provider, child) {
+                            return TextField(
+                              controller: searchController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Search by title, artist, or tags...',
+                                hintStyle: TextStyle(
+                                    color: Colors.white.withAlpha(150)),
+                                prefixIcon: const Icon(Icons.search,
+                                    color: Colors.white70),
+                                suffixIcon: searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear,
+                                            color: Colors.white70),
+                                        onPressed: () {
+                                          searchController.clear();
+                                          provider.searchSongs('');
+                                          setState(() {});
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      const BorderSide(color: Colors.white24),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      const BorderSide(color: Colors.white24),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                              onChanged: (value) {
+                                provider.searchSongs(value);
+                                setState(() {});
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      // Selection controls
+                      Consumer<SongProvider>(
+                        builder: (context, provider, child) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: Row(
+                              children: [
+                                // Checkbox to toggle selection mode
+                                IconButton(
+                                  icon: Icon(
+                                    provider.selectionMode
+                                        ? Icons.check_box
+                                        : Icons.check_box_outline_blank,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () =>
+                                      provider.toggleSelectionMode(),
+                                  tooltip: provider.selectionMode
+                                      ? 'Exit selection'
+                                      : 'Select songs',
+                                ),
+                                // Select all/none buttons
+                                if (provider.selectionMode) ...[
+                                  TextButton(
+                                    onPressed: () => provider.selectAll(),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Select All'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => provider.deselectAll(),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Clear'),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${provider.selectedSongs.length} selected',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      // Song list
+                      Expanded(
+                        child: Consumer<SongProvider>(
+                          builder: (context, provider, child) {
+                            if (provider.isLoading && provider.songs.isEmpty) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+
+                            final availableSongs = provider.songs.where((song) {
+                              return !currentItems
+                                  .any((item) => item.songId == song.id);
+                            }).toList();
+
+                            if (availableSongs.isEmpty) {
+                              return const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.music_note,
+                                        size: 64, color: Colors.white70),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No songs available',
+                                      style: TextStyle(
+                                          fontSize: 16, color: Colors.white70),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'All songs have been added to this setlist',
+                                      style: TextStyle(
+                                          fontSize: 14, color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              controller: scrollController,
+                              itemCount: availableSongs.length,
+                              itemBuilder: (context, index) {
+                                final song = availableSongs[index];
+                                final isSelected =
+                                    provider.selectedSongs.contains(song);
+
+                                return ListTile(
+                                  tileColor: isSelected
+                                      ? Colors.white.withAlpha(50)
+                                      : Colors.transparent,
+                                  leading: provider.selectionMode
+                                      ? Checkbox(
+                                          value: isSelected,
+                                          activeColor: Colors.white,
+                                          checkColor: Colors.black,
+                                          onChanged: (value) {
+                                            provider
+                                                .toggleSongSelection(song.id);
+                                          },
+                                        )
+                                      : const Icon(Icons.music_note,
+                                          color: Colors.white70),
+                                  title: Text(
+                                    song.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (song.artist.isNotEmpty)
+                                        Text(song.artist,
+                                            style: const TextStyle(
+                                                color: Colors.white70)),
+                                      if (song.tags.isNotEmpty)
+                                        Wrap(
+                                          spacing: 4,
+                                          children: song.tags
+                                              .map((tag) => Chip(
+                                                    label: Text(
+                                                      tag,
+                                                      style: const TextStyle(
+                                                          fontSize: 10,
+                                                          color: Colors.black),
+                                                    ),
+                                                    backgroundColor: Colors
+                                                        .white
+                                                        .withAlpha(150),
+                                                    materialTapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                  ))
+                                              .toList(),
+                                        ),
+                                    ],
+                                  ),
+                                  onTap: provider.selectionMode
+                                      ? () =>
+                                          provider.toggleSongSelection(song.id)
+                                      : () {
+                                          // Single selection mode - add this song directly
+                                          Navigator.of(context).pop([song.id]);
+                                        },
+                                  selected: isSelected,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      // Add selected button
+                      Consumer<SongProvider>(
+                        builder: (context, provider, child) {
+                          if (!provider.selectionMode ||
+                              provider.selectedSongs.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final selectedIds = provider.selectedSongs
+                                    .map((s) => s.id)
+                                    .toList();
+                                Navigator.of(context).pop(selectedIds);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF0468cc),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Add ${provider.selectedSongs.length} Song${provider.selectedSongs.length == 1 ? '' : 's'}',
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    searchController.dispose();
+    return selectedSongIds;
+  }
+
   @override
   State<SetlistEditorDialog> createState() => _SetlistEditorDialogState();
 }
@@ -463,7 +807,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     );
   }
 
-  
   Future<void> _openAddSongSheet() async {
     final songProvider = context.read<SongProvider>();
     final songs = songProvider.songs;

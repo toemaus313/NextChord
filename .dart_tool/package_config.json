@@ -45,7 +45,7 @@
     },
     {
       "name": "build",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/build-4.0.2",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/build-4.0.3",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -63,7 +63,7 @@
     },
     {
       "name": "build_runner",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner-2.10.3",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/build_runner-2.10.4",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -129,9 +129,9 @@
     },
     {
       "name": "cross_file",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/cross_file-0.3.5",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/cross_file-0.3.5+1",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.8"
     },
     {
       "name": "crypto",
@@ -375,7 +375,7 @@
     },
     {
       "name": "json_serializable",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/json_serializable-6.11.1",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/json_serializable-6.11.2",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -464,6 +464,12 @@
       "languageVersion": "2.12"
     },
     {
+      "name": "objective_c",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "package_config",
       "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0",
       "packageUri": "lib/",
@@ -489,7 +495,7 @@
     },
     {
       "name": "path_provider_foundation",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.4.4",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_foundation-2.5.0",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -627,7 +633,7 @@
     },
     {
       "name": "source_gen",
-      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/source_gen-4.0.2",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/source_gen-4.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },

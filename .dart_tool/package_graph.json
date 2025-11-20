@@ -65,7 +65,7 @@
     },
     {
       "name": "build_runner",
-      "version": "2.10.3",
+      "version": "2.10.4",
       "dependencies": [
         "analyzer",
         "args",
@@ -169,7 +169,7 @@
     },
     {
       "name": "json_serializable",
-      "version": "6.11.1",
+      "version": "6.11.2",
       "dependencies": [
         "analyzer",
         "async",
@@ -335,7 +335,7 @@
     },
     {
       "name": "source_gen",
-      "version": "4.0.2",
+      "version": "4.1.1",
       "dependencies": [
         "analyzer",
         "async",
@@ -374,7 +374,7 @@
     },
     {
       "name": "build",
-      "version": "4.0.2",
+      "version": "4.0.3",
       "dependencies": [
         "analyzer",
         "crypto",
@@ -852,9 +852,11 @@
     },
     {
       "name": "path_provider_foundation",
-      "version": "2.4.4",
+      "version": "2.5.0",
       "dependencies": [
+        "ffi",
         "flutter",
+        "objective_c",
         "path_provider_platform_interface"
       ]
     },
@@ -868,7 +870,7 @@
     },
     {
       "name": "cross_file",
-      "version": "0.3.5",
+      "version": "0.3.5+1",
       "dependencies": [
         "meta",
         "web"
@@ -1146,6 +1148,16 @@
       "dependencies": [
         "meta",
         "path"
+      ]
+    },
+    {
+      "name": "objective_c",
+      "version": "9.1.0",
+      "dependencies": [
+        "collection",
+        "ffi",
+        "flutter",
+        "pub_semver"
       ]
     },
     {
