@@ -66,29 +66,21 @@ class AutoscrollProvider extends ChangeNotifier {
 
   // Start autoscrolling
   void start() {
-    debugPrint('🔧 AUTOSCROLL DEBUG: start() called');
     if (_scrollController == null || !_scrollController!.hasClients) {
-      debugPrint('🔧 AUTOSCROLL DEBUG: No scroll controller or clients');
       return;
     }
 
     // Check if we should do count-in
     final shouldCountIn = _shouldDoCountIn();
-    debugPrint('🔧 AUTOSCROLL DEBUG: shouldDoCountIn: $shouldCountIn');
-
     if (shouldCountIn) {
-      debugPrint('🔧 AUTOSCROLL DEBUG: Starting count-in');
       _startCountIn();
     } else {
-      debugPrint('🔧 AUTOSCROLL DEBUG: Skipping count-in, starting scrolling');
       _startScrolling();
     }
   }
 
   // Stop autoscrolling
   void stop() {
-    debugPrint(
-        '🔧 AUTOSCROLL DEBUG: stop() called - _isActive: $_isActive, _isCountingIn: $_isCountingIn');
     _isActive = false;
     _isCountingIn = false;
     _scrollTimer?.cancel();
@@ -170,37 +162,27 @@ class AutoscrollProvider extends ChangeNotifier {
 
   // Check if count-in should be performed
   bool _shouldDoCountIn() {
-    debugPrint('🔧 AUTOSCROLL DEBUG: _shouldDoCountIn() called');
-
     if (_metronomeProvider == null || _settingsProvider == null) {
-      debugPrint(
-          '🔧 AUTOSCROLL DEBUG: Missing providers - metronome: ${_metronomeProvider != null}, settings: ${_settingsProvider != null}');
       return false;
     }
 
     // If autoscroll is already running, bypass count-in and just start metronome
     if (_isActive) {
-      debugPrint(
-          '🔧 AUTOSCROLL DEBUG: Autoscroll already active - bypassing count-in');
       return false;
     }
 
     // Check if count-in is enabled (not set to Off)
     final countInMeasures = _settingsProvider!.countInMeasures;
-    debugPrint('🔧 AUTOSCROLL DEBUG: countInMeasures: $countInMeasures');
     if (countInMeasures == 0) {
-      debugPrint('🔧 AUTOSCROLL DEBUG: Count-in disabled (0 measures)');
       return false;
     }
 
     // Check if scroll position is at the beginning (within 50 pixels)
     if (_scrollController != null && _scrollController!.hasClients) {
       final currentOffset = _scrollController!.offset;
-      debugPrint('🔧 AUTOSCROLL DEBUG: currentOffset: $currentOffset');
       return currentOffset <= 50.0;
     }
 
-    debugPrint('🔧 AUTOSCROLL DEBUG: No scroll controller - returning false');
     return false;
   }
 
@@ -225,29 +207,19 @@ class AutoscrollProvider extends ChangeNotifier {
   void _listenForCountInCompletion() {
     if (_metronomeProvider == null) return;
 
-    debugPrint('🔧 AUTOSCROLL DEBUG: Starting count-in completion listener');
-    debugPrint('🔧 AUTOSCROLL DEBUG: _isCountingIn: $_isCountingIn');
-
     // Check periodically if count-in has finished
     Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_metronomeProvider == null || !_isCountingIn) {
-        debugPrint(
-            '🔧 AUTOSCROLL DEBUG: Timer cancelled - metronome null or not counting in');
         timer.cancel();
         return;
       }
 
-      debugPrint(
-          '🔧 AUTOSCROLL DEBUG: Checking count-in status - isCountingIn: ${_metronomeProvider!.isCountingIn}, isRunning: ${_metronomeProvider!.isRunning}');
-
       // Count-in is finished when metronome is no longer counting in
       if (!_metronomeProvider!.isCountingIn) {
-        debugPrint('🔧 AUTOSCROLL DEBUG: Count-in finished!');
         timer.cancel();
         _isCountingIn = false;
 
         // Start scrolling after count-in completes (metronome should be stopped)
-        debugPrint('🔧 AUTOSCROLL DEBUG: Starting scrolling after count-in');
         _startScrolling();
       }
     });

@@ -23,7 +23,8 @@ class MetronomeProvider extends ChangeNotifier {
   MidiService? _midiService;
   AutoscrollActiveCallback? _isAutoscrollActiveCallback;
 
-  Timer? _tickTimer;
+  Timer? _timer;
+  Timer? _midiTimer; // Separate timer for MIDI sends that runs independently
   Timer? _flashTimer;
   Completer<void>? _loadingCompleter;
 
@@ -34,24 +35,25 @@ class MetronomeProvider extends ChangeNotifier {
   bool _flashActive = false;
   bool _isDisposed = false;
   bool _audioAvailable = true; // Track if audio is working
-  int _beatsSinceStart =
-      0; // Track beats since metronome started for MIDI sends
+  DateTime?
+      _metronomeStartTime; // Track when metronome started for time-based MIDI sends
   bool _isCountingIn = false; // Track if we're in count-in phase
   int _countInBeatsRemaining = 0; // Track remaining count-in beats
   int _currentCountInBeat = 0; // Track current count-in beat number for display
 
   MetronomeProvider() {
     _ensurePlayerReady();
-    _initializeServices();
+    initialize();
   }
 
   /// Initialize service references for MIDI integration
-  void _initializeServices() {
+  void initialize() {
     // Initialize MIDI service singleton
     _midiService = MidiService();
 
     // Register MIDI tick action
     registerTickAction('midi_send_on_tick', _handleMidiSendOnTick);
+    debugPrint('🎹 MIDI DEBUG: Registered midi_send_on_tick tick action');
   }
 
   /// Set the metronome settings provider (called from UI)
@@ -94,20 +96,22 @@ class MetronomeProvider extends ChangeNotifier {
     await _ensurePlayerReady();
     _isRunning = true;
     _tickCounter = 0;
-    _beatsSinceStart = 0; // Reset beat counter for MIDI sends
+    _metronomeStartTime = DateTime.now(); // Set start time for MIDI sends
 
     // Initialize count-in if enabled
     _initializeCountIn();
 
     _safeNotifyListeners();
-    _handleTick();
+    _handleTick(); // Handle first tick immediately
     _startTimer();
+    _startMidiTimer(); // Start independent MIDI timer
   }
 
   void stop({bool notifyListeners = true}) {
     if (!_isRunning) return;
-    _tickTimer?.cancel();
-    _tickTimer = null;
+    _timer?.cancel();
+    _timer = null;
+    // Don't cancel MIDI timer here - let it run independently for the full 4 seconds
     _flashTimer?.cancel();
     _flashTimer = null;
     _flashActive = false;
@@ -123,6 +127,19 @@ class MetronomeProvider extends ChangeNotifier {
     if (notifyListeners) {
       _safeNotifyListeners();
     }
+  }
+
+  /// Stop only the MIDI timer (called when 4 seconds elapsed)
+  void _stopMidiTimer() {
+    _midiTimer?.cancel();
+    _midiTimer = null;
+    debugPrint('🎹 MIDI DEBUG: MIDI timer stopped');
+  }
+
+  /// Stub MIDI handler - kept for compatibility but MIDI is handled by independent timer
+  Future<void> _handleMidiSendOnTick(int tickCount) async {
+    // This is now handled by the independent MIDI timer
+    // Keeping this for compatibility with existing registration
   }
 
   Future<void> toggle() async {
@@ -155,6 +172,7 @@ class MetronomeProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     stop(notifyListeners: false);
+    _stopMidiTimer(); // Clean up MIDI timer
     // Only dispose audio players if they were successfully initialized
     if (_audioAvailable) {
       try {
@@ -208,16 +226,93 @@ class MetronomeProvider extends ChangeNotifier {
 
   void _startTimer() {
     final intervalMs = (60000 / _tempoBpm).round();
-    _tickTimer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
+    _timer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
       _handleTick();
     });
   }
 
   void _restartTimer() {
-    _tickTimer?.cancel();
-    _tickTimer = null;
+    _timer?.cancel();
+    _timer = null;
+    _midiTimer?.cancel(); // Also restart MIDI timer
+    _midiTimer = null;
     if (_isRunning) {
       _startTimer();
+      _startMidiTimer(); // Restart MIDI timer too
+    }
+  }
+
+  /// Start independent MIDI timer that runs for 4 seconds regardless of metronome state
+  void _startMidiTimer() {
+    debugPrint('🎹 MIDI DEBUG: Starting independent MIDI timer for 4 seconds');
+    debugPrint('🎹 MIDI DEBUG: Start time recorded: $_metronomeStartTime');
+
+    // Calculate tick interval based on current tempo
+    final intervalMs = (60000 / _tempoBpm).round();
+    debugPrint(
+        '🎹 MIDI DEBUG: Tempo: $_tempoBpm BPM, Interval: ${intervalMs}ms');
+    int midiTickCount = 0;
+
+    _midiTimer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
+      if (_metronomeStartTime == null) {
+        debugPrint('🎹 MIDI DEBUG: Start time is null, skipping');
+        return;
+      }
+
+      final now = DateTime.now();
+      final elapsedMs = now.difference(_metronomeStartTime!).inMilliseconds;
+      final elapsedSeconds = elapsedMs / 1000.0;
+
+      debugPrint(
+          '🎹 MIDI DEBUG: Tick #$midiTickCount - Elapsed: ${elapsedSeconds.toStringAsFixed(3)}s (${elapsedMs}ms)');
+
+      if (elapsedSeconds > 4.0) {
+        debugPrint(
+            '🎹 MIDI DEBUG: 4 seconds elapsed (${elapsedSeconds.toStringAsFixed(3)}s), stopping MIDI timer');
+        _stopMidiTimer();
+        return;
+      }
+
+      midiTickCount++;
+      debugPrint(
+          '🎹 MIDI DEBUG: Executing MIDI tick #$midiTickCount at ${elapsedSeconds.toStringAsFixed(3)}s');
+
+      // Execute MIDI sending directly instead of using tick actions
+      _executeMidiSend(elapsedSeconds);
+    });
+  }
+
+  /// Execute MIDI send directly (called by independent timer)
+  Future<void> _executeMidiSend(double elapsedSeconds) async {
+    if (_settingsProvider == null || _midiService == null) {
+      debugPrint('🎹 MIDI DEBUG: Missing settings or MIDI service');
+      return;
+    }
+
+    try {
+      final midiCommand = _settingsProvider!.midiSendOnTick;
+      debugPrint('🎹 MIDI DEBUG: MIDI command: "$midiCommand"');
+
+      if (midiCommand.isEmpty) {
+        debugPrint('🎹 MIDI DEBUG: No MIDI command configured');
+        return;
+      }
+
+      // Only send if MIDI device is connected
+      if (!_midiService!.isConnected) {
+        debugPrint('🎹 MIDI DEBUG: MIDI device not connected');
+        return;
+      }
+
+      // Send the MIDI command
+      debugPrint(
+          '🎹 MIDI DEBUG: Sending MIDI command at ${elapsedSeconds.toStringAsFixed(1)}s...');
+      await _sendMidiCommand(midiCommand);
+      debugPrint(
+          '🎹 MIDI sent at ${elapsedSeconds.toStringAsFixed(1)}s of 4.0s');
+    } catch (e, stack) {
+      debugPrint('Error in MIDI send on tick: $e');
+      debugPrint(stack.toString());
     }
   }
 
@@ -225,7 +320,6 @@ class MetronomeProvider extends ChangeNotifier {
     if (!_isRunning) return;
 
     _tickCounter++;
-    _beatsSinceStart++; // Increment beats since start
 
     // Handle count-in phase
     if (_isCountingIn) {
@@ -235,18 +329,6 @@ class MetronomeProvider extends ChangeNotifier {
 
     // Handle normal metronome operation based on tick action setting
     _handleNormalTick();
-
-    for (final action in _tickActions.values) {
-      try {
-        final result = action(_tickCounter);
-        if (result is Future) {
-          unawaited(result);
-        }
-      } catch (e, stack) {
-        debugPrint('Metronome tick action error: $e');
-        debugPrint(stack.toString());
-      }
-    }
   }
 
   Future<void> _playClick({required bool isAccent}) async {
@@ -317,14 +399,9 @@ class MetronomeProvider extends ChangeNotifier {
       // Check if autoscroll is currently active - if so, bypass count-in
       final isAutoscrollActive = _isAutoscrollActiveCallback?.call() ?? false;
       if (isAutoscrollActive) {
-        debugPrint(
-            '🎵 METRONOME DEBUG: Autoscroll is active - bypassing count-in');
         _isCountingIn = false;
         _countInBeatsRemaining = 0;
       } else {
-        // 1 or 2 measures
-        debugPrint(
-            '🎵 METRONOME DEBUG: Starting count-in - autoscroll not active');
         _isCountingIn = true;
         _countInBeatsRemaining = countInMeasures * _beatsPerMeasure;
         _currentCountInBeat = 0;
@@ -334,36 +411,37 @@ class MetronomeProvider extends ChangeNotifier {
 
   /// Handle tick during count-in phase
   void _handleCountInTick() {
-    debugPrint(
-        '🎵 METRONOME DEBUG: _handleCountInTick() called - _countInBeatsRemaining: $_countInBeatsRemaining');
+    if (_countInBeatsRemaining > 0) {
+      _countInBeatsRemaining--;
+
+      // Calculate beat within the current measure (1-based)
+      final totalBeatsSoFar =
+          (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
+              _countInBeatsRemaining;
+      _currentCountInBeat = ((totalBeatsSoFar - 1) % _beatsPerMeasure) + 1;
+
+      // During count-in: always flash border and show beat number
+      _triggerFlash();
+
+      // Always play sound during count-in
+      final isAccent = _currentCountInBeat == 1;
+      unawaited(_playClick(isAccent: isAccent));
+
+      _safeNotifyListeners();
+    }
 
     if (_countInBeatsRemaining <= 0) {
       // Count-in finished, transition to normal operation
-      debugPrint(
-          '🎵 METRONOME DEBUG: Count-in finished, transitioning to normal operation');
-      debugPrint(
-          '🎵 METRONOME DEBUG: tickAction: ${_settingsProvider?.tickAction}');
-
       _isCountingIn = false;
       _currentCountInBeat = 0;
 
       // If "Count In Only" mode, stop here
       if (_settingsProvider?.tickAction == 'Count In Only') {
-        debugPrint('🎵 METRONOME DEBUG: Count In Only mode - calling stop()');
         stop();
-        return;
+      } else {
+        _handleNormalTick();
       }
-
-      debugPrint(
-          '🎵 METRONOME DEBUG: Continuing with normal operation - calling _handleNormalTick()');
-      // Continue with normal operation
-      _handleNormalTick();
-      return;
     }
-
-    _countInBeatsRemaining--;
-
-    // Calculate beat within the current measure (1-based)
     final totalBeatsSoFar =
         (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
             _countInBeatsRemaining;
@@ -409,51 +487,29 @@ class MetronomeProvider extends ChangeNotifier {
     }
   }
 
-  /// Handle MIDI send on tick based on metronome settings
-  Future<void> _handleMidiSendOnTick(int tickCount) async {
-    if (_settingsProvider == null || _midiService == null) {
-      return;
-    }
-
-    try {
-      final midiCommand = _settingsProvider!.midiSendOnTick;
-      if (midiCommand.isEmpty) {
-        return; // No MIDI command configured
-      }
-
-      // Only send if MIDI device is connected
-      if (!_midiService!.isConnected) {
-        return;
-      }
-
-      // Only send MIDI for the first 4 beats after starting metronome
-      if (_beatsSinceStart > 4) {
-        return;
-      }
-
-      // Send the MIDI command
-      await _sendMidiCommand(midiCommand);
-      debugPrint('🎹 MIDI sent on beat $_beatsSinceStart of 4');
-    } catch (e, stack) {
-      debugPrint('Error in MIDI send on tick: $e');
-      debugPrint(stack.toString());
-    }
-  }
-
   /// Send MIDI command based on string format
   Future<void> _sendMidiCommand(String commandText) async {
-    if (_midiService == null) return;
+    debugPrint('🎹 MIDI DEBUG: _sendMidiCommand called with: "$commandText"');
+
+    if (_midiService == null) {
+      debugPrint('🎹 MIDI DEBUG: _midiService is null');
+      return;
+    }
 
     final messages = commandText
         .split(',')
         .map((msg) => msg.trim())
         .where((msg) => msg.isNotEmpty);
 
+    debugPrint('🎹 MIDI DEBUG: Parsed ${messages.length} MIDI messages');
+
     for (final message in messages) {
       final lowerMessage = message.toLowerCase();
+      debugPrint('🎹 MIDI DEBUG: Processing message: "$message"');
 
       // Check timing command
       if (lowerMessage == 'timing') {
+        debugPrint('🎹 MIDI DEBUG: Sending timing clock');
         await _midiService!.sendMidiClock();
       }
       // Parse Program Change: "PC10" or "PC:10"
@@ -465,9 +521,16 @@ class MetronomeProvider extends ChangeNotifier {
         if (pcMatch != null) {
           final pcValue = int.tryParse(pcMatch.group(1)!);
           if (pcValue != null && pcValue >= 0 && pcValue <= 127) {
+            debugPrint(
+                '🎹 MIDI DEBUG: Sending Program Change $pcValue on channel ${_midiService!.midiChannel}');
             await _midiService!
                 .sendProgramChange(pcValue, channel: _midiService!.midiChannel);
+          } else {
+            debugPrint('🎹 MIDI DEBUG: Invalid PC value: $pcValue');
           }
+        } else {
+          debugPrint(
+              '🎹 MIDI DEBUG: PC command format not matched: "$message"');
         }
       }
       // Parse Control Change: "CC7:100"
@@ -484,11 +547,23 @@ class MetronomeProvider extends ChangeNotifier {
               value != null &&
               value >= 0 &&
               value <= 127) {
+            debugPrint(
+                '🎹 MIDI DEBUG: Sending Control Change CC$controller:$value on channel ${_midiService!.midiChannel}');
             await _midiService!.sendControlChange(controller, value,
                 channel: _midiService!.midiChannel);
+          } else {
+            debugPrint(
+                '🎹 MIDI DEBUG: Invalid CC values: controller=$controller, value=$value');
           }
+        } else {
+          debugPrint(
+              '🎹 MIDI DEBUG: CC command format not matched: "$message"');
         }
+      } else {
+        debugPrint('🎹 MIDI DEBUG: Unknown command format: "$message"');
       }
     }
+
+    debugPrint('🎹 MIDI DEBUG: _sendMidiCommand completed');
   }
 }
