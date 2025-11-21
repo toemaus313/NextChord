@@ -23,6 +23,7 @@ class Songs extends Table {
       text().withDefault(const Constant('[]'))(); // JSON array stored as TEXT
   TextColumn get audioFilePath => text().nullable()();
   TextColumn get notes => text().nullable()();
+  TextColumn get profileId => text().nullable()(); // Reference to MIDI profile
   IntColumn get createdAt => integer()(); // Stored as epoch milliseconds
   IntColumn get updatedAt => integer()(); // Stored as epoch milliseconds
   BoolColumn get isDeleted =>
@@ -37,6 +38,23 @@ class Songs extends Table {
 class MidiMappings extends Table {
   TextColumn get id => text()();
   TextColumn get songId => text()();
+  IntColumn get programChangeNumber => integer().nullable()(); // 0-127
+  TextColumn get controlChanges =>
+      text().withDefault(const Constant('[]'))(); // JSON array of MidiCC
+  BoolColumn get timing => boolean().withDefault(const Constant(false))();
+  TextColumn get notes => text().nullable()();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Drift table for MIDI Profiles (reusable MIDI configurations)
+@DataClassName('MidiProfileModel')
+class MidiProfiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()(); // User-friendly profile name
   IntColumn get programChangeNumber => integer().nullable()(); // 0-127
   TextColumn get controlChanges =>
       text().withDefault(const Constant('[]'))(); // JSON array of MidiCC
@@ -67,18 +85,64 @@ class Setlists extends Table {
 }
 
 /// Main Drift database
-@DriftDatabase(tables: [Songs, Setlists, MidiMappings])
+@DriftDatabase(tables: [Songs, Setlists, MidiMappings, MidiProfiles])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// Get the DAO for Songs
   late final songsDao = SongsDao(this);
 
   /// Get the DAO for Setlists
   late final setlistsDao = SetlistsDao(this);
+
+  /// Check if midi_profiles table exists and create it if needed
+  Future<void> ensureMidiProfilesTable() async {
+    try {
+      // Try to query the midi_profiles table
+      await customSelect('SELECT COUNT(*) FROM midi_profiles').get();
+      debugPrint('🎹 midi_profiles table exists');
+    } catch (e) {
+      debugPrint('🎹 midi_profiles table missing, creating it: $e');
+      try {
+        await customStatement('''
+          CREATE TABLE IF NOT EXISTS midi_profiles (
+            id TEXT NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL,
+            program_change_number INTEGER,
+            control_changes TEXT NOT NULL DEFAULT '[]',
+            timing BOOLEAN NOT NULL DEFAULT FALSE,
+            notes TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          )
+        ''');
+        debugPrint('🎹 midi_profiles table created successfully');
+      } catch (createError) {
+        debugPrint('🎹 Error creating midi_profiles table: $createError');
+        rethrow;
+      }
+    }
+
+    // Always check if profileId column exists in songs table (moved outside the catch block)
+    try {
+      await customSelect('SELECT profile_id FROM songs LIMIT 1').get();
+      debugPrint('🎹 profileId column exists in songs table');
+    } catch (e) {
+      debugPrint('🎹 profileId column missing, adding it: $e');
+      try {
+        await customStatement('ALTER TABLE songs ADD COLUMN profile_id TEXT');
+        debugPrint('🎹 profileId column added successfully');
+      } catch (alterError) {
+        debugPrint('🎹 Error adding profileId column: $alterError');
+        rethrow;
+      }
+    }
+
+    debugPrint('🎹 MIDI profile schema verification completed');
+  }
 
   /// Initialize database with migrations if needed
   @override
@@ -113,6 +177,14 @@ class AppDatabase extends _$AppDatabase {
           debugPrint('🎹 Creating midi_mappings table');
           await m.createTable(midiMappings);
           debugPrint('🎹 midi_mappings table created successfully');
+        }
+        if (from <= 5 && to >= 6) {
+          // Create midi_profiles table and add profile_id to songs
+          debugPrint('🎹 Creating midi_profiles table');
+          await m.createTable(midiProfiles);
+          debugPrint('🎹 Adding profileId column to songs table');
+          await m.addColumn(songs, songs.profileId);
+          debugPrint('🎹 MIDI profile system migration completed');
         }
         debugPrint('🎹 Database upgrade completed');
       },

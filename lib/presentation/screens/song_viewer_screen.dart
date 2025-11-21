@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
-import '../../data/database/app_database.dart';
 import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -290,63 +289,92 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   /// Send MIDI mapping when song is opened in viewer
   Future<void> _sendMidiMappingOnOpen() async {
     try {
-      // Load MIDI mapping from database
-      final songRepository = SongRepository(AppDatabase());
-      final midiMapping = await songRepository.getMidiMapping(_currentSong.id);
+      debugPrint(
+          '🎹 === MIDI DEBUG: Starting _sendMidiMappingOnOpen for song: ${_currentSong.title} ===');
 
-      if (midiMapping == null) {
-        debugPrint('🎹 No MIDI mapping found for song: ${_currentSong.title}');
-        return;
-      }
-
-      // Get MIDI service
+      // Get MIDI service first for clock stream
       final midiService = Provider.of<MidiService>(context, listen: false);
+      debugPrint(
+          '🎹 MIDI DEBUG: MIDI service connection state: ${midiService.connectionState}');
+      debugPrint(
+          '🎹 MIDI DEBUG: MIDI service sendMidiClockEnabled: ${midiService.sendMidiClockEnabled}');
 
-      if (!midiService.isConnected) {
+      // Send MIDI clock stream if enabled and device is connected (regardless of MIDI profile)
+      if (midiService.isConnected && midiService.sendMidiClockEnabled) {
         debugPrint(
-            '🎹 No MIDI device connected - skipping MIDI sends for song: ${_currentSong.title}');
-        return;
+            '🎹 MIDI DEBUG: sendMidiClockEnabled is TRUE and device connected - sending clock stream...');
+        try {
+          await midiService.sendMidiClockStream(durationSeconds: 2);
+          debugPrint('🎹 MIDI DEBUG: Clock stream completed successfully');
+        } catch (e) {
+          debugPrint('🎹 MIDI DEBUG: ERROR sending clock stream: $e');
+        }
+      } else {
+        if (!midiService.isConnected) {
+          debugPrint(
+              '🎹 MIDI DEBUG: No MIDI device connected - skipping clock stream');
+        }
+        if (!midiService.sendMidiClockEnabled) {
+          debugPrint(
+              '🎹 MIDI DEBUG: sendMidiClockEnabled is FALSE - skipping clock stream');
+        }
       }
 
-      debugPrint('🎹 Sending MIDI mapping for song: ${_currentSong.title}');
+      // Load MIDI profile from database using dependency injection
+      final songRepository = context.read<SongRepository>();
+      final midiProfile =
+          await songRepository.getSongMidiProfile(_currentSong.id);
+
+      if (midiProfile == null) {
+        debugPrint(
+            '🎹 MIDI DEBUG: No MIDI profile found for song: ${_currentSong.title} - skipping profile MIDI sends');
+        return;
+      }
+      debugPrint(
+          '🎹 MIDI DEBUG: Found MIDI profile: ${midiProfile.name} (ID: ${midiProfile.id})');
+
+      debugPrint(
+          '🎹 MIDI DEBUG: Starting to send MIDI profile for song: ${_currentSong.title}');
 
       // Send Program Change
-      if (midiMapping.programChangeNumber != null) {
+      if (midiProfile.programChangeNumber != null) {
         debugPrint(
-            '🎹 Sending Program Change: PC${midiMapping.programChangeNumber} on channel ${midiService.midiChannel}');
-        await midiService.sendProgramChange(midiMapping.programChangeNumber!,
-            channel: midiService.midiChannel);
-        await Future.delayed(const Duration(milliseconds: 100));
+            '🎹 MIDI DEBUG: Sending Program Change: ${midiProfile.programChangeNumber}');
+        await midiService.sendProgramChange(midiProfile.programChangeNumber!);
+      } else {
+        debugPrint('🎹 MIDI DEBUG: No Program Change number in profile');
       }
 
       // Send Control Changes
-      for (final cc in midiMapping.controlChanges) {
-        // Handle PC commands (stored as controller -1)
-        if (cc.controller == -1) {
+      if (midiProfile.controlChanges.isNotEmpty) {
+        debugPrint(
+            '🎹 MIDI DEBUG: Sending ${midiProfile.controlChanges.length} Control Changes');
+        for (final cc in midiProfile.controlChanges) {
           debugPrint(
-              '🎹 Sending Program Change: PC${cc.value} on channel ${midiService.midiChannel}');
-          await midiService.sendProgramChange(cc.value,
-              channel: midiService.midiChannel);
-        } else {
-          debugPrint(
-              '🎹 Sending Control Change: CC${cc.controller}:${cc.value} on channel ${midiService.midiChannel}');
-          await midiService.sendControlChange(cc.controller, cc.value,
-              channel: midiService.midiChannel);
+              '🎹 MIDI DEBUG: Sending Control Change: CC${cc.controller} -> ${cc.value}');
+          await midiService.sendControlChange(cc.controller, cc.value);
         }
         await Future.delayed(const Duration(milliseconds: 100));
+      } else {
+        debugPrint('🎹 MIDI DEBUG: No Control Changes in profile');
       }
 
       // Send timing if enabled
-      if (midiMapping.timing) {
-        debugPrint('🎹 Sending MIDI timing clock');
+      if (midiProfile.timing) {
+        debugPrint(
+            '🎹 MIDI DEBUG: Profile timing is enabled - sending single MIDI clock');
         await midiService.sendMidiClock();
+      } else {
+        debugPrint('🎹 MIDI DEBUG: Profile timing is disabled');
       }
 
       debugPrint(
-          '🎹 MIDI mapping sent successfully for song: ${_currentSong.title}');
+          '🎹 MIDI DEBUG: === MIDI profile sending completed for song: ${_currentSong.title} ===');
     } catch (e) {
       debugPrint(
-          '🎹 Error sending MIDI mapping for song: ${_currentSong.title} - $e');
+          '🎹 MIDI DEBUG: ERROR in _sendMidiMappingOnOpen for song: ${_currentSong.title} - $e');
+      debugPrint('🎹 MIDI DEBUG: Error type: ${e.runtimeType}');
+      debugPrint('🎹 MIDI DEBUG: Stack trace: ${StackTrace.current}');
     }
   }
 

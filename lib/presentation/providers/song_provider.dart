@@ -13,6 +13,9 @@ class SongProvider extends ChangeNotifier {
 
   SongProvider(this._repository);
 
+  // Public getter for repository access
+  SongRepository get repository => _repository;
+
   // State
   List<Song> _songs = [];
   List<Song> _filteredSongs = [];

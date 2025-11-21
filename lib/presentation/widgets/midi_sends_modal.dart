@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_profile.dart';
 import '../../services/midi/midi_service.dart';
 
 /// Modal-style dialog for editing MIDI sends for a song

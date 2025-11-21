@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_profile.dart';
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -11,6 +12,9 @@ class SongRepository {
   final AppDatabase _db;
 
   SongRepository(this._db);
+
+  /// Get the database instance for schema operations
+  AppDatabase get database => _db;
 
   /// Convert a domain Song entity to a database SongModel
   SongModel _songToModel(Song song) {
@@ -330,6 +334,145 @@ class SongRepository {
     } catch (e) {
       debugPrint('Error decoding control changes: $e');
       return [];
+    }
+  }
+
+  // ===== MIDI PROFILE CRUD METHODS =====
+
+  /// Save or update a MIDI profile
+  Future<void> saveMidiProfile(MidiProfile profile) async {
+    try {
+      final existingProfile = await getMidiProfile(profile.id);
+      if (existingProfile != null) {
+        await _db.update(_db.midiProfiles).replace(
+              MidiProfileModel(
+                id: profile.id,
+                name: profile.name,
+                programChangeNumber: profile.programChangeNumber,
+                controlChanges: _encodeControlChanges(profile.controlChanges),
+                timing: profile.timing,
+                notes: profile.notes,
+                createdAt: existingProfile.createdAt.millisecondsSinceEpoch,
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+      } else {
+        await _db.into(_db.midiProfiles).insert(
+              MidiProfileModel(
+                id: profile.id,
+                name: profile.name,
+                programChangeNumber: profile.programChangeNumber,
+                controlChanges: _encodeControlChanges(profile.controlChanges),
+                timing: profile.timing,
+                notes: profile.notes,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+      }
+      debugPrint('🎹 MIDI profile saved: ${profile.name}');
+    } catch (e) {
+      throw SongRepositoryException('Failed to save MIDI profile: $e');
+    }
+  }
+
+  /// Get all MIDI profiles
+  Future<List<MidiProfile>> getAllMidiProfiles() async {
+    try {
+      final profileModels = await (_db.select(_db.midiProfiles)
+            ..orderBy([(t) => OrderingTerm(expression: t.name)]))
+          .get();
+
+      return profileModels
+          .map((model) => MidiProfile.fromModel(
+                id: model.id,
+                name: model.name,
+                createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
+                updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
+                programChangeNumber: model.programChangeNumber,
+                controlChanges: _decodeControlChanges(model.controlChanges),
+                timing: model.timing,
+                notes: model.notes,
+              ))
+          .toList();
+    } catch (e) {
+      throw SongRepositoryException('Failed to get MIDI profiles: $e');
+    }
+  }
+
+  /// Get a specific MIDI profile by ID
+  Future<MidiProfile?> getMidiProfile(String profileId) async {
+    try {
+      final model = await (_db.select(_db.midiProfiles)
+            ..where((tbl) => tbl.id.equals(profileId)))
+          .getSingleOrNull();
+
+      if (model == null) return null;
+
+      return MidiProfile.fromModel(
+        id: model.id,
+        name: model.name,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
+        programChangeNumber: model.programChangeNumber,
+        controlChanges: _decodeControlChanges(model.controlChanges),
+        timing: model.timing,
+        notes: model.notes,
+      );
+    } catch (e) {
+      throw SongRepositoryException('Failed to get MIDI profile: $e');
+    }
+  }
+
+  /// Delete a MIDI profile
+  Future<void> deleteMidiProfile(String profileId) async {
+    try {
+      // First, remove profile reference from any songs that use it
+      await (_db.update(_db.songs)
+            ..where((tbl) => tbl.profileId.equals(profileId)))
+          .write(const SongsCompanion(profileId: Value(null)));
+
+      // Then delete the profile
+      await (_db.delete(_db.midiProfiles)
+            ..where((tbl) => tbl.id.equals(profileId)))
+          .go();
+
+      debugPrint('🎹 MIDI profile deleted: $profileId');
+    } catch (e) {
+      throw SongRepositoryException('Failed to delete MIDI profile: $e');
+    }
+  }
+
+  /// Assign a MIDI profile to a song
+  Future<void> assignMidiProfileToSong(String songId, String? profileId) async {
+    try {
+      debugPrint(
+          '🎹 REPO: Assigning MIDI profile to song $songId with profile ID $profileId');
+      await (_db.update(_db.songs)..where((tbl) => tbl.id.equals(songId)))
+          .write(SongsCompanion(profileId: Value(profileId)));
+      debugPrint(
+          '🎹 REPO: Successfully assigned MIDI profile $profileId to song $songId');
+    } catch (e) {
+      debugPrint('🎹 REPO ERROR: Failed to assign MIDI profile to song: $e');
+      debugPrint('🎹 REPO ERROR type: ${e.runtimeType}');
+      debugPrint('🎹 REPO ERROR stack trace: ${StackTrace.current}');
+      throw SongRepositoryException(
+          'Failed to assign MIDI profile to song: $e');
+    }
+  }
+
+  /// Get the MIDI profile for a specific song
+  Future<MidiProfile?> getSongMidiProfile(String songId) async {
+    try {
+      final song = await (_db.select(_db.songs)
+            ..where((tbl) => tbl.id.equals(songId)))
+          .getSingle();
+
+      if (song.profileId == null) return null;
+
+      return await getMidiProfile(song.profileId!);
+    } catch (e) {
+      throw SongRepositoryException('Failed to get song MIDI profile: $e');
     }
   }
 }

@@ -10,6 +10,7 @@ import '../screens/library_screen.dart';
 import '../screens/song_editor_screen.dart';
 import '../screens/setlist_editor_screen.dart';
 import 'midi_settings_modal.dart';
+import 'midi_profiles_modal.dart';
 import 'metronome_settings_modal.dart';
 import '../../domain/entities/song.dart';
 import '../../core/utils/chordpro_parser.dart';
@@ -453,6 +454,19 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             onTap: () async {
                               debugPrint('🎹 Opening MIDI Settings...');
                               await MidiSettingsModal.show(context);
+                            },
+                          ),
+                          _buildSubMenuItem(
+                            context,
+                            title: 'MIDI Profiles',
+                            isSelected: false,
+                            onTap: () async {
+                              debugPrint('🎹 Opening MIDI Profiles...');
+                              await showDialog<void>(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const MidiProfilesModal(),
+                              );
                             },
                           ),
                           _buildSubMenuItem(

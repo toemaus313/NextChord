@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'dart:typed_data';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// MIDI Service singleton for managing MIDI device connections and message sending
 ///
@@ -37,6 +38,7 @@ class MidiService with ChangeNotifier {
 
   // MIDI Configuration
   int _midiChannel = 0; // Internal storage: 0-15 (displayed as 1-16)
+  bool _sendMidiClockEnabled = false; // Send MIDI clock when songs are opened
 
   // Getters
   MidiConnectionState get connectionState => _connectionState;
@@ -46,6 +48,7 @@ class MidiService with ChangeNotifier {
   bool get isConnected => _connectionState == MidiConnectionState.connected;
   bool get isScanning => _connectionState == MidiConnectionState.scanning;
   int get midiChannel => _midiChannel;
+  bool get sendMidiClockEnabled => _sendMidiClockEnabled;
 
   /// Set the MIDI channel (1-16, displayed to user)
   void setMidiChannel(int channel) {
@@ -55,7 +58,70 @@ class MidiService with ChangeNotifier {
     _midiChannel = channel - 1; // Convert to 0-15 for MIDI protocol
     debugPrint(
         '🎹 MidiService: MIDI channel set to $channel (encoded as $_midiChannel)');
+    _saveSettings();
     notifyListeners();
+  }
+
+  /// Set whether to send MIDI clock when songs are opened
+  void setSendMidiClock(bool enabled) {
+    _sendMidiClockEnabled = enabled;
+    debugPrint('🎹 MidiService: Send MIDI clock set to $enabled');
+    _saveSettings();
+    notifyListeners();
+  }
+
+  /// Send MIDI clock stream for specified duration
+  Future<void> sendMidiClockStream({int durationSeconds = 2}) async {
+    if (!isConnected) {
+      debugPrint(
+          '🎹 MidiService: Cannot send MIDI clock - no device connected');
+      return;
+    }
+
+    debugPrint(
+        '🎹 MidiService: Sending MIDI clock stream for $durationSeconds seconds');
+
+    final startTime = DateTime.now();
+    final endTime = startTime.add(Duration(seconds: durationSeconds));
+
+    // MIDI Clock is sent at 24 PPQ (pulses per quarter note)
+    // At 120 BPM, that's approximately one clock message every 20.8ms
+    const int clockIntervalMs = 21; // Approximate for 120 BPM
+
+    while (DateTime.now().isBefore(endTime)) {
+      // MIDI Clock is a real-time message (0xF8) - doesn't use channel
+      final midiData = Uint8List.fromList([0xF8]);
+      _midiCommand.sendData(midiData);
+
+      // Wait for next clock pulse
+      await Future.delayed(const Duration(milliseconds: clockIntervalMs));
+    }
+
+    debugPrint('🎹 MidiService: MIDI clock stream completed');
+  }
+
+  /// Load settings from SharedPreferences
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _midiChannel = prefs.getInt('new_midi_channel') ?? 0;
+      _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
+      debugPrint(
+          '🎹 MidiService: Settings loaded - Channel: ${_midiChannel + 1}, Send Clock: $_sendMidiClockEnabled');
+    } catch (e) {
+      debugPrint('🎹 MidiService: Failed to load settings: $e');
+    }
+  }
+
+  /// Save settings to SharedPreferences
+  Future<void> _saveSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('new_midi_channel', _midiChannel);
+      await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
+    } catch (e) {
+      debugPrint('🎹 MidiService: Failed to save settings: $e');
+    }
   }
 
   /// Get the display MIDI channel (1-16)
@@ -65,6 +131,9 @@ class MidiService with ChangeNotifier {
   Future<void> _initialize() async {
     try {
       debugPrint('🎹 MidiService: Initializing MIDI system...');
+
+      // Load saved settings first
+      await _loadSettings();
 
       // Start scanning for devices
       await scanForDevices();

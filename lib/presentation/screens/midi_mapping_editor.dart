@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../widgets/midi_settings_modal.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_profile.dart';
 import '../../services/midi/midi_service.dart';
-import 'midi_settings_screen.dart';
 
 /// Screen for editing MIDI mappings for a specific song
 class MidiMappingEditorScreen extends StatefulWidget {
@@ -472,11 +473,7 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
                 if (!midiService.isConnected)
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const MidiSettingsScreen(),
-                        ),
-                      );
+                      MidiSettingsModal.show(context);
                     },
                     child: const Text('Configure MIDI'),
                   ),

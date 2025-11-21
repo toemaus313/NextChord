@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'midi_profile.dart';
 
 /// Domain entity for a musical Song
 class Song extends Equatable {
@@ -252,20 +253,4 @@ class MidiMapping extends Equatable {
   @override
   List<Object?> get props =>
       [id, songId, programChangeNumber, controlChanges, timing, notes];
-}
-
-/// A MIDI Control Change message
-class MidiCC extends Equatable {
-  final int controller; // 0-119 (120-127 are reserved)
-  final int value; // 0-127
-  final String? label; // e.g., "Reverb", "Delay"
-
-  const MidiCC({
-    required this.controller,
-    required this.value,
-    this.label,
-  });
-
-  @override
-  List<Object?> get props => [controller, value, label];
 }

@@ -33,15 +33,60 @@ class MidiSettingsModal extends StatefulWidget {
 }
 
 class _MidiSettingsModalState extends State<MidiSettingsModal> {
+  bool _isInitializing = true;
+  String? _initError;
+  bool _isTestStreamActive = false;
+
   @override
   void initState() {
     super.initState();
-    // Initialize MIDI service singleton
-    MidiService();
+    _initializeMidiService();
+  }
+
+  Future<void> _initializeMidiService() async {
+    try {
+      // Initialize MIDI service singleton safely
+      MidiService(); // Just initialize the singleton
+      // Give it a moment to initialize
+      await Future.delayed(const Duration(milliseconds: 100));
+    } catch (e) {
+      debugPrint('🎹 Error initializing MIDI service: $e');
+      setState(() {
+        _initError = e.toString();
+        _isInitializing = false;
+      });
+    }
+
+    if (mounted) {
+      setState(() {
+        _isInitializing = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_initError != null) {
+      return Center(
+        child: AlertDialog(
+          title: const Text('MIDI Error'),
+          content: Text('Failed to initialize MIDI service: $_initError'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Consumer<MidiService>(
       builder: (context, midiService, child) {
         return Center(
@@ -82,6 +127,8 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildMidiChannelSetting(midiService),
+                          const SizedBox(height: 12),
+                          _buildMidiClockSetting(midiService),
                           const SizedBox(height: 12),
                           _buildConnectionStatus(midiService),
                           const SizedBox(height: 12),
@@ -134,19 +181,22 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         Consumer<MidiService>(
           builder: (context, midiService, child) {
             return TextButton(
-              onPressed: midiService.isConnected ? _showTestMidiDialog : null,
+              onPressed: midiService.isConnected ? _toggleTestStream : null,
               style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+                foregroundColor:
+                    _isTestStreamActive ? Colors.red : Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
                 minimumSize: const Size(0, 0),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
-                  side: const BorderSide(color: Colors.white24),
+                  side: BorderSide(
+                      color: _isTestStreamActive ? Colors.red : Colors.white24),
                 ),
               ),
-              child: const Text('Test', style: TextStyle(fontSize: 14)),
+              child: Text(_isTestStreamActive ? 'Stop Test' : 'Test',
+                  style: const TextStyle(fontSize: 14)),
             );
           },
         ),
@@ -212,6 +262,62 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMidiClockSetting(MidiService midiService) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withAlpha(30)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.schedule,
+            color: Colors.white70,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Send MIDI Clock:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Send 2-second clock stream when songs open',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: midiService.sendMidiClockEnabled,
+            onChanged: (value) {
+              midiService.setSendMidiClock(value);
+            },
+            activeColor: const Color(0xFF0468cc),
+            activeTrackColor: Colors.white.withAlpha(80),
+            inactiveThumbColor: Colors.white54,
+            inactiveTrackColor: Colors.white.withAlpha(30),
           ),
         ],
       ),
@@ -500,102 +606,143 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
             ),
           ),
         ),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _toggleTestStream,
+            icon: _isTestStreamActive
+                ? const Icon(Icons.stop, size: 16)
+                : const Icon(Icons.play_arrow, size: 16),
+            label: Text(
+                _isTestStreamActive ? 'Stop Test Stream' : 'Start Test Stream'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isTestStreamActive
+                  ? Colors.red.withAlpha(100)
+                  : Colors.white.withAlpha(20),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: Colors.white24),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  void _showTestMidiDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Test MIDI Messages'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This will send test MIDI messages:',
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-            SizedBox(height: 12),
-            Text('• Program Change: Select presets 1, 5, 10'),
-            Text('• Control Change: Adjust volume, pan, modulation'),
-            SizedBox(height: 12),
-            Text(
-              'Make sure your MIDI device is ready!',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _sendTestMessages();
-            },
-            child: const Text('Send Test Messages'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _sendTestMessages() async {
+  /// Toggle the test stream on/off
+  Future<void> _toggleTestStream() async {
     final midiService = MidiService();
 
-    debugPrint('🎹 Sending test MIDI messages...');
+    if (_isTestStreamActive) {
+      // Stop the test stream
+      debugPrint('🎹 MIDI DEBUG: Stopping test stream...');
+      setState(() {
+        _isTestStreamActive = false;
+      });
 
-    try {
-      // Send Program Change messages (select presets 1, 5, 10)
-      await midiService.sendProgramChange(1);
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      await midiService.sendProgramChange(5);
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      await midiService.sendProgramChange(10);
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Send Control Change messages (volume, pan, modulation)
-      await midiService.sendControlChange(7, 100); // Volume to ~78%
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      await midiService.sendControlChange(10, 64); // Pan to center
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      await midiService.sendControlChange(1, 64); // Modulation to center
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Reset to default values
-      await midiService.sendProgramChange(0); // Preset 0
-      await midiService.sendControlChange(7, 127); // Volume full
-      await midiService.sendControlChange(10, 64); // Pan center
-      await midiService.sendControlChange(1, 0); // Modulation off
-
-      debugPrint('🎹 Test MIDI messages completed');
+      // Send MIDI Stop message
+      try {
+        await midiService.sendMidiStop();
+        debugPrint('🎹 MIDI DEBUG: MIDI Stop sent to stop test stream');
+      } catch (e) {
+        debugPrint('🎹 MIDI DEBUG: ERROR sending MIDI Stop: $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Test MIDI messages sent successfully!'),
-            backgroundColor: Colors.green,
+            content: Text('Test stream stopped'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
-    } catch (e) {
-      debugPrint('🎹 Error sending test messages: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+    } else {
+      // Start the test stream
+      debugPrint('🎹 MIDI DEBUG: Starting test stream...');
+      setState(() {
+        _isTestStreamActive = true;
+      });
+
+      // Send initial setup messages
+      try {
+        debugPrint('🎹 MIDI DEBUG: Sending CC0:0...');
+        await midiService.sendControlChange(0, 0); // CC0:0
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        debugPrint('🎹 MIDI DEBUG: Sending PC13...');
+        await midiService.sendProgramChange(13); // PC13
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        debugPrint('🎹 MIDI DEBUG: Sending MIDI Start...');
+        await midiService.sendMidiStart();
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        debugPrint('🎹 MIDI DEBUG: Starting continuous MIDI clock stream...');
+
+        // Start continuous clock stream in background
+        _runContinuousClockStream();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Test stream started - CC0:0, PC13, and MIDI clock'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('🎹 MIDI DEBUG: ERROR starting test stream: $e');
+        setState(() {
+          _isTestStreamActive = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error starting test stream: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
+  }
+
+  /// Run continuous MIDI clock stream until stopped
+  Future<void> _runContinuousClockStream() async {
+    final midiService = MidiService();
+
+    // MIDI Clock is sent at 24 PPQ (approximately every 21ms at 120 BPM)
+    const int clockIntervalMs = 21;
+    int messagesSent = 0;
+
+    debugPrint('🎹 MIDI DEBUG: Continuous clock stream started');
+
+    while (_isTestStreamActive && midiService.isConnected) {
+      try {
+        // Send MIDI Clock message (0xF8)
+        await midiService.sendMidiClock();
+        messagesSent++;
+
+        // Log every 100 messages to avoid spam
+        if (messagesSent % 100 == 0) {
+          debugPrint(
+              '🎹 MIDI DEBUG: Test stream sent $messagesSent clock messages');
+        }
+
+        // Wait for next clock pulse
+        await Future.delayed(const Duration(milliseconds: clockIntervalMs));
+      } catch (e) {
+        debugPrint('🎹 MIDI DEBUG: ERROR in continuous clock stream: $e');
+        break;
+      }
+    }
+
+    debugPrint(
+        '🎹 MIDI DEBUG: Continuous clock stream ended after $messagesSent messages');
   }
 }

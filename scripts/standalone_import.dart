@@ -45,7 +45,7 @@ void main(List<String> args) async {
 
     print('📊 Total songs in library: ${songsJson.length}\n');
 
-    // Extract MIDI profiles for lookup
+    // Extract MIDI profiles for import
     final midiProfiles = <String, List<Map<String, dynamic>>>{};
     final midiLibraryMessages = data['midiLibraryMessages'] as List<dynamic>?;
     if (midiLibraryMessages != null) {
@@ -123,6 +123,18 @@ void main(List<String> args) async {
     final db = sqlite3.open(dbPath);
 
     try {
+      // Ensure database schema is up to date
+      print('🔍 Validating database schema...');
+      await _ensureDatabaseSchema(db);
+      print('✅ Database schema validated\n');
+
+      // Import MIDI profiles first
+      if (midiProfiles.isNotEmpty) {
+        print('🎹 Importing MIDI profiles...');
+        await _importMidiProfiles(db, data);
+        print('✅ MIDI profiles imported\n');
+      }
+
       final now = DateTime.now().millisecondsSinceEpoch;
       var imported = 0;
 
@@ -159,7 +171,7 @@ void main(List<String> args) async {
         }
 
         // Check for MIDI data in song entry
-        final midiMapping = _extractMidiMapping(songJson, midiProfiles);
+        final profileId = _extractProfileId(songJson);
 
         // Convert to ChordPro
         final body = _convertToChordPro(
@@ -168,12 +180,12 @@ void main(List<String> args) async {
         // Generate UUID
         final id = const Uuid().v4();
 
-        // Insert into database
+        // Insert into database with profile_id if present
         db.execute('''
           INSERT INTO songs (
             id, title, artist, body, key, capo, bpm, time_signature, 
-            tags, audio_file_path, notes, created_at, updated_at, is_deleted
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            tags, audio_file_path, notes, created_at, updated_at, is_deleted, profile_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
           id,
           title,
@@ -189,26 +201,11 @@ void main(List<String> args) async {
           now,
           now,
           0, // is_deleted (false)
+          profileId, // profile_id (null if no MIDI profile)
         ]);
 
-        // Insert MIDI mapping if present
-        if (midiMapping != null) {
-          db.execute('''
-            INSERT INTO midi_mappings (
-              id, song_id, program_change_number, control_changes, 
-              timing, notes, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ''', [
-            midiMapping['id'],
-            id, // song_id
-            midiMapping['program_change_number'],
-            midiMapping['control_changes'],
-            midiMapping['timing'],
-            midiMapping['notes'],
-            now,
-            now,
-          ]);
-          print('   ✓ Imported: $title (with MIDI)');
+        if (profileId != null) {
+          print('   ✓ Imported: $title (with MIDI profile)');
         } else {
           print('   ✓ Imported: $title');
         }
@@ -450,27 +447,125 @@ String _convertToChordPro(String rawData, String title, String artist,
   return buffer.toString();
 }
 
-/// Extract MIDI mapping from song JSON data using MIDI profiles
-/// Returns null if no MIDI data found
-Map<String, dynamic>? _extractMidiMapping(Map<String, dynamic> songJson,
-    Map<String, List<Map<String, dynamic>>> midiProfiles) {
-  // Check if song has a MIDI profile reference
-  final profileId = songJson['midiAppearMessage'] as String?;
-  if (profileId == null || !midiProfiles.containsKey(profileId)) {
-    return null; // No MIDI profile found
-  }
+/// Ensure database schema is up to date for MIDI profiles
+Future<void> _ensureDatabaseSchema(Database db) async {
+  try {
+    // Check if midi_profiles table exists
+    final tables = db.select('''
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='midi_profiles'
+    ''');
 
-  final midiMessages = midiProfiles[profileId]!;
-  if (midiMessages.isEmpty) {
-    return null;
-  }
+    if (tables.isEmpty) {
+      print('📝 Creating midi_profiles table...');
+      db.execute('''
+        CREATE TABLE midi_profiles (
+          id TEXT NOT NULL PRIMARY KEY,
+          name TEXT NOT NULL,
+          program_change_number INTEGER,
+          control_changes TEXT NOT NULL DEFAULT '[]',
+          timing BOOLEAN NOT NULL DEFAULT FALSE,
+          notes TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      ''');
+      print('✅ midi_profiles table created');
+    } else {
+      print('✅ midi_profiles table already exists');
+    }
 
-  // Convert raw MIDI messages to NextChord format
+    // Check if profile_id column exists in songs table
+    try {
+      db.select('SELECT profile_id FROM songs LIMIT 1');
+      print('✅ profile_id column exists in songs table');
+    } catch (e) {
+      print('📝 Adding profile_id column to songs table...');
+      db.execute('ALTER TABLE songs ADD COLUMN profile_id TEXT');
+      print('✅ profile_id column added to songs table');
+    }
+
+    return;
+  } catch (e) {
+    print('❌ Error ensuring database schema: $e');
+    rethrow;
+  }
+}
+
+/// Import MIDI profiles from library.json data
+Future<void> _importMidiProfiles(Database db, Map<String, dynamic> data) async {
+  try {
+    final midiLibraryMessages = data['midiLibraryMessages'] as List<dynamic>?;
+    if (midiLibraryMessages == null) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var imported = 0;
+
+    // Check for existing profiles
+    final existingResults = db.select('SELECT id FROM midi_profiles');
+    final existingProfileIds =
+        existingResults.map((row) => row['id'] as String).toSet();
+
+    for (final profile
+        in midiLibraryMessages.whereType<Map<String, dynamic>>()) {
+      final id = profile['id'] as String?;
+      final name = profile['name'] as String?;
+      final midiMessages = profile['midi'] as List<dynamic>? ?? [];
+
+      if (id == null || midiMessages.isEmpty) continue;
+
+      // Skip if profile already exists
+      if (existingProfileIds.contains(id)) {
+        print('   ⏭️  Skipping existing profile: "$name" (ID: $id)');
+        continue;
+      }
+
+      // Convert raw MIDI messages to NextChord format
+      final midiData = _convertMidiProfile(midiMessages);
+      if (midiData == null) continue;
+
+      final programChangeNumber = midiData['programChangeNumber'] as int?;
+      final controlChanges = jsonEncode(midiData['controlChanges'] as List);
+      final timing = midiData['timing'] as bool;
+      final notes = midiData['notes'] as String?;
+
+      // Insert new profile
+      db.execute('''
+        INSERT INTO midi_profiles (
+          id, name, program_change_number, control_changes, 
+          timing, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        id,
+        name ?? 'Imported Profile',
+        programChangeNumber,
+        controlChanges,
+        timing ? 1 : 0,
+        notes,
+        now,
+        now,
+      ]);
+
+      print('   ✅ Imported profile: "$name" (ID: $id)');
+      imported++;
+    }
+
+    print('🎉 MIDI profile import completed! Imported: $imported');
+  } catch (e) {
+    print('❌ Error importing MIDI profiles: $e');
+    rethrow;
+  }
+}
+
+/// Convert raw MIDI messages to NextChord profile format
+Map<String, dynamic>? _convertMidiProfile(List<dynamic> midiMessages) {
+  if (midiMessages.isEmpty) return null;
+
   int? programChangeNumber;
   List<Map<String, dynamic>> controlChanges = [];
   bool timing = false;
 
-  for (final message in midiMessages) {
+  for (final message in midiMessages.whereType<Map<String, dynamic>>()) {
     final status = message['status'] as int? ?? 0;
     final data1 = message['data1'] as int? ?? 0;
     final data2 = message['data2'] as int? ?? 0;
@@ -500,17 +595,34 @@ Map<String, dynamic>? _extractMidiMapping(Map<String, dynamic> songJson,
     return null;
   }
 
-  // Generate mapping ID
-  final mappingId = const Uuid().v4();
+  // Generate notes based on the MIDI commands
+  String? notes;
+  final descriptionParts = <String>[];
+  if (programChangeNumber != null) {
+    descriptionParts.add('PC$programChangeNumber');
+  }
+  for (final cc in controlChanges) {
+    descriptionParts.add('CC${cc['controller']}:${cc['value']}');
+  }
+  if (timing) {
+    descriptionParts.add('MIDI Clock');
+  }
 
-  // Convert control changes to JSON string for database
-  final controlChangesJson = jsonEncode(controlChanges);
+  if (descriptionParts.isNotEmpty) {
+    notes = 'Imported from library.json: ${descriptionParts.join(', ')}';
+  }
 
   return {
-    'id': mappingId,
-    'program_change_number': programChangeNumber,
-    'control_changes': controlChangesJson,
+    'programChangeNumber': programChangeNumber,
+    'controlChanges': controlChanges,
     'timing': timing,
-    'notes': 'Imported from MIDI profile: $profileId',
+    'notes': notes,
   };
+}
+
+/// Extract profile ID from song JSON data
+String? _extractProfileId(Map<String, dynamic> songJson) {
+  // Check if song has a MIDI profile reference
+  final profileId = songJson['midiAppearMessage'] as String?;
+  return profileId;
 }

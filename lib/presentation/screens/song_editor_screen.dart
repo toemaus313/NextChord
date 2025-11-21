@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_profile.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/constants/music_constants.dart';
 import '../../core/utils/chordpro_parser.dart';
@@ -13,9 +14,7 @@ import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../widgets/tag_edit_dialog.dart';
-import '../widgets/midi_sends_modal.dart';
-import '../../services/midi/midi_service.dart';
-import '../../data/database/app_database.dart';
+import '../widgets/midi_profiles_modal.dart';
 
 /// Screen for creating or editing a song
 class SongEditorScreen extends StatefulWidget {
@@ -43,7 +42,11 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   bool _isSaving = false;
   String _lastBodyText = '';
   bool _isAutoCompleting = false;
-  MidiMapping? _midiMapping;
+
+  // MIDI Profile state
+  List<MidiProfile> _midiProfiles = [];
+  MidiProfile? _selectedMidiProfile;
+  bool _isLoadingProfiles = false;
 
   // Available options
   static const List<String> _keys = [
@@ -86,7 +89,47 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   void initState() {
     super.initState();
     _initializeFields();
+    _loadMidiProfiles();
     _bodyController.addListener(_onBodyTextChanged);
+  }
+
+  /// Load MIDI profiles for dropdown
+  Future<void> _loadMidiProfiles() async {
+    setState(() => _isLoadingProfiles = true);
+    try {
+      final songProvider = context.read<SongProvider>();
+
+      // Ensure database schema is up to date before loading profiles
+      debugPrint('🎹 Ensuring MIDI profiles table exists...');
+      await songProvider.repository.database.ensureMidiProfilesTable();
+      debugPrint('🎹 MIDI profiles table schema verified');
+
+      final profiles = await songProvider.repository.getAllMidiProfiles();
+      debugPrint('🎹 Loaded ${profiles.length} MIDI profiles');
+      if (mounted) {
+        setState(() {
+          _midiProfiles = profiles;
+          _isLoadingProfiles = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('🎹 ERROR loading MIDI profiles: $e');
+      debugPrint('🎹 ERROR type: ${e.runtimeType}');
+      debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
+
+      if (mounted) {
+        setState(() => _isLoadingProfiles = false);
+
+        // Show detailed error to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading MIDI profiles: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   /// Initialize form fields with existing song data if editing
@@ -98,19 +141,16 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       _bodyController.text = song.body;
       _bpmController.text = song.bpm.toString();
 
-      // Load MIDI mapping from database
+      // Load MIDI profile for song
       try {
-        final songRepository = SongRepository(AppDatabase());
-        _midiMapping = await songRepository.getMidiMapping(song.id);
+        final songProvider = context.read<SongProvider>();
+        _selectedMidiProfile =
+            await songProvider.repository.getSongMidiProfile(song.id);
         debugPrint(
-            '🎹 Loaded MIDI mapping for song: ${_midiMapping != null ? "Found" : "None"}');
-        // Trigger UI rebuild to show MIDI pills
-        if (mounted) {
-          setState(() {});
-        }
+            '🎹 Loaded MIDI profile for song: ${_selectedMidiProfile != null ? _selectedMidiProfile!.name : "None"}');
       } catch (e) {
-        debugPrint('🎹 Error loading MIDI mapping: $e');
-        _midiMapping = null;
+        debugPrint('🎹 Error loading MIDI profile: $e');
+        _selectedMidiProfile = null;
       }
 
       // Apply setlist context adjustments if available
@@ -438,6 +478,34 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       if (widget.song != null) {
         // Update existing song - use provider to ensure UI updates
         await songProvider.updateSong(song);
+
+        // Assign MIDI profile to song
+        debugPrint('🎹 Assigning MIDI profile to song ${song.id}...');
+        debugPrint('🎹 Profile ID: ${_selectedMidiProfile?.id ?? "None"}');
+        debugPrint('🎹 Profile Name: ${_selectedMidiProfile?.name ?? "None"}');
+
+        try {
+          // Ensure database schema is up to date right before assignment
+          debugPrint(
+              '🎹 Ensuring MIDI profiles table exists before assignment...');
+          await songProvider.repository.database.ensureMidiProfilesTable();
+          debugPrint('🎹 Schema verification completed for assignment');
+
+          await songProvider.repository.assignMidiProfileToSong(
+            song.id,
+            _selectedMidiProfile?.id,
+          );
+          debugPrint(
+              '🎹 Successfully assigned MIDI profile ${_selectedMidiProfile?.name ?? "None"} to song ${song.title}');
+        } catch (e) {
+          debugPrint('🎹 ERROR assigning MIDI profile: $e');
+          debugPrint('🎹 ERROR type: ${e.runtimeType}');
+          debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
+
+          // Re-throw to be caught by outer try-catch
+          rethrow;
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -450,6 +518,34 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         // Create new song - use provider to ensure UI updates
         final newSongId = await songProvider.addSong(song);
         savedSong = song.copyWith(id: newSongId);
+
+        // Assign MIDI profile to new song
+        debugPrint('🎹 Assigning MIDI profile to new song $newSongId...');
+        debugPrint('🎹 Profile ID: ${_selectedMidiProfile?.id ?? "None"}');
+        debugPrint('🎹 Profile Name: ${_selectedMidiProfile?.name ?? "None"}');
+
+        try {
+          // Ensure database schema is up to date right before assignment
+          debugPrint(
+              '🎹 Ensuring MIDI profiles table exists before assignment...');
+          await songProvider.repository.database.ensureMidiProfilesTable();
+          debugPrint('🎹 Schema verification completed for assignment');
+
+          await songProvider.repository.assignMidiProfileToSong(
+            newSongId,
+            _selectedMidiProfile?.id,
+          );
+          debugPrint(
+              '🎹 Successfully assigned MIDI profile ${_selectedMidiProfile?.name ?? "None"} to new song ${song.title}');
+        } catch (e) {
+          debugPrint('🎹 ERROR assigning MIDI profile: $e');
+          debugPrint('🎹 ERROR type: ${e.runtimeType}');
+          debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
+
+          // Re-throw to be caught by outer try-catch
+          rethrow;
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -812,161 +908,167 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     );
   }
 
-  /// Build the MIDI sends area widget
+  /// Build the MIDI profile dropdown widget
   Widget _buildMidiSendsArea() {
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
-    return Consumer<MidiService>(
-      builder: (context, midiService, child) {
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              'MIDI Sends',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'MIDI Profile',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+              width: 1.0,
             ),
-            if (_midiMapping != null &&
-                (_midiMapping!.programChangeNumber != null ||
-                    _midiMapping!.controlChanges.isNotEmpty ||
-                    _midiMapping!.timing))
-              ..._buildMidiSendChips()
-            else
-              Text(
-                'No sends',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: textColor.withValues(alpha: 0.5),
-                ),
-              ),
-            GestureDetector(
-              onTap: () => _openMidiSendsDialog(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: textColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.piano,
-                      size: 14,
-                      color: textColor.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Edit',
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: _isLoadingProfiles
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Loading profiles...'),
+                    ],
+                  ),
+                )
+              : DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _selectedMidiProfile?.id,
+                    isExpanded: true,
+                    hint: Text(
+                      'No MIDI profile selected',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: textColor.withValues(alpha: 0.7),
+                        fontSize: 14,
+                        color: textColor.withValues(alpha: 0.6),
                       ),
                     ),
-                  ],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                    items: [
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text(
+                          'No MIDI profile',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textColor.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                      ..._midiProfiles.map((profile) =>
+                          DropdownMenuItem<String?>(
+                            value: profile.id,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        profile.name,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                      if (profile.commandDescription.isNotEmpty)
+                                        Text(
+                                          profile.commandDescription,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: textColor.withValues(
+                                                alpha: 0.6),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (profile.hasMidiCommands)
+                                  Icon(
+                                    Icons.piano,
+                                    size: 16,
+                                    color: Colors.purple,
+                                  ),
+                              ],
+                            ),
+                          )),
+                      const DropdownMenuItem<String?>(
+                        value: 'manage',
+                        child: Row(
+                          children: [
+                            Icon(Icons.settings, size: 16, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('Manage Profiles...',
+                                style: TextStyle(color: Colors.blue)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) async {
+                      if (value == 'manage') {
+                        // Open MIDI Profiles modal
+                        await showDialog<void>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const MidiProfilesModal(),
+                        );
+                        // Reload profiles after managing
+                        _loadMidiProfiles();
+                      } else {
+                        setState(() {
+                          _selectedMidiProfile = value != null
+                              ? _midiProfiles.firstWhere((p) => p.id == value)
+                              : null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+        ),
+        if (_selectedMidiProfile != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.piano,
+                size: 12,
+                color: Colors.purple,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _selectedMidiProfile!.commandDescription,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Build MIDI send chips for display
-  List<Widget> _buildMidiSendChips() {
-    final chips = <Widget>[];
-
-    if (_midiMapping?.timing == true) {
-      chips.add(_buildMidiChip('timing'));
-    }
-
-    if (_midiMapping?.programChangeNumber != null) {
-      chips.add(_buildMidiChip('PC${_midiMapping!.programChangeNumber}'));
-    }
-
-    for (final cc in _midiMapping?.controlChanges ?? []) {
-      // Handle PC commands stored as CC with controller -1
-      if (cc.controller == -1) {
-        final label = cc.label != null ? ' - ${cc.label}' : '';
-        chips.add(_buildMidiChip('PC${cc.value}$label'));
-      } else {
-        final label = cc.label != null ? ' - ${cc.label}' : '';
-        chips.add(_buildMidiChip('CC${cc.controller}:${cc.value}$label'));
-      }
-    }
-
-    return chips;
-  }
-
-  /// Build a single MIDI chip widget
-  Widget _buildMidiChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.purple.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purple.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11,
-          color: Colors.purple,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  /// Open the MIDI Sends dialog
-  Future<void> _openMidiSendsDialog() async {
-    await MidiSendsModal.show(
-      context,
-      song: widget.song ??
-          Song(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: _titleController.text,
-            artist: _artistController.text,
-            body: _bodyController.text,
-            key: _selectedKey,
-            capo: _selectedCapo,
-            timeSignature: _selectedTimeSignature,
-            bpm: int.tryParse(_bpmController.text) ?? 120,
-            tags: _tags,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
+            ],
           ),
-      initialMapping: _midiMapping,
-      onMappingUpdated: (updatedMapping) async {
-        setState(() {
-          _midiMapping = updatedMapping;
-        });
-
-        // Persist the MIDI mapping to the database
-        try {
-          final songProvider = context.read<SongProvider>();
-          await songProvider.saveMidiMapping(updatedMapping);
-          debugPrint('🎹 MIDI mapping saved for song');
-        } catch (e) {
-          debugPrint('🎹 Error saving MIDI mapping: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error saving MIDI mapping: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      },
+        ],
+      ],
     );
   }
 
