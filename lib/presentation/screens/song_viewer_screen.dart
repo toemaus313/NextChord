@@ -304,7 +304,10 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
         debugPrint(
             '🎹 MIDI DEBUG: sendMidiClockEnabled is TRUE and device connected - sending clock stream...');
         try {
-          await midiService.sendMidiClockStream(durationSeconds: 2);
+          await midiService.sendMidiClockStream(
+            durationSeconds: 2,
+            bpm: _currentSong.bpm,
+          );
           debugPrint('🎹 MIDI DEBUG: Clock stream completed successfully');
         } catch (e) {
           debugPrint('🎹 MIDI DEBUG: ERROR sending clock stream: $e');

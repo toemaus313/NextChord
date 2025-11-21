@@ -5,9 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "NextChord",
+            "name": "NextChord Windows",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "deviceId": "windows",
         },
         {
             "name": "NextChord (profile mode)",

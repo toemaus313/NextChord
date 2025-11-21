@@ -138,7 +138,6 @@ void main(List<String> args) async {
 
         final programChangeNumber = midiData['programChangeNumber'] as int?;
         final controlChanges = jsonEncode(midiData['controlChanges'] as List);
-        final timing = midiData['timing'] as bool;
         final notes = midiData['notes'] as String?;
 
         if (cliOptions.overwriteExisting && existingProfileIds.contains(id)) {
@@ -147,12 +146,11 @@ void main(List<String> args) async {
             UPDATE midi_profiles SET
               name = ?, program_change_number = ?, control_changes = ?, 
               timing = ?, notes = ?, updated_at = ?
-            WHERE id = ?
           ''', [
             name,
             programChangeNumber,
             controlChanges,
-            timing ? 1 : 0,
+            0,
             notes,
             now,
             id,
@@ -171,7 +169,7 @@ void main(List<String> args) async {
             name,
             programChangeNumber,
             controlChanges,
-            timing ? 1 : 0,
+            0,
             notes,
             now,
             now,
@@ -443,8 +441,7 @@ Map<String, dynamic>? _convertMidiProfile(List<dynamic> midiMessages) {
   if (midiMessages.isEmpty) return null;
 
   int? programChangeNumber;
-  List<Map<String, dynamic>> controlChanges = [];
-  bool timing = false;
+  final List<Map<String, dynamic>> controlChanges = [];
 
   for (final message in midiMessages.whereType<Map<String, dynamic>>()) {
     final status = message['status'] as int? ?? 0;
@@ -462,21 +459,16 @@ Map<String, dynamic>? _convertMidiProfile(List<dynamic> midiMessages) {
       case 192: // Program Change (0xC0)
         programChangeNumber = data1;
         break;
-      case 248: // MIDI Clock (0xF8)
-        timing = true;
-        break;
       default:
-        // Ignore other status types for now
+        // Ignore other status types (including timing) for now
         break;
     }
   }
 
-  // If no MIDI data was actually extracted, return null
-  if (programChangeNumber == null && controlChanges.isEmpty && !timing) {
+  if (programChangeNumber == null && controlChanges.isEmpty) {
     return null;
   }
 
-  // Generate notes based on the MIDI commands
   String? notes;
   final descriptionParts = <String>[];
   if (programChangeNumber != null) {
@@ -484,9 +476,6 @@ Map<String, dynamic>? _convertMidiProfile(List<dynamic> midiMessages) {
   }
   for (final cc in controlChanges) {
     descriptionParts.add('CC${cc['controller']}:${cc['value']}');
-  }
-  if (timing) {
-    descriptionParts.add('MIDI Clock');
   }
 
   if (descriptionParts.isNotEmpty) {
@@ -496,7 +485,6 @@ Map<String, dynamic>? _convertMidiProfile(List<dynamic> midiMessages) {
   return {
     'programChangeNumber': programChangeNumber,
     'controlChanges': controlChanges,
-    'timing': timing,
     'notes': notes,
   };
 }

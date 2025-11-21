@@ -56,8 +56,6 @@ class MidiService with ChangeNotifier {
       throw ArgumentError('MIDI channel must be between 1 and 16');
     }
     _midiChannel = channel - 1; // Convert to 0-15 for MIDI protocol
-    debugPrint(
-        '🎹 MidiService: MIDI channel set to $channel (encoded as $_midiChannel)');
     _saveSettings();
     notifyListeners();
   }
@@ -65,39 +63,40 @@ class MidiService with ChangeNotifier {
   /// Set whether to send MIDI clock when songs are opened
   void setSendMidiClock(bool enabled) {
     _sendMidiClockEnabled = enabled;
-    debugPrint('🎹 MidiService: Send MIDI clock set to $enabled');
     _saveSettings();
     notifyListeners();
   }
 
-  /// Send MIDI clock stream for specified duration
-  Future<void> sendMidiClockStream({int durationSeconds = 2}) async {
-    if (!isConnected) {
-      debugPrint(
-          '🎹 MidiService: Cannot send MIDI clock - no device connected');
+  /// Send MIDI clock stream for specified duration, aligning with song tempo.
+  ///
+  /// Sends MIDI Start (0xFA), streams MIDI Clock (0xF8) at the tempo-derived
+  /// interval for [durationSeconds], and then sends MIDI Stop (0xFC).
+  Future<void> sendMidiClockStream({
+    int durationSeconds = 2,
+    int? bpm,
+  }) async {
+    if (!isConnected || _connectedDevice == null) {
       return;
     }
 
-    debugPrint(
-        '🎹 MidiService: Sending MIDI clock stream for $durationSeconds seconds');
+    final effectiveBpm = (bpm != null && bpm > 0) ? bpm : 120;
+    final clockIntervalMs = 60000 / (effectiveBpm * 24);
+    final intervalMicros = (clockIntervalMs * 1000).round().clamp(1, 999999);
+    final clockInterval = Duration(microseconds: intervalMicros);
 
-    final startTime = DateTime.now();
-    final endTime = startTime.add(Duration(seconds: durationSeconds));
-
-    // MIDI Clock is sent at 24 PPQ (pulses per quarter note)
-    // At 120 BPM, that's approximately one clock message every 20.8ms
-    const int clockIntervalMs = 21; // Approximate for 120 BPM
-
-    while (DateTime.now().isBefore(endTime)) {
-      // MIDI Clock is a real-time message (0xF8) - doesn't use channel
-      final midiData = Uint8List.fromList([0xF8]);
-      _midiCommand.sendData(midiData);
-
-      // Wait for next clock pulse
-      await Future.delayed(const Duration(milliseconds: clockIntervalMs));
+    if (!await sendMidiStart()) {
+      return;
     }
 
-    debugPrint('🎹 MidiService: MIDI clock stream completed');
+    final endTime = DateTime.now().add(Duration(seconds: durationSeconds));
+    final clockData = Uint8List.fromList([0xF8]);
+
+    while (DateTime.now().isBefore(endTime)) {
+      _midiCommand.sendData(clockData);
+      await Future.delayed(clockInterval);
+    }
+
+    await sendMidiStop();
   }
 
   /// Load settings from SharedPreferences
@@ -106,10 +105,8 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _midiChannel = prefs.getInt('new_midi_channel') ?? 0;
       _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
-      debugPrint(
-          '🎹 MidiService: Settings loaded - Channel: ${_midiChannel + 1}, Send Clock: $_sendMidiClockEnabled');
     } catch (e) {
-      debugPrint('🎹 MidiService: Failed to load settings: $e');
+      _setError('Failed to load settings: $e');
     }
   }
 
@@ -120,7 +117,7 @@ class MidiService with ChangeNotifier {
       await prefs.setInt('new_midi_channel', _midiChannel);
       await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
     } catch (e) {
-      debugPrint('🎹 MidiService: Failed to save settings: $e');
+      _setError('Failed to save settings: $e');
     }
   }
 
@@ -130,15 +127,11 @@ class MidiService with ChangeNotifier {
   /// Initialize the MIDI system on app startup
   Future<void> _initialize() async {
     try {
-      debugPrint('🎹 MidiService: Initializing MIDI system...');
-
       // Load saved settings first
       await _loadSettings();
 
       // Start scanning for devices
       await scanForDevices();
-
-      debugPrint('🎹 MidiService: MIDI system initialized successfully');
     } catch (e) {
       _setError('Failed to initialize MIDI: $e');
     }
@@ -150,18 +143,11 @@ class MidiService with ChangeNotifier {
       _setConnectionState(MidiConnectionState.scanning);
       _clearError();
 
-      debugPrint('🎹 MidiService: Scanning for MIDI devices...');
-
       // Get all available MIDI devices
       final devices = await _midiCommand.devices ?? [];
 
       _availableDevices = devices;
       _setConnectionState(MidiConnectionState.disconnected);
-
-      debugPrint('🎹 MidiService: Found ${devices.length} MIDI devices');
-      for (final device in devices) {
-        debugPrint('🎹 - ${device.name} (${device.type})');
-      }
 
       notifyListeners();
     } catch (e) {
@@ -176,8 +162,6 @@ class MidiService with ChangeNotifier {
       _setConnectionState(MidiConnectionState.connecting);
       _clearError();
 
-      debugPrint('🎹 MidiService: Connecting to ${device.name}...');
-
       // Disconnect from current device if connected
       if (_connectedDevice != null) {
         await _disconnectDevice();
@@ -189,7 +173,6 @@ class MidiService with ChangeNotifier {
       _connectedDevice = device;
       _setConnectionState(MidiConnectionState.connected);
 
-      debugPrint('🎹 MidiService: Successfully connected to ${device.name}');
       notifyListeners();
 
       return true;
@@ -204,11 +187,8 @@ class MidiService with ChangeNotifier {
   Future<void> _disconnectDevice() async {
     try {
       if (_connectedDevice != null) {
-        debugPrint(
-            '🎹 MidiService: Disconnecting from ${_connectedDevice!.name}...');
         // Note: Disconnect functionality may vary by platform
         _connectedDevice = null;
-        debugPrint('🎹 MidiService: Disconnected successfully');
       }
     } catch (e) {
       _setError('Failed to disconnect: $e');
@@ -247,15 +227,11 @@ class MidiService with ChangeNotifier {
         return false;
       }
 
-      debugPrint(
-          '🎹 MidiService: Sending Program Change $program on channel $channel');
-
       // Send Program Change message
       // MIDI Program Change: 0xC0 | channel, program
       final midiData = Uint8List.fromList([0xC0 | channel, program]);
       _midiCommand.sendData(midiData);
 
-      debugPrint('🎹 MidiService: Program Change sent successfully');
       return true;
     } catch (e) {
       _setError('Failed to send Program Change: $e');
@@ -298,15 +274,11 @@ class MidiService with ChangeNotifier {
         return false;
       }
 
-      debugPrint(
-          '🎹 MidiService: Sending Control Change CC$controller=$value on channel $channel');
-
       // Send Control Change message
       // MIDI Control Change: 0xB0 | channel, controller, value
       final midiData = Uint8List.fromList([0xB0 | channel, controller, value]);
       _midiCommand.sendData(midiData);
 
-      debugPrint('🎹 MidiService: Control Change sent successfully');
       return true;
     } catch (e) {
       _setError('Failed to send Control Change: $e');
@@ -391,13 +363,10 @@ class MidiService with ChangeNotifier {
         return false;
       }
 
-      debugPrint('🎹 MidiService: Sending MIDI Clock');
-
       // MIDI Clock is a real-time message (0xF8) - doesn't use channel
       final midiData = Uint8List.fromList([0xF8]);
       _midiCommand.sendData(midiData);
 
-      debugPrint('🎹 MidiService: MIDI Clock sent successfully');
       return true;
     } catch (e) {
       _setError('Failed to send MIDI Clock: $e');
@@ -405,10 +374,45 @@ class MidiService with ChangeNotifier {
     }
   }
 
+  /// Send MIDI Start message (0xFA)
+  Future<bool> sendMidiStart() async {
+    try {
+      if (!isConnected || _connectedDevice == null) {
+        _setError('No MIDI device connected');
+        return false;
+      }
+
+      final midiData = Uint8List.fromList([0xFA]);
+      _midiCommand.sendData(midiData);
+
+      return true;
+    } catch (e) {
+      _setError('Failed to send MIDI Start: $e');
+      return false;
+    }
+  }
+
+  /// Send MIDI Stop message (0xFC)
+  Future<bool> sendMidiStop() async {
+    try {
+      if (!isConnected || _connectedDevice == null) {
+        _setError('No MIDI device connected');
+        return false;
+      }
+
+      final midiData = Uint8List.fromList([0xFC]);
+      _midiCommand.sendData(midiData);
+
+      return true;
+    } catch (e) {
+      _setError('Failed to send MIDI Stop: $e');
+      return false;
+    }
+  }
+
   /// Dispose the MIDI service and clean up resources
   @override
   void dispose() {
-    debugPrint('🎹 MidiService: Disposing MIDI service...');
     disconnect();
     super.dispose();
   }
@@ -422,7 +426,6 @@ class MidiService with ChangeNotifier {
 
   void _setError(String error) {
     _errorMessage = error;
-    debugPrint('🎹 MidiService Error: $error');
     notifyListeners();
   }
 

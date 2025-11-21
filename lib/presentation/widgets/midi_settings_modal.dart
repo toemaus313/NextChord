@@ -637,20 +637,16 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     final midiService = MidiService();
 
     if (_isTestStreamActive) {
-      // Stop the test stream
       debugPrint('🎹 MIDI DEBUG: Stopping test stream...');
       setState(() {
         _isTestStreamActive = false;
       });
-
-      // Send MIDI Stop message
       try {
         await midiService.sendMidiStop();
         debugPrint('🎹 MIDI DEBUG: MIDI Stop sent to stop test stream');
       } catch (e) {
         debugPrint('🎹 MIDI DEBUG: ERROR sending MIDI Stop: $e');
       }
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -659,90 +655,62 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
           ),
         );
       }
-    } else {
-      // Start the test stream
-      debugPrint('🎹 MIDI DEBUG: Starting test stream...');
-      setState(() {
-        _isTestStreamActive = true;
-      });
+      return;
+    }
 
-      // Send initial setup messages
-      try {
-        debugPrint('🎹 MIDI DEBUG: Sending CC0:0...');
-        await midiService.sendControlChange(0, 0); // CC0:0
-        await Future.delayed(const Duration(milliseconds: 100));
+    debugPrint('🎹 MIDI DEBUG: Starting test stream...');
+    setState(() {
+      _isTestStreamActive = true;
+    });
 
-        debugPrint('🎹 MIDI DEBUG: Sending PC13...');
-        await midiService.sendProgramChange(13); // PC13
-        await Future.delayed(const Duration(milliseconds: 100));
+    try {
+      debugPrint('🎹 MIDI DEBUG: Sending CC0:0...');
+      await midiService.sendControlChange(0, 0); // CC0:0
+      await Future.delayed(const Duration(milliseconds: 100));
 
-        debugPrint('🎹 MIDI DEBUG: Sending MIDI Start...');
-        await midiService.sendMidiStart();
-        await Future.delayed(const Duration(milliseconds: 10));
+      debugPrint('🎹 MIDI DEBUG: Sending PC13...');
+      await midiService.sendProgramChange(13); // PC13
+      await Future.delayed(const Duration(milliseconds: 100));
 
-        debugPrint('🎹 MIDI DEBUG: Starting continuous MIDI clock stream...');
+      if (!_isTestStreamActive) {
+        return;
+      }
 
-        // Start continuous clock stream in background
-        _runContinuousClockStream();
+      debugPrint('🎹 MIDI DEBUG: Sending 30 BPM test stream...');
+      await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 30);
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Test stream started - CC0:0, PC13, and MIDI clock'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint('🎹 MIDI DEBUG: ERROR starting test stream: $e');
+      if (!_isTestStreamActive) {
+        return;
+      }
+
+      debugPrint('🎹 MIDI DEBUG: Sending 170 BPM test stream...');
+      await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 170);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Test stream completed - CC0:0, PC13, and timing sweeps'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('🎹 MIDI DEBUG: ERROR running test stream: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error running test stream: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
         setState(() {
           _isTestStreamActive = false;
         });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error starting test stream: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     }
-  }
-
-  /// Run continuous MIDI clock stream until stopped
-  Future<void> _runContinuousClockStream() async {
-    final midiService = MidiService();
-
-    // MIDI Clock is sent at 24 PPQ (approximately every 21ms at 120 BPM)
-    const int clockIntervalMs = 21;
-    int messagesSent = 0;
-
-    debugPrint('🎹 MIDI DEBUG: Continuous clock stream started');
-
-    while (_isTestStreamActive && midiService.isConnected) {
-      try {
-        // Send MIDI Clock message (0xF8)
-        await midiService.sendMidiClock();
-        messagesSent++;
-
-        // Log every 100 messages to avoid spam
-        if (messagesSent % 100 == 0) {
-          debugPrint(
-              '🎹 MIDI DEBUG: Test stream sent $messagesSent clock messages');
-        }
-
-        // Wait for next clock pulse
-        await Future.delayed(const Duration(milliseconds: clockIntervalMs));
-      } catch (e) {
-        debugPrint('🎹 MIDI DEBUG: ERROR in continuous clock stream: $e');
-        break;
-      }
-    }
-
-    debugPrint(
-        '🎹 MIDI DEBUG: Continuous clock stream ended after $messagesSent messages');
   }
 }
