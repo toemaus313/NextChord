@@ -26,7 +26,7 @@ import '../mixins/song_viewer_gestures.dart';
 import '../../services/midi_integration_service.dart';
 import '../../services/setlist_navigation_service.dart';
 import '../../services/midi/midi_service.dart';
-import 'song_editor_screen.dart';
+import 'song_editor_screen_refactored.dart';
 
 /// Full-screen song viewer for live performance
 /// Displays lyrics/chords with adjustable font size and theme toggle
@@ -324,7 +324,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SongEditorScreen(
+        builder: (context) => SongEditorScreenRefactored(
           song: _songViewerProvider.currentSong,
           setlistContext: widget.setlistContext,
         ),

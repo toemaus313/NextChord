@@ -1123,442 +1123,474 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                             16.0),
                         child: Column(
                           children: [
-                        // Title field
-                        TextFormField(
-                          controller: _titleController,
-                          style: const TextStyle(fontSize: 14),
-                          decoration: const InputDecoration(
-                            labelText: 'Title',
-                            labelStyle: TextStyle(fontSize: 13),
-                            hintText: 'Enter song title',
-                            hintStyle: TextStyle(fontSize: 13),
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.music_note, size: 20),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                            isDense: true,
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Title is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Artist field
-                        TextFormField(
-                          controller: _artistController,
-                          style: const TextStyle(fontSize: 14),
-                          decoration: const InputDecoration(
-                            labelText: 'Artist',
-                            labelStyle: TextStyle(fontSize: 13),
-                            hintText: 'Enter artist name',
-                            hintStyle: TextStyle(fontSize: 13),
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person, size: 20),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                            isDense: true,
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Artist is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        // Single row with Key, BPM, Capo, Time Signature, Duration
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            const spacing = 8.0;
-                            final availableWidth = constraints.maxWidth;
-                            final columns = availableWidth > 1100
-                                ? 5
-                                : availableWidth > 900
-                                    ? 4
-                                    : availableWidth > 650
-                                        ? 3
-                                        : 2;
-                            final fieldWidth =
-                                (availableWidth - spacing * (columns - 1)) / columns;
-
-                            final fields = <Widget>[
-                              DropdownButtonFormField<String>(
-                                initialValue: _selectedKey,
-                                style: TextStyle(fontSize: 14, color: textColor),
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.piano, size: 18),
-                                  suffixIcon: widget.setlistContext != null
-                                      ? Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue,
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            'SET',
-                                            style: TextStyle(
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        )
-                                      : null,
-                                  border: OutlineInputBorder(
-                                    borderSide: widget.setlistContext != null
-                                        ? const BorderSide(color: Colors.blue, width: 1.5)
-                                        : BorderSide(
-                                            color: isDarkMode
-                                                ? Colors.grey.shade600
-                                                : Colors.grey.shade400,
-                                            width: 1.0),
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                items: _keys.map((key) {
-                                  return DropdownMenuItem(
-                                    value: key,
-                                    child:
-                                        Text(key, style: const TextStyle(fontSize: 13)),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _handleKeySelection(value);
-                                  }
-                                },
-                              ),
-                              TextFormField(
-                                controller: _bpmController,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: InputDecoration(
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: CustomPaint(
-                                      size: const Size(18, 18),
-                                      painter: MetronomeIconPainter(
-                                        color: isDarkMode
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                  hintText: '120',
-                                  hintStyle: const TextStyle(fontSize: 12),
-                                  border: const OutlineInputBorder(),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Required';
-                                  }
-                                  final bpm = int.tryParse(value.trim());
-                                  if (bpm == null || bpm < 1 || bpm > 300) {
-                                    return 'Invalid';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              DropdownButtonFormField<int>(
-                                initialValue: _selectedCapo,
-                                style: TextStyle(fontSize: 14, color: textColor),
-                                decoration: InputDecoration(
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: CustomPaint(
-                                      size: const Size(18, 18),
-                                      painter: CapoIconPainter(
-                                        color: isDarkMode
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                  suffixIcon: widget.setlistContext != null
-                                      ? Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue,
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            'SET',
-                                            style: TextStyle(
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        )
-                                      : null,
-                                  border: OutlineInputBorder(
-                                    borderSide: widget.setlistContext != null
-                                        ? const BorderSide(color: Colors.blue, width: 1.5)
-                                        : BorderSide(
-                                            color: isDarkMode
-                                                ? Colors.grey.shade600
-                                                : Colors.grey.shade400,
-                                            width: 1.0),
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                items: List.generate(13, (index) => index).map((capo) {
-                                  return DropdownMenuItem(
-                                    value: capo,
-                                    child: Text(capo.toString(),
-                                        style: const TextStyle(fontSize: 13)),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _handleCapoSelection(value);
-                                  }
-                                },
-                              ),
-                              DropdownButtonFormField<String>(
-                                initialValue: _selectedTimeSignature,
-                                style: TextStyle(fontSize: 14, color: textColor),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.timer, size: 18),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                items: _timeSignatures.map((sig) {
-                                  return DropdownMenuItem(
-                                    value: sig,
-                                    child: Text(sig,
-                                        style: const TextStyle(fontSize: 13)),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedTimeSignature = value;
-                                    });
-                                  }
-                                },
-                              ),
-                              TextFormField(
-                                controller: _durationController,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.play_arrow, size: 18),
-                                  hintText: '3:00',
-                                  hintStyle: TextStyle(fontSize: 12),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                keyboardType: TextInputType.text,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
-                                  if (!pattern.hasMatch(value.trim())) {
-                                    return 'Invalid';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ];
-
-                            return Wrap(
-                              spacing: spacing,
-                              runSpacing: spacing,
-                              children: fields
-                                  .map((field) => SizedBox(
-                                        width: fieldWidth,
-                                        child: field,
-                                      ))
-                                  .toList(),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // MIDI Sends and Tags in the same row
-                        Row(
-                          children: [
-                            // MIDI Sends section - left half
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
+                            // Title field
+                            TextFormField(
+                              controller: _titleController,
+                              style: const TextStyle(fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'Title',
+                                labelStyle: TextStyle(fontSize: 13),
+                                hintText: 'Enter song title',
+                                hintStyle: TextStyle(fontSize: 13),
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.music_note, size: 20),
+                                contentPadding: EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: isDarkMode
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade400,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: _buildMidiSendsArea(),
+                                isDense: true,
                               ),
+                              textCapitalization: TextCapitalization.words,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Title is required';
+                                }
+                                return null;
+                              },
                             ),
-                            const SizedBox(width: 12),
-                            // Tags section - right half
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
+                            const SizedBox(height: 12),
+
+                            // Artist field
+                            TextFormField(
+                              controller: _artistController,
+                              style: const TextStyle(fontSize: 14),
+                              decoration: const InputDecoration(
+                                labelText: 'Artist',
+                                labelStyle: TextStyle(fontSize: 13),
+                                hintText: 'Enter artist name',
+                                hintStyle: TextStyle(fontSize: 13),
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person, size: 20),
+                                contentPadding: EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 12),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: isDarkMode
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade400,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Tags',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
+                                isDense: true,
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Artist is required';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            // Single row with Key, BPM, Capo, Time Signature, Duration
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                const spacing = 8.0;
+                                final availableWidth = constraints.maxWidth;
+                                final columns = availableWidth > 1100
+                                    ? 5
+                                    : availableWidth > 900
+                                        ? 4
+                                        : availableWidth > 650
+                                            ? 3
+                                            : 2;
+                                final fieldWidth =
+                                    (availableWidth - spacing * (columns - 1)) /
+                                        columns;
+
+                                final fields = <Widget>[
+                                  DropdownButtonFormField<String>(
+                                    initialValue: _selectedKey,
+                                    style: TextStyle(
+                                        fontSize: 14, color: textColor),
+                                    decoration: InputDecoration(
+                                      prefixIcon:
+                                          const Icon(Icons.piano, size: 18),
+                                      suffixIcon: widget.setlistContext != null
+                                          ? Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'SET',
+                                                style: TextStyle(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            )
+                                          : null,
+                                      border: OutlineInputBorder(
+                                        borderSide:
+                                            widget.setlistContext != null
+                                                ? const BorderSide(
+                                                    color: Colors.blue,
+                                                    width: 1.5)
+                                                : BorderSide(
+                                                    color: isDarkMode
+                                                        ? Colors.grey.shade600
+                                                        : Colors.grey.shade400,
+                                                    width: 1.0),
                                       ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 8),
+                                      isDense: true,
                                     ),
-                                    if (_tags.isNotEmpty)
-                                      ..._tags.asMap().entries.map((entry) {
-                                        final index = entry.key;
-                                        final tag = entry.value;
-                                        final (bgColor, tagTextColor) =
-                                            _getTagColors(tag, context);
-                                        return DragTarget<int>(
-                                          onWillAcceptWithDetails: (details) =>
-                                              details.data != index,
-                                          onAcceptWithDetails: (details) {
-                                            setState(() {
-                                              final tagToMove =
-                                                  _tags.removeAt(details.data);
-                                              _tags.insert(index, tagToMove);
-                                            });
-                                          },
-                                          builder:
-                                              (context, candidate, rejected) {
-                                            return Draggable<int>(
-                                              data: index,
-                                              feedback: Opacity(
-                                                opacity: 0.7,
-                                                child: Material(
-                                                  color: Colors.transparent,
+                                    items: _keys.map((key) {
+                                      return DropdownMenuItem(
+                                        value: key,
+                                        child: Text(key,
+                                            style:
+                                                const TextStyle(fontSize: 13)),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _handleKeySelection(value);
+                                      }
+                                    },
+                                  ),
+                                  TextFormField(
+                                    controller: _bpmController,
+                                    style: const TextStyle(fontSize: 14),
+                                    decoration: InputDecoration(
+                                      prefixIcon: Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: CustomPaint(
+                                          size: const Size(18, 18),
+                                          painter: MetronomeIconPainter(
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                      hintText: '120',
+                                      hintStyle: const TextStyle(fontSize: 12),
+                                      border: const OutlineInputBorder(),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 8),
+                                      isDense: true,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'Required';
+                                      }
+                                      final bpm = int.tryParse(value.trim());
+                                      if (bpm == null || bpm < 1 || bpm > 300) {
+                                        return 'Invalid';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  DropdownButtonFormField<int>(
+                                    initialValue: _selectedCapo,
+                                    style: TextStyle(
+                                        fontSize: 14, color: textColor),
+                                    decoration: InputDecoration(
+                                      prefixIcon: Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: CustomPaint(
+                                          size: const Size(18, 18),
+                                          painter: CapoIconPainter(
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                      suffixIcon: widget.setlistContext != null
+                                          ? Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'SET',
+                                                style: TextStyle(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            )
+                                          : null,
+                                      border: OutlineInputBorder(
+                                        borderSide:
+                                            widget.setlistContext != null
+                                                ? const BorderSide(
+                                                    color: Colors.blue,
+                                                    width: 1.5)
+                                                : BorderSide(
+                                                    color: isDarkMode
+                                                        ? Colors.grey.shade600
+                                                        : Colors.grey.shade400,
+                                                    width: 1.0),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 8),
+                                      isDense: true,
+                                    ),
+                                    items: List.generate(13, (index) => index)
+                                        .map((capo) {
+                                      return DropdownMenuItem(
+                                        value: capo,
+                                        child: Text(capo.toString(),
+                                            style:
+                                                const TextStyle(fontSize: 13)),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _handleCapoSelection(value);
+                                      }
+                                    },
+                                  ),
+                                  DropdownButtonFormField<String>(
+                                    initialValue: _selectedTimeSignature,
+                                    style: TextStyle(
+                                        fontSize: 14, color: textColor),
+                                    decoration: const InputDecoration(
+                                      prefixIcon: Icon(Icons.timer, size: 18),
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 8),
+                                      isDense: true,
+                                    ),
+                                    items: _timeSignatures.map((sig) {
+                                      return DropdownMenuItem(
+                                        value: sig,
+                                        child: Text(sig,
+                                            style:
+                                                const TextStyle(fontSize: 13)),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        setState(() {
+                                          _selectedTimeSignature = value;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  TextFormField(
+                                    controller: _durationController,
+                                    style: const TextStyle(fontSize: 14),
+                                    decoration: const InputDecoration(
+                                      prefixIcon:
+                                          Icon(Icons.play_arrow, size: 18),
+                                      hintText: '3:00',
+                                      hintStyle: TextStyle(fontSize: 12),
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 8),
+                                      isDense: true,
+                                    ),
+                                    keyboardType: TextInputType.text,
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return null;
+                                      }
+                                      final pattern =
+                                          RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
+                                      if (!pattern.hasMatch(value.trim())) {
+                                        return 'Invalid';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ];
+
+                                return Wrap(
+                                  spacing: spacing,
+                                  runSpacing: spacing,
+                                  children: fields
+                                      .map((field) => SizedBox(
+                                            width: fieldWidth,
+                                            child: field,
+                                          ))
+                                      .toList(),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // MIDI Sends and Tags in the same row
+                            Row(
+                              children: [
+                                // MIDI Sends section - left half
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade400,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: _buildMidiSendsArea(),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Tags section - right half
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade400,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Tags',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        if (_tags.isNotEmpty)
+                                          ..._tags.asMap().entries.map((entry) {
+                                            final index = entry.key;
+                                            final tag = entry.value;
+                                            final (bgColor, tagTextColor) =
+                                                _getTagColors(tag, context);
+                                            return DragTarget<int>(
+                                              onWillAcceptWithDetails:
+                                                  (details) =>
+                                                      details.data != index,
+                                              onAcceptWithDetails: (details) {
+                                                setState(() {
+                                                  final tagToMove = _tags
+                                                      .removeAt(details.data);
+                                                  _tags.insert(
+                                                      index, tagToMove);
+                                                });
+                                              },
+                                              builder: (context, candidate,
+                                                  rejected) {
+                                                return Draggable<int>(
+                                                  data: index,
+                                                  feedback: Opacity(
+                                                    opacity: 0.7,
+                                                    child: Material(
+                                                      color: Colors.transparent,
+                                                      child: _TagChip(
+                                                        key: ValueKey(
+                                                            'drag_tag_$tag'),
+                                                        tag: tag,
+                                                        bgColor: bgColor,
+                                                        textColor: tagTextColor,
+                                                        onRemove: () {},
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  childWhenDragging: Opacity(
+                                                    opacity: 0.3,
+                                                    child: _TagChip(
+                                                      key: ValueKey(
+                                                          'tag_drag_${index}_$tag'),
+                                                      tag: tag,
+                                                      bgColor: bgColor,
+                                                      textColor: tagTextColor,
+                                                      onRemove: () {
+                                                        setState(() {
+                                                          _tags.removeAt(index);
+                                                        });
+                                                      },
+                                                    ),
+                                                  ),
                                                   child: _TagChip(
                                                     key: ValueKey(
-                                                        'drag_tag_$tag'),
+                                                        'tag_${index}_$tag'),
                                                     tag: tag,
                                                     bgColor: bgColor,
                                                     textColor: tagTextColor,
-                                                    onRemove: () {},
+                                                    onRemove: () {
+                                                      setState(() {
+                                                        _tags.removeAt(index);
+                                                      });
+                                                    },
                                                   ),
-                                                ),
-                                              ),
-                                              childWhenDragging: Opacity(
-                                                opacity: 0.3,
-                                                child: _TagChip(
-                                                  key: ValueKey(
-                                                      'tag_drag_${index}_$tag'),
-                                                  tag: tag,
-                                                  bgColor: bgColor,
-                                                  textColor: tagTextColor,
-                                                  onRemove: () {
-                                                    setState(() {
-                                                      _tags.removeAt(index);
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                              child: _TagChip(
-                                                key: ValueKey(
-                                                    'tag_${index}_$tag'),
-                                                tag: tag,
-                                                bgColor: bgColor,
-                                                textColor: tagTextColor,
-                                                onRemove: () {
-                                                  setState(() {
-                                                    _tags.removeAt(index);
-                                                  });
-                                                },
-                                              ),
+                                                );
+                                              },
                                             );
-                                          },
-                                        );
-                                      })
-                                    else
-                                      Text(
-                                        'No tags yet',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color:
-                                              textColor.withValues(alpha: 0.5),
-                                        ),
-                                      ),
-                                    GestureDetector(
-                                      onTap: _openTagsDialog,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
+                                          })
+                                        else
+                                          Text(
+                                            'No tags yet',
+                                            style: TextStyle(
+                                              fontSize: 12,
                                               color: textColor.withValues(
-                                                  alpha: 0.3)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.edit,
-                                                size: 14,
-                                                color: textColor.withValues(
-                                                    alpha: 0.7)),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Edit',
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: textColor.withValues(
-                                                      alpha: 0.7)),
+                                                  alpha: 0.5),
                                             ),
-                                          ],
+                                          ),
+                                        GestureDetector(
+                                          onTap: _openTagsDialog,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                  color: textColor.withValues(
+                                                      alpha: 0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.edit,
+                                                    size: 14,
+                                                    color: textColor.withValues(
+                                                        alpha: 0.7)),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Edit',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color:
+                                                          textColor.withValues(
+                                                              alpha: 0.7)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                            const SizedBox(height: 16),
                           ],
                         ),
                       ),

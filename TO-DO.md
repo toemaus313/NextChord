@@ -29,5 +29,9 @@ SETTINGS
         - I think its also adding the chordpro-style metadata tags. Stop doing that
   - In editor, need to slide the editor window up to the top when keyboard appears so that you can see what you're typing  
   - In MIDI settings, profile and metronome modals, change upper right button to a OK button, upper left to Cancel. Change functionality.
+  - Metronome button not aligned
+  - Make tools
+  - Fix Metronome delay
+  - Fix MIDI profile assignment height in song editor
 
 

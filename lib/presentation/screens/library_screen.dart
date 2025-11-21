@@ -6,7 +6,7 @@ import '../providers/global_sidebar_provider.dart';
 import '../widgets/song_list_tile.dart';
 import '../widgets/tag_edit_dialog.dart';
 import '../widgets/sidebar_select_all_bar.dart';
-import 'song_editor_screen.dart';
+import 'song_editor_screen_refactored.dart';
 import 'song_viewer_screen.dart';
 
 /// Main library screen that displays all songs
@@ -72,7 +72,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SongEditorScreen(),
+                      builder: (context) => const SongEditorScreenRefactored(),
                     ),
                   );
                   if (result == true && context.mounted) {
@@ -130,7 +130,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const SongEditorScreen(),
+                        builder: (context) =>
+                            const SongEditorScreenRefactored(),
                       ),
                     );
                     if (result == true && context.mounted) {
@@ -159,7 +160,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const SongEditorScreen(),
+              builder: (context) => const SongEditorScreenRefactored(),
             ),
           );
           if (result == true && context.mounted) {
@@ -301,13 +302,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
         // Song list
         return ListView.builder(
           padding: EdgeInsets.only(bottom: inSidebar ? 0 : 80),
-          itemCount: provider.songs.length + (inSidebar && provider.selectionMode ? 1 : 0),
+          itemCount: provider.songs.length +
+              (inSidebar && provider.selectionMode ? 1 : 0),
           itemBuilder: (context, index) {
             // Select All header for sidebar in selection mode
             if (inSidebar && provider.selectionMode && index == 0) {
               return SidebarSelectAllBar(provider: provider);
             }
-            final songIndex = inSidebar && provider.selectionMode ? index - 1 : index;
+            final songIndex =
+                inSidebar && provider.selectionMode ? index - 1 : index;
             final song = provider.songs[songIndex];
             return _buildSongItem(song, inSidebar);
           },
@@ -321,7 +324,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (context, provider, child) {
         final isSelected = provider.selectedSongIds.contains(song.id);
         final hasSelections = provider.hasSelectedSongs;
-        
+
         if (inSidebar) {
           // Compact list item for sidebar
           return Material(
@@ -350,9 +353,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white.withValues(alpha: 0.1) : null,
+                  color:
+                      isSelected ? Colors.white.withValues(alpha: 0.1) : null,
                   border: Border(
                     bottom: BorderSide(
                       color: Colors.white.withValues(alpha: 0.1),
@@ -402,9 +407,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   // Tags (max 2) - now before the key
                                   if (song.tags.isNotEmpty)
                                     ...song.tags.take(2).map((tag) => Padding(
-                                      padding: const EdgeInsets.only(left: 3),
-                                      child: _buildTagChip(tag, compact: true),
-                                    )),
+                                          padding:
+                                              const EdgeInsets.only(left: 3),
+                                          child:
+                                              _buildTagChip(tag, compact: true),
+                                        )),
                                   if (song.key.isNotEmpty) ...[
                                     const SizedBox(width: 6),
                                     Container(
@@ -413,7 +420,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -483,7 +491,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Build a tag chip with matching styling from Edit Tags dialog
   Widget _buildTagChip(String tag, {bool compact = false}) {
     final (bgColor, tagTextColor) = _getTagColors(tag);
-    
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 6 : 8,
@@ -509,14 +517,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Get color for a tag based on whether it's an instrument tag
   (Color, Color) _getTagColors(String tag) {
     const instrumentTags = {
-      'Acoustic', 'Electric', 'Piano', 'Guitar', 'Bass', 
-      'Drums', 'Vocals', 'Instrumental'
+      'Acoustic',
+      'Electric',
+      'Piano',
+      'Guitar',
+      'Bass',
+      'Drums',
+      'Vocals',
+      'Instrumental'
     };
-    
+
     if (instrumentTags.contains(tag)) {
       return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
     } else {
-      return (Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.onPrimaryContainer);
+      return (
+        Theme.of(context).colorScheme.primaryContainer,
+        Theme.of(context).colorScheme.onPrimaryContainer
+      );
     }
   }
 
@@ -533,14 +550,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: [
                   // Header with selection count
                   ListTile(
-                    title: Text('${provider.selectedSongIds.length} songs selected'),
-                    subtitle: const Text('Choose an action to perform on all selected songs'),
+                    title: Text(
+                        '${provider.selectedSongIds.length} songs selected'),
+                    subtitle: const Text(
+                        'Choose an action to perform on all selected songs'),
                   ),
                   const Divider(),
                   // Delete option
                   ListTile(
                     leading: const Icon(Icons.delete, color: Colors.red),
-                    title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    title: const Text('Delete',
+                        style: TextStyle(color: Colors.red)),
                     onTap: () {
                       Navigator.pop(context);
                       _confirmBulkDelete(context);
@@ -562,7 +582,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     onTap: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Setlists feature coming soon!')),
+                        const SnackBar(
+                            content: Text('Setlists feature coming soon!')),
                       );
                     },
                   ),
@@ -578,14 +599,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Show dialog to edit tags for selected songs
   Future<void> _showTagDialog(BuildContext context) async {
     final provider = context.read<SongProvider>();
-    
+
     // Collect all tags from selected songs
     final allTagsFromSelection = <String>{};
     for (final songId in provider.selectedSongIds) {
-      final song = provider.songs.firstWhere((s) => s.id == songId, orElse: () => throw Exception('Song not found'));
+      final song = provider.songs.firstWhere((s) => s.id == songId,
+          orElse: () => throw Exception('Song not found'));
       allTagsFromSelection.addAll(song.tags);
     }
-    
+
     await showDialog<bool>(
       context: context,
       builder: (context) => TagEditDialog(
@@ -593,10 +615,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
         initialTags: allTagsFromSelection,
         onTagsUpdated: (updatedTags) async {
           try {
-            await context.read<SongProvider>().updateTagsForSelectedSongs(updatedTags);
+            await context
+                .read<SongProvider>()
+                .updateTagsForSelectedSongs(updatedTags);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Updated tags for ${context.read<SongProvider>().selectedSongIds.length} songs')),
+                SnackBar(
+                    content: Text(
+                        'Updated tags for ${context.read<SongProvider>().selectedSongIds.length} songs')),
               );
             }
           } catch (e) {
@@ -620,7 +646,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         initialTags: song.tags.toSet(),
         onTagsUpdated: (updatedTags) async {
           try {
-            await context.read<SongProvider>().updateSongTags(song.id, updatedTags);
+            await context
+                .read<SongProvider>()
+                .updateSongTags(song.id, updatedTags);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Tags updated')),
@@ -647,7 +675,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete Songs'),
-          content: Text('Are you sure you want to delete ${provider.selectedSongIds.length} selected songs?'),
+          content: Text(
+              'Are you sure you want to delete ${provider.selectedSongIds.length} selected songs?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -659,19 +688,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 try {
                   // Check if current song is in the selection
                   final currentSongId = sidebarProvider.currentSong?.id;
-                  final willDeleteCurrentSong = currentSongId != null && 
+                  final willDeleteCurrentSong = currentSongId != null &&
                       provider.selectedSongIds.contains(currentSongId);
-                  
+
                   await provider.deleteSelectedSongs();
-                  
+
                   // Clear current song if it was deleted
                   if (willDeleteCurrentSong) {
                     sidebarProvider.clearCurrentSong();
                   }
-                  
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${provider.selectedSongIds.length} songs deleted')),
+                      SnackBar(
+                          content: Text(
+                              '${provider.selectedSongIds.length} songs deleted')),
                     );
                   }
                 } catch (e) {
@@ -727,7 +758,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SongEditorScreen(song: song),
+                      builder: (context) =>
+                          SongEditorScreenRefactored(song: song),
                     ),
                   );
                   // Refresh the list if the song was updated
