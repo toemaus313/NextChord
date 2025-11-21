@@ -69,8 +69,9 @@ class MidiService with ChangeNotifier {
 
   /// Send MIDI clock stream for specified duration, aligning with song tempo.
   ///
-  /// Sends MIDI Start (0xFA), streams MIDI Clock (0xF8) at the tempo-derived
-  /// interval for [durationSeconds], and then sends MIDI Stop (0xFC).
+  /// Streams MIDI Clock (0xF8) at the tempo-derived interval for
+  /// [durationSeconds] without start/stop messages so some devices can latch onto
+  /// the continuous timing pulses directly.
   Future<void> sendMidiClockStream({
     int durationSeconds = 2,
     int? bpm,
@@ -84,19 +85,44 @@ class MidiService with ChangeNotifier {
     final intervalMicros = (clockIntervalMs * 1000).round().clamp(1, 999999);
     final clockInterval = Duration(microseconds: intervalMicros);
 
-    if (!await sendMidiStart()) {
-      return;
-    }
+    debugPrint(
+        '🎹 MIDI DEBUG: Streaming clock for ${durationSeconds}s at $effectiveBpm BPM => ${clockInterval.inMilliseconds}ms interval');
 
     final endTime = DateTime.now().add(Duration(seconds: durationSeconds));
     final clockData = Uint8List.fromList([0xF8]);
+    final tickTimestamps = <DateTime>[];
+    var nextTickTime = DateTime.now().add(clockInterval);
 
     while (DateTime.now().isBefore(endTime)) {
+      final now = DateTime.now();
       _midiCommand.sendData(clockData);
-      await Future.delayed(clockInterval);
+      tickTimestamps.add(now);
+      final delay = nextTickTime.difference(DateTime.now());
+      nextTickTime = nextTickTime.add(clockInterval);
+      await Future.delayed(delay.isNegative ? Duration.zero : delay);
     }
 
-    await sendMidiStop();
+    final tickCount = tickTimestamps.length;
+    double actualIntervalMs;
+    if (tickCount < 2) {
+      actualIntervalMs = clockInterval.inMilliseconds.toDouble();
+    } else {
+      var totalInterval = 0.0;
+      for (var i = 1; i < tickCount; i++) {
+        totalInterval += tickTimestamps[i]
+                .difference(tickTimestamps[i - 1])
+                .inMicroseconds
+                .toDouble() /
+            1000;
+      }
+      actualIntervalMs = totalInterval / (tickCount - 1);
+    }
+
+    final actualBpm =
+        actualIntervalMs > 0 ? 60000 / (actualIntervalMs * 24) : effectiveBpm;
+
+    debugPrint(
+        '🎹 MIDI DEBUG: Clock stream completed successfully. Requested bpm $effectiveBpm | Actual calculated bpm ${actualBpm.toStringAsFixed(2)} | Requested interval ${clockInterval.inMilliseconds}ms | Actual interval ${actualIntervalMs.toStringAsFixed(2)}ms | Messages sent $tickCount');
   }
 
   /// Load settings from SharedPreferences

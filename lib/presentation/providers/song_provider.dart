@@ -46,9 +46,6 @@ class SongProvider extends ChangeNotifier {
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
-    debugPrint('🎵 SongProvider: loadSongs() called - STACK TRACE:');
-    debugPrint(StackTrace.current.toString());
-
     _isLoading = true;
     _errorMessage = null;
     _currentListType = SongListType.all;

@@ -36,6 +36,7 @@ class MetronomeSettingsModal extends StatefulWidget {
 
 class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
   late final TextEditingController _midiSendController;
+  String? _midiSendError;
 
   @override
   void initState() {
@@ -47,8 +48,13 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
 
     // Load current MIDI send setting into controller
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final settingsProvider = context.read<MetronomeSettingsProvider>();
-      _midiSendController.text = settingsProvider.midiSendOnTick;
+      final initialValue = settingsProvider.midiSendOnTick;
+      _midiSendController.text = initialValue;
+      setState(() {
+        _midiSendError = _validateMidiSendCommand(initialValue);
+      });
     });
   }
 
@@ -128,12 +134,41 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
     );
   }
 
+  String? _validateMidiSendCommand(String command) {
+    final trimmed = command.trim();
+    if (trimmed.isEmpty) return null;
+
+    final segments =
+        trimmed.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
+
+    final pcPattern = RegExp(r'^pc:?([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-7])$',
+        caseSensitive: false);
+    final ccPattern = RegExp(
+        r'^cc([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-7]):([0-9]|[1-9][0-9]|1[0-1][0-9]|12[0-7])$',
+        caseSensitive: false);
+
+    for (final segment in segments) {
+      final lower = segment.toLowerCase();
+      if (!pcPattern.hasMatch(lower) && !ccPattern.hasMatch(lower)) {
+        return 'Enter PC<0-127> or CC<0-127>:<0-127>';
+      }
+    }
+
+    return null;
+  }
+
+  void _attemptClose(BuildContext context) {
+    if (_midiSendError != null) return;
+    Navigator.of(context).pop();
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         // App Modal Design Standard: Header button styling
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed:
+              _midiSendError == null ? () => _attemptClose(context) : null,
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
@@ -348,8 +383,13 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              errorText: _midiSendError,
             ),
             onChanged: (value) {
+              final error = _validateMidiSendCommand(value);
+              setState(() {
+                _midiSendError = error;
+              });
               settingsProvider.setMidiSendOnTick(value);
             },
           ),

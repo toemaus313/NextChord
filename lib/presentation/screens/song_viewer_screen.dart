@@ -299,13 +299,63 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       debugPrint(
           '🎹 MIDI DEBUG: MIDI service sendMidiClockEnabled: ${midiService.sendMidiClockEnabled}');
 
-      // Send MIDI clock stream if enabled and device is connected (regardless of MIDI profile)
+      // Load MIDI profile from database using dependency injection
+      final songRepository = context.read<SongRepository>();
+      final midiProfile =
+          await songRepository.getSongMidiProfile(_currentSong.id);
+
+      if (midiProfile == null) {
+        debugPrint(
+            '🎹 MIDI DEBUG: No MIDI profile found for song: ${_currentSong.title} - skipping profile MIDI sends');
+      } else {
+        debugPrint(
+            '🎹 MIDI DEBUG: Found MIDI profile: ${midiProfile.name} (ID: ${midiProfile.id})');
+
+        debugPrint(
+            '🎹 MIDI DEBUG: Starting to send MIDI profile for song: ${_currentSong.title}');
+
+        // Send Program Change
+        if (midiProfile.programChangeNumber != null) {
+          debugPrint(
+              '🎹 MIDI DEBUG: Sending Program Change: ${midiProfile.programChangeNumber}');
+          await midiService.sendProgramChange(midiProfile.programChangeNumber!);
+        } else {
+          debugPrint('🎹 MIDI DEBUG: No Program Change number in profile');
+        }
+
+        // Send Control Changes
+        if (midiProfile.controlChanges.isNotEmpty) {
+          debugPrint(
+              '🎹 MIDI DEBUG: Sending ${midiProfile.controlChanges.length} Control Changes');
+          for (final cc in midiProfile.controlChanges) {
+            debugPrint(
+                '🎹 MIDI DEBUG: Sending Control Change: CC${cc.controller} -> ${cc.value}');
+            await midiService.sendControlChange(cc.controller, cc.value);
+          }
+          await Future.delayed(const Duration(milliseconds: 100));
+        } else {
+          debugPrint('🎹 MIDI DEBUG: No Control Changes in profile');
+        }
+
+        // Send timing if enabled
+        if (midiProfile.timing) {
+          debugPrint(
+              '🎹 MIDI DEBUG: Profile timing is enabled - sending single MIDI clock');
+          await midiService.sendMidiClock();
+        } else {
+          debugPrint('🎹 MIDI DEBUG: Profile timing is disabled');
+        }
+
+        debugPrint(
+            '🎹 MIDI DEBUG: === MIDI profile sending completed for song: ${_currentSong.title} ===');
+      }
+
       if (midiService.isConnected && midiService.sendMidiClockEnabled) {
         debugPrint(
             '🎹 MIDI DEBUG: sendMidiClockEnabled is TRUE and device connected - sending clock stream...');
         try {
           await midiService.sendMidiClockStream(
-            durationSeconds: 2,
+            durationSeconds: 10,
             bpm: _currentSong.bpm,
           );
           debugPrint('🎹 MIDI DEBUG: Clock stream completed successfully');
@@ -322,57 +372,6 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
               '🎹 MIDI DEBUG: sendMidiClockEnabled is FALSE - skipping clock stream');
         }
       }
-
-      // Load MIDI profile from database using dependency injection
-      final songRepository = context.read<SongRepository>();
-      final midiProfile =
-          await songRepository.getSongMidiProfile(_currentSong.id);
-
-      if (midiProfile == null) {
-        debugPrint(
-            '🎹 MIDI DEBUG: No MIDI profile found for song: ${_currentSong.title} - skipping profile MIDI sends');
-        return;
-      }
-      debugPrint(
-          '🎹 MIDI DEBUG: Found MIDI profile: ${midiProfile.name} (ID: ${midiProfile.id})');
-
-      debugPrint(
-          '🎹 MIDI DEBUG: Starting to send MIDI profile for song: ${_currentSong.title}');
-
-      // Send Program Change
-      if (midiProfile.programChangeNumber != null) {
-        debugPrint(
-            '🎹 MIDI DEBUG: Sending Program Change: ${midiProfile.programChangeNumber}');
-        await midiService.sendProgramChange(midiProfile.programChangeNumber!);
-      } else {
-        debugPrint('🎹 MIDI DEBUG: No Program Change number in profile');
-      }
-
-      // Send Control Changes
-      if (midiProfile.controlChanges.isNotEmpty) {
-        debugPrint(
-            '🎹 MIDI DEBUG: Sending ${midiProfile.controlChanges.length} Control Changes');
-        for (final cc in midiProfile.controlChanges) {
-          debugPrint(
-              '🎹 MIDI DEBUG: Sending Control Change: CC${cc.controller} -> ${cc.value}');
-          await midiService.sendControlChange(cc.controller, cc.value);
-        }
-        await Future.delayed(const Duration(milliseconds: 100));
-      } else {
-        debugPrint('🎹 MIDI DEBUG: No Control Changes in profile');
-      }
-
-      // Send timing if enabled
-      if (midiProfile.timing) {
-        debugPrint(
-            '🎹 MIDI DEBUG: Profile timing is enabled - sending single MIDI clock');
-        await midiService.sendMidiClock();
-      } else {
-        debugPrint('🎹 MIDI DEBUG: Profile timing is disabled');
-      }
-
-      debugPrint(
-          '🎹 MIDI DEBUG: === MIDI profile sending completed for song: ${_currentSong.title} ===');
     } catch (e) {
       debugPrint(
           '🎹 MIDI DEBUG: ERROR in _sendMidiMappingOnOpen for song: ${_currentSong.title} - $e');
