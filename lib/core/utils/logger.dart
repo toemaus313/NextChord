@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
-
 /// Utility class for structured logging throughout the app
 class Logger {
+  static const bool _loggingEnabled = false;
   static const String _midiPrefix = '🎹 MIDI';
   static const String _navPrefix = '🎹 NAV';
   static const String _autoscrollPrefix = '🎵 AUTO';
@@ -44,36 +43,21 @@ class Logger {
   /// Internal logging method
   static void _log(String prefix, String message,
       [Object? error, StackTrace? stackTrace]) {
-    final buffer = StringBuffer('$prefix: $message');
-
-    if (error != null) {
-      buffer.write(' - $error');
-    }
-
-    debugPrint(buffer.toString());
-
-    if (stackTrace != null) {
-      debugPrint('Stack trace: $stackTrace');
-    }
+    // Logging intentionally disabled for production.
+    if (!_loggingEnabled) return;
   }
 
   /// Log method entry for debugging
   static void methodEntry(String className, String methodName,
       [Map<String, dynamic>? params]) {
-    final buffer = StringBuffer('🔍 ENTRY: $className.$methodName');
-    if (params != null && params.isNotEmpty) {
-      buffer.write(' with params: $params');
-    }
-    debugPrint(buffer.toString());
+    // Logging intentionally disabled for production.
+    if (!_loggingEnabled) return;
   }
 
   /// Log method exit for debugging
   static void methodExit(String className, String methodName,
       [dynamic result]) {
-    final buffer = StringBuffer('🔍 EXIT: $className.$methodName');
-    if (result != null) {
-      buffer.write(' with result: $result');
-    }
-    debugPrint(buffer.toString());
+    // Logging intentionally disabled for production.
+    if (!_loggingEnabled) return;
   }
 }

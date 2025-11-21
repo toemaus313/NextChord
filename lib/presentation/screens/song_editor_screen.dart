@@ -34,6 +34,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   final _bodyController = TextEditingController();
   final _bpmController = TextEditingController();
   final _durationController = TextEditingController();
+  final FocusNode _bodyFocusNode = FocusNode();
 
   String _selectedKey = 'C';
   int _selectedCapo = 0;
@@ -91,6 +92,11 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     _initializeFields();
     _loadMidiProfiles();
     _bodyController.addListener(_onBodyTextChanged);
+    _bodyFocusNode.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   /// Load MIDI profiles for dropdown
@@ -100,12 +106,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
       final songProvider = context.read<SongProvider>();
 
       // Ensure database schema is up to date before loading profiles
-      debugPrint('🎹 Ensuring MIDI profiles table exists...');
       await songProvider.repository.database.ensureMidiProfilesTable();
-      debugPrint('🎹 MIDI profiles table schema verified');
 
       final profiles = await songProvider.repository.getAllMidiProfiles();
-      debugPrint('🎹 Loaded ${profiles.length} MIDI profiles');
       if (mounted) {
         setState(() {
           _midiProfiles = profiles;
@@ -113,10 +116,6 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         });
       }
     } catch (e) {
-      debugPrint('🎹 ERROR loading MIDI profiles: $e');
-      debugPrint('🎹 ERROR type: ${e.runtimeType}');
-      debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
-
       if (mounted) {
         setState(() => _isLoadingProfiles = false);
 
@@ -146,10 +145,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         final songProvider = context.read<SongProvider>();
         _selectedMidiProfile =
             await songProvider.repository.getSongMidiProfile(song.id);
-        debugPrint(
-            '🎹 Loaded MIDI profile for song: ${_selectedMidiProfile != null ? _selectedMidiProfile!.name : "None"}');
       } catch (e) {
-        debugPrint('🎹 Error loading MIDI profile: $e');
         _selectedMidiProfile = null;
       }
 
@@ -257,6 +253,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
   @override
   void dispose() {
     _bodyController.removeListener(_onBodyTextChanged);
+    _bodyFocusNode.dispose();
     _titleController.dispose();
     _artistController.dispose();
     _bodyController.dispose();
@@ -480,28 +477,15 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         await songProvider.updateSong(song);
 
         // Assign MIDI profile to song
-        debugPrint('🎹 Assigning MIDI profile to song ${song.id}...');
-        debugPrint('🎹 Profile ID: ${_selectedMidiProfile?.id ?? "None"}');
-        debugPrint('🎹 Profile Name: ${_selectedMidiProfile?.name ?? "None"}');
-
         try {
           // Ensure database schema is up to date right before assignment
-          debugPrint(
-              '🎹 Ensuring MIDI profiles table exists before assignment...');
           await songProvider.repository.database.ensureMidiProfilesTable();
-          debugPrint('🎹 Schema verification completed for assignment');
 
           await songProvider.repository.assignMidiProfileToSong(
             song.id,
             _selectedMidiProfile?.id,
           );
-          debugPrint(
-              '🎹 Successfully assigned MIDI profile ${_selectedMidiProfile?.name ?? "None"} to song ${song.title}');
         } catch (e) {
-          debugPrint('🎹 ERROR assigning MIDI profile: $e');
-          debugPrint('🎹 ERROR type: ${e.runtimeType}');
-          debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
-
           // Re-throw to be caught by outer try-catch
           rethrow;
         }
@@ -520,28 +504,15 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
         savedSong = song.copyWith(id: newSongId);
 
         // Assign MIDI profile to new song
-        debugPrint('🎹 Assigning MIDI profile to new song $newSongId...');
-        debugPrint('🎹 Profile ID: ${_selectedMidiProfile?.id ?? "None"}');
-        debugPrint('🎹 Profile Name: ${_selectedMidiProfile?.name ?? "None"}');
-
         try {
           // Ensure database schema is up to date right before assignment
-          debugPrint(
-              '🎹 Ensuring MIDI profiles table exists before assignment...');
           await songProvider.repository.database.ensureMidiProfilesTable();
-          debugPrint('🎹 Schema verification completed for assignment');
 
           await songProvider.repository.assignMidiProfileToSong(
             newSongId,
             _selectedMidiProfile?.id,
           );
-          debugPrint(
-              '🎹 Successfully assigned MIDI profile ${_selectedMidiProfile?.name ?? "None"} to new song ${song.title}');
         } catch (e) {
-          debugPrint('🎹 ERROR assigning MIDI profile: $e');
-          debugPrint('🎹 ERROR type: ${e.runtimeType}');
-          debugPrint('🎹 ERROR stack trace: ${StackTrace.current}');
-
           // Re-throw to be caught by outer try-catch
           rethrow;
         }
@@ -914,161 +885,105 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     final isDarkMode = themeProvider.isDarkMode;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'MIDI Profile',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
-              width: 1.0,
-            ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: _isLoadingProfiles
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 8),
-                      Text('Loading profiles...'),
-                    ],
-                  ),
-                )
-              : DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
-                    value: _selectedMidiProfile?.id,
-                    isExpanded: true,
-                    hint: Text(
-                      'No MIDI profile selected',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: textColor.withValues(alpha: 0.6),
-                      ),
-                    ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 44),
+      child: _isLoadingProfiles
+          ? const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  value: _selectedMidiProfile?.id,
+                  isExpanded: true,
+                  hint: Text(
+                    'Select MIDI profile',
                     style: TextStyle(
                       fontSize: 14,
-                      color: textColor,
+                      color: textColor.withValues(alpha: 0.6),
                     ),
-                    items: [
-                      DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text(
-                          'No MIDI profile',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: textColor.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ),
-                      ..._midiProfiles.map((profile) =>
-                          DropdownMenuItem<String?>(
-                            value: profile.id,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        profile.name,
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                      if (profile.commandDescription.isNotEmpty)
-                                        Text(
-                                          profile.commandDescription,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: textColor.withValues(
-                                                alpha: 0.6),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                if (profile.hasMidiCommands)
-                                  Icon(
-                                    Icons.piano,
-                                    size: 16,
-                                    color: Colors.purple,
-                                  ),
-                              ],
-                            ),
-                          )),
-                      const DropdownMenuItem<String?>(
-                        value: 'manage',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, size: 16, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text('Manage Profiles...',
-                                style: TextStyle(color: Colors.blue)),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) async {
-                      if (value == 'manage') {
-                        // Open MIDI Profiles modal
-                        await showDialog<void>(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) => const MidiProfilesModal(),
-                        );
-                        // Reload profiles after managing
-                        _loadMidiProfiles();
-                      } else {
-                        setState(() {
-                          _selectedMidiProfile = value != null
-                              ? _midiProfiles.firstWhere((p) => p.id == value)
-                              : null;
-                        });
-                      }
-                    },
                   ),
-                ),
-        ),
-        if (_selectedMidiProfile != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                Icons.piano,
-                size: 12,
-                color: Colors.purple,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  _selectedMidiProfile!.commandDescription,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withValues(alpha: 0.7),
+                    fontSize: 14,
+                    color: textColor,
                   ),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(
+                        'No MIDI profile',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: textColor.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                    ..._midiProfiles.map((profile) => DropdownMenuItem<String?>(
+                          value: profile.id,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  profile.name,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              if (profile.hasMidiCommands)
+                                Icon(
+                                  Icons.piano,
+                                  size: 16,
+                                  color: textColor.withValues(alpha: 0.7),
+                                ),
+                            ],
+                          ),
+                        )),
+                    const DropdownMenuItem<String?>(
+                      value: 'manage',
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings, size: 16, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text(
+                            'Manage Profiles...',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == 'manage') {
+                      await showDialog<void>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) => const MidiProfilesModal(),
+                      );
+                      _loadMidiProfiles();
+                      return;
+                    }
+
+                    setState(() {
+                      _selectedMidiProfile = value != null
+                          ? _midiProfiles.firstWhere(
+                              (p) => p.id == value,
+                              orElse: () => MidiProfile(
+                                id: '',
+                                name: 'No MIDI profile',
+                                controlChanges: const [],
+                                timing: false,
+                              ),
+                            )
+                          : null;
+                    });
+                  },
                 ),
               ),
-            ],
-          ),
-        ],
-      ],
+            ),
     );
   }
 
@@ -1140,6 +1055,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final actionColor =
         isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final hideMetadata = isKeyboardOpen || _bodyFocusNode.hasFocus;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -1152,7 +1069,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
               child: Column(
                 children: [
                   // Setlist mode indicator banner
-                  if (widget.setlistContext != null)
+                  if (widget.setlistContext != null && !hideMetadata)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -1195,11 +1112,17 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                       ),
                     ),
                   // Scrollable metadata section
-                  SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(16.0,
-                        widget.setlistContext != null ? 16.0 : 60.0, 16.0, 0),
-                    child: Column(
-                      children: [
+                  if (!hideMetadata)
+                    Expanded(
+                      flex: 3,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            16.0,
+                            widget.setlistContext != null ? 16.0 : 60.0,
+                            16.0,
+                            16.0),
+                        child: Column(
+                          children: [
                         // Title field
                         TextFormField(
                           controller: _titleController,
@@ -1249,17 +1172,25 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
-
                         // Single row with Key, BPM, Capo, Time Signature, Duration
-                        Row(
-                          children: [
-                            // Key dropdown
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            const spacing = 8.0;
+                            final availableWidth = constraints.maxWidth;
+                            final columns = availableWidth > 1100
+                                ? 5
+                                : availableWidth > 900
+                                    ? 4
+                                    : availableWidth > 650
+                                        ? 3
+                                        : 2;
+                            final fieldWidth =
+                                (availableWidth - spacing * (columns - 1)) / columns;
+
+                            final fields = <Widget>[
+                              DropdownButtonFormField<String>(
                                 initialValue: _selectedKey,
-                                style:
-                                    TextStyle(fontSize: 14, color: textColor),
+                                style: TextStyle(fontSize: 14, color: textColor),
                                 decoration: InputDecoration(
                                   prefixIcon: const Icon(Icons.piano, size: 18),
                                   suffixIcon: widget.setlistContext != null
@@ -1268,8 +1199,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                               horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: Colors.blue,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             'SET',
@@ -1283,23 +1213,22 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                       : null,
                                   border: OutlineInputBorder(
                                     borderSide: widget.setlistContext != null
-                                        ? BorderSide(
-                                            color: Colors.blue, width: 1.5)
+                                        ? const BorderSide(color: Colors.blue, width: 1.5)
                                         : BorderSide(
                                             color: isDarkMode
                                                 ? Colors.grey.shade600
                                                 : Colors.grey.shade400,
                                             width: 1.0),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                   isDense: true,
                                 ),
                                 items: _keys.map((key) {
                                   return DropdownMenuItem(
                                     value: key,
-                                    child: Text(key,
-                                        style: const TextStyle(fontSize: 13)),
+                                    child:
+                                        Text(key, style: const TextStyle(fontSize: 13)),
                                   );
                                 }).toList(),
                                 onChanged: (value) {
@@ -1308,13 +1237,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   }
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // BPM field
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
+                              TextFormField(
                                 controller: _bpmController,
                                 style: const TextStyle(fontSize: 14),
                                 decoration: InputDecoration(
@@ -1332,8 +1255,8 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   hintText: '120',
                                   hintStyle: const TextStyle(fontSize: 12),
                                   border: const OutlineInputBorder(),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                   isDense: true,
                                 ),
                                 keyboardType: TextInputType.number,
@@ -1351,16 +1274,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   return null;
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Capo dropdown
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<int>(
+                              DropdownButtonFormField<int>(
                                 initialValue: _selectedCapo,
-                                style:
-                                    TextStyle(fontSize: 14, color: textColor),
+                                style: TextStyle(fontSize: 14, color: textColor),
                                 decoration: InputDecoration(
                                   prefixIcon: Padding(
                                     padding: const EdgeInsets.all(12.0),
@@ -1379,8 +1295,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                               horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: Colors.blue,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             'SET',
@@ -1394,20 +1309,18 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                       : null,
                                   border: OutlineInputBorder(
                                     borderSide: widget.setlistContext != null
-                                        ? BorderSide(
-                                            color: Colors.blue, width: 1.5)
+                                        ? const BorderSide(color: Colors.blue, width: 1.5)
                                         : BorderSide(
                                             color: isDarkMode
                                                 ? Colors.grey.shade600
                                                 : Colors.grey.shade400,
                                             width: 1.0),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                   isDense: true,
                                 ),
-                                items: List.generate(13, (index) => index)
-                                    .map((capo) {
+                                items: List.generate(13, (index) => index).map((capo) {
                                   return DropdownMenuItem(
                                     value: capo,
                                     child: Text(capo.toString(),
@@ -1420,16 +1333,9 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   }
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Time Signature dropdown
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
+                              DropdownButtonFormField<String>(
                                 initialValue: _selectedTimeSignature,
-                                style:
-                                    TextStyle(fontSize: 14, color: textColor),
+                                style: TextStyle(fontSize: 14, color: textColor),
                                 decoration: const InputDecoration(
                                   prefixIcon: Icon(Icons.timer, size: 18),
                                   border: OutlineInputBorder(),
@@ -1452,13 +1358,7 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   }
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Duration field
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
+                              TextFormField(
                                 controller: _durationController,
                                 style: const TextStyle(fontSize: 14),
                                 decoration: const InputDecoration(
@@ -1475,192 +1375,28 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                                   if (value == null || value.trim().isEmpty) {
                                     return null;
                                   }
-                                  final pattern =
-                                      RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
+                                  final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
                                   if (!pattern.hasMatch(value.trim())) {
                                     return 'Invalid';
                                   }
                                   return null;
                                 },
                               ),
-                            ),
-                            const SizedBox(width: 8),
+                            ];
 
-                            // BPM field
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                controller: _bpmController,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: InputDecoration(
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: CustomPaint(
-                                      size: const Size(18, 18),
-                                      painter: MetronomeIconPainter(
-                                        color: isDarkMode
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                  hintText: '120',
-                                  hintStyle: const TextStyle(fontSize: 12),
-                                  border: const OutlineInputBorder(),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Required';
-                                  }
-                                  final bpm = int.tryParse(value.trim());
-                                  if (bpm == null || bpm < 1 || bpm > 300) {
-                                    return 'Invalid';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Capo dropdown
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<int>(
-                                initialValue: _selectedCapo,
-                                style:
-                                    TextStyle(fontSize: 14, color: textColor),
-                                decoration: InputDecoration(
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: CustomPaint(
-                                      size: const Size(18, 18),
-                                      painter: CapoIconPainter(
-                                        color: isDarkMode
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                  ),
-                                  suffixIcon: widget.setlistContext != null
-                                      ? Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            'SET',
-                                            style: TextStyle(
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        )
-                                      : null,
-                                  border: OutlineInputBorder(
-                                    borderSide: widget.setlistContext != null
-                                        ? BorderSide(
-                                            color: Colors.blue, width: 1.5)
-                                        : BorderSide(
-                                            color: isDarkMode
-                                                ? Colors.grey.shade600
-                                                : Colors.grey.shade400,
-                                            width: 1.0),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                items: List.generate(13, (index) => index)
-                                    .map((capo) {
-                                  return DropdownMenuItem(
-                                    value: capo,
-                                    child: Text(capo.toString(),
-                                        style: const TextStyle(fontSize: 13)),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _handleCapoSelection(value);
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Time Signature dropdown
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _selectedTimeSignature,
-                                style:
-                                    TextStyle(fontSize: 14, color: textColor),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.timer, size: 18),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                items: _timeSignatures.map((sig) {
-                                  return DropdownMenuItem(
-                                    value: sig,
-                                    child: Text(sig,
-                                        style: const TextStyle(fontSize: 13)),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedTimeSignature = value;
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Duration field
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                controller: _durationController,
-                                style: const TextStyle(fontSize: 14),
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.play_arrow, size: 18),
-                                  hintText: '3:00',
-                                  hintStyle: TextStyle(fontSize: 12),
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  isDense: true,
-                                ),
-                                keyboardType: TextInputType.text,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return null;
-                                  }
-                                  final pattern =
-                                      RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
-                                  if (!pattern.hasMatch(value.trim())) {
-                                    return 'Invalid';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
+                            return Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: fields
+                                  .map((field) => SizedBox(
+                                        width: fieldWidth,
+                                        child: field,
+                                      ))
+                                  .toList(),
+                            );
+                          },
                         ),
+
                         const SizedBox(height: 12),
 
                         // MIDI Sends and Tags in the same row
@@ -1823,15 +1559,18 @@ class _SongEditorScreenState extends State<SongEditorScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                      ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
                   // Body (ChordPro text) field - borderless editing area
                   Expanded(
+                    flex: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: TextFormField(
                         controller: _bodyController,
+                        focusNode: _bodyFocusNode,
                         style: const TextStyle(
                             fontSize: 14, fontFamily: 'monospace'),
                         decoration: InputDecoration(

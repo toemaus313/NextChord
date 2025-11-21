@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../../domain/entities/song.dart';
@@ -331,8 +330,7 @@ class SongRepository {
                 label: item['label'] as String?,
               ))
           .toList();
-    } catch (e) {
-      debugPrint('Error decoding control changes: $e');
+    } catch (_) {
       return [];
     }
   }
@@ -370,7 +368,6 @@ class SongRepository {
               ),
             );
       }
-      debugPrint('🎹 MIDI profile saved: ${profile.name}');
     } catch (e) {
       throw SongRepositoryException('Failed to save MIDI profile: $e');
     }
@@ -437,7 +434,6 @@ class SongRepository {
             ..where((tbl) => tbl.id.equals(profileId)))
           .go();
 
-      debugPrint('🎹 MIDI profile deleted: $profileId');
     } catch (e) {
       throw SongRepositoryException('Failed to delete MIDI profile: $e');
     }
@@ -446,16 +442,9 @@ class SongRepository {
   /// Assign a MIDI profile to a song
   Future<void> assignMidiProfileToSong(String songId, String? profileId) async {
     try {
-      debugPrint(
-          '🎹 REPO: Assigning MIDI profile to song $songId with profile ID $profileId');
       await (_db.update(_db.songs)..where((tbl) => tbl.id.equals(songId)))
           .write(SongsCompanion(profileId: Value(profileId)));
-      debugPrint(
-          '🎹 REPO: Successfully assigned MIDI profile $profileId to song $songId');
     } catch (e) {
-      debugPrint('🎹 REPO ERROR: Failed to assign MIDI profile to song: $e');
-      debugPrint('🎹 REPO ERROR type: ${e.runtimeType}');
-      debugPrint('🎹 REPO ERROR stack trace: ${StackTrace.current}');
       throw SongRepositoryException(
           'Failed to assign MIDI profile to song: $e');
     }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../services/midi/midi_service.dart';
 
@@ -50,7 +49,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       // Give it a moment to initialize
       await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
-      debugPrint('🎹 Error initializing MIDI service: $e');
       setState(() {
         _initError = e.toString();
         _isInitializing = false;
@@ -637,15 +635,12 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     final midiService = MidiService();
 
     if (_isTestStreamActive) {
-      debugPrint('🎹 MIDI DEBUG: Stopping test stream...');
       setState(() {
         _isTestStreamActive = false;
       });
       try {
         await midiService.sendMidiStop();
-        debugPrint('🎹 MIDI DEBUG: MIDI Stop sent to stop test stream');
       } catch (e) {
-        debugPrint('🎹 MIDI DEBUG: ERROR sending MIDI Stop: $e');
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -658,17 +653,14 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       return;
     }
 
-    debugPrint('🎹 MIDI DEBUG: Starting test stream...');
     setState(() {
       _isTestStreamActive = true;
     });
 
     try {
-      debugPrint('🎹 MIDI DEBUG: Sending CC0:0...');
       await midiService.sendControlChange(0, 0); // CC0:0
       await Future.delayed(const Duration(milliseconds: 100));
 
-      debugPrint('🎹 MIDI DEBUG: Sending PC13...');
       await midiService.sendProgramChange(13); // PC13
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -676,14 +668,12 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         return;
       }
 
-      debugPrint('🎹 MIDI DEBUG: Sending 30 BPM test stream...');
       await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 30);
 
       if (!_isTestStreamActive) {
         return;
       }
 
-      debugPrint('🎹 MIDI DEBUG: Sending 170 BPM test stream...');
       await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 170);
 
       if (mounted) {
@@ -696,7 +686,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         );
       }
     } catch (e) {
-      debugPrint('🎹 MIDI DEBUG: ERROR running test stream: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

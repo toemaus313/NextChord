@@ -62,3 +62,4 @@ flutter:
   assets:
     - assets/audio/Synth_Block_B_hi.wav
     - assets/audio/Synth_Block_B_lo.wav
+    - assets/images/NextChord-Logo.png

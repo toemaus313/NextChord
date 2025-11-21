@@ -828,19 +828,14 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
   Future<void> _selectImage() async {
     try {
-      debugPrint('SetlistEditor: _selectImage called');
       const imageTypeGroup = XTypeGroup(
         label: 'Images',
         extensions: ['png', 'jpg', 'jpeg', 'webp'],
         mimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
       );
 
-      debugPrint('SetlistEditor: About to call openFile with imageTypeGroup');
       final selectedFile = await openFile(acceptedTypeGroups: [imageTypeGroup]);
-      debugPrint(
-          'SetlistEditor: openFile returned: ${selectedFile?.path ?? 'null'}');
       if (selectedFile == null) {
-        debugPrint('SetlistEditor: No file selected');
         return;
       }
 
@@ -853,8 +848,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
       Uint8List resizedBytes;
       if (width != 200 || height != 200) {
-        debugPrint(
-            'SetlistEditor: Resizing image from ${width}x$height to 200x200');
         final resizedBytesData = await _resizeImage(originalImage, 200, 200);
         resizedBytes = resizedBytesData;
       } else {
@@ -881,7 +874,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         _imagePath = savedPath;
       });
     } catch (e) {
-      debugPrint('SetlistEditor: Exception in _selectImage: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

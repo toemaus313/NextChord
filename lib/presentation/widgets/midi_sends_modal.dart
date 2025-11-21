@@ -270,7 +270,6 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
         }
       });
     } catch (e) {
-      debugPrint('🎹 Error adding MIDI command: $e');
       // Show error to user
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -720,14 +719,8 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
 
   Future<void> _testMidiSends(MidiService midiService) async {
     try {
-      debugPrint('🎹 Testing MIDI sends for ${widget.song.title}');
-      debugPrint(
-          '🎹 Current state - PC: $_programChange, CC count: ${_controlChanges.length}, Timing: $_timing');
-
       // Send Program Change
       if (_programChange != null) {
-        debugPrint(
-            '🎹 Sending Program Change: $_programChange on channel ${midiService.midiChannel}');
         await midiService.sendProgramChange(_programChange!,
             channel: midiService.midiChannel);
         await Future.delayed(const Duration(milliseconds: 300));
@@ -737,13 +730,9 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
       for (final cc in _controlChanges) {
         // Handle PC commands (stored as controller -1)
         if (cc.controller == -1) {
-          debugPrint(
-              '🎹 Sending Program Change: PC${cc.value} on channel ${midiService.midiChannel}');
           await midiService.sendProgramChange(cc.value,
               channel: midiService.midiChannel);
         } else {
-          debugPrint(
-              '🎹 Sending Control Change: CC${cc.controller}:${cc.value} on channel ${midiService.midiChannel}');
           await midiService.sendControlChange(cc.controller, cc.value,
               channel: midiService.midiChannel);
         }
@@ -752,7 +741,6 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
 
       // Send timing if enabled
       if (_timing) {
-        debugPrint('🎹 Sending MIDI timing clock');
         await midiService.sendMidiClock();
         await Future.delayed(const Duration(milliseconds: 300));
       }
@@ -767,7 +755,6 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
         );
       }
     } catch (e) {
-      debugPrint('🎹 Error testing MIDI sends: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

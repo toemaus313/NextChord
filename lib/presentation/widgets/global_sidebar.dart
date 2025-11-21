@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../providers/global_sidebar_provider.dart';
@@ -73,64 +72,83 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.white;
+    final sidebarWidth = Platform.isIOS ? 320.0 : 256.0;
 
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        // Calculate width based on animation value (0 when hidden, 302 when visible)
-        final width = 302.0 * _animation.value;
+        // Animate from 0 to the target sidebar width
+        final width = sidebarWidth * _animation.value;
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          width: width * 0.85, // Make sidebar 15% narrower
+          width: width,
           decoration: BoxDecoration(
             color: backgroundColor,
           ),
           clipBehavior: Clip.hardEdge,
-          child: width > 0 ? _buildSidebar(context) : null,
+          child: width > 0 ? _buildSidebar(context, sidebarWidth) : null,
         );
       },
     );
   }
 
-  Widget _buildSidebar(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 256, // Reduced from 302
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0468cc), // Original blue at top
-              Color.fromARGB(99, 3, 73, 153), // Darker blue at bottom
-            ],
+  Widget _buildSidebar(BuildContext context, double sidebarWidth) {
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+
+    return IconButtonTheme(
+      data: IconButtonThemeData(
+        style: ButtonStyle(
+          iconSize: MaterialStateProperty.all(isIOS ? 24.0 : 20.0),
+          padding: MaterialStateProperty.all(
+            EdgeInsets.all(isIOS ? 12.0 : 8.0),
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border(
-            right: BorderSide(
-              color: Colors.black.withValues(alpha: 0.2),
-              width: 1,
-            ),
+          minimumSize: MaterialStateProperty.all(
+            Size(isIOS ? 44 : 40, isIOS ? 44 : 40),
           ),
         ),
-        child: _currentView == 'allSongs'
-            ? _buildAllSongsView(context)
-            : _currentView == 'deletedSongs'
-                ? _buildDeletedSongsView(context)
-                : _currentView == 'artistsList'
-                    ? _buildArtistsListView(context)
-                    : _currentView == 'artistSongs'
-                        ? _buildArtistSongsView(context)
-                        : _currentView == 'tagsList'
-                            ? _buildTagsListView(context)
-                            : _currentView == 'tagSongs'
-                                ? _buildTagSongsView(context)
-                                : _currentView == 'setlistView'
-                                    ? _buildSetlistView(context)
-                                    : _buildMenuView(context),
+      ),
+      child: IconTheme(
+        data: IconThemeData(size: isIOS ? 24 : 20),
+        child: Material(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: sidebarWidth,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF0468cc), // Original blue at top
+                  Color.fromARGB(99, 3, 73, 153), // Darker blue at bottom
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border(
+                right: BorderSide(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: _currentView == 'allSongs'
+                ? _buildAllSongsView(context)
+                : _currentView == 'deletedSongs'
+                    ? _buildDeletedSongsView(context)
+                    : _currentView == 'artistsList'
+                        ? _buildArtistsListView(context)
+                        : _currentView == 'artistSongs'
+                            ? _buildArtistSongsView(context)
+                            : _currentView == 'tagsList'
+                                ? _buildTagsListView(context)
+                                : _currentView == 'tagSongs'
+                                    ? _buildTagSongsView(context)
+                                    : _currentView == 'setlistView'
+                                        ? _buildSetlistView(context)
+                                        : _buildMenuView(context),
+          ),
+        ),
       ),
     );
   }
@@ -452,7 +470,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             title: 'MIDI Options',
                             isSelected: false,
                             onTap: () async {
-                              debugPrint('🎹 Opening MIDI Settings...');
                               await MidiSettingsModal.show(context);
                             },
                           ),
@@ -461,7 +478,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             title: 'MIDI Profiles',
                             isSelected: false,
                             onTap: () async {
-                              debugPrint('🎹 Opening MIDI Profiles...');
                               await showDialog<void>(
                                 context: context,
                                 barrierDismissible: false,
@@ -474,7 +490,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                             title: 'Metronome',
                             isSelected: false,
                             onTap: () async {
-                              debugPrint('🎵 Opening Metronome Settings...');
                               await MetronomeSettingsModal.show(context);
                             },
                           ),
@@ -646,7 +661,15 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                 decoration: BoxDecoration(
                   color: Colors.black.withAlpha(20),
                 ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints:
+                    BoxConstraints(minWidth: constraints.maxWidth),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(
@@ -661,7 +684,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       },
                       tooltip: 'Back to menu',
                     ),
-                    const Expanded(
+                    const Flexible(
+                      fit: FlexFit.loose,
                       child: Text(
                         'Setlist',
                         style: TextStyle(
@@ -673,6 +697,10 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                       ),
                     ),
                   ],
+                ),
+              ),
+                    );
+                  },
                 ),
               ),
               // Empty state
@@ -696,49 +724,62 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               decoration: BoxDecoration(
                 color: Colors.black.withAlpha(20),
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      _clearSetlistStateOnNavigation();
-                      setState(() {
-                        _currentView = 'menu';
-                      });
-                    },
-                    tooltip: 'Back to menu',
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Setlist',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minWidth: constraints.maxWidth),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                _clearSetlistStateOnNavigation();
+                                setState(() {
+                                  _currentView = 'menu';
+                                });
+                              },
+                              tooltip: 'Back to menu',
+                            ),
+                            const Flexible(
+                              fit: FlexFit.loose,
+                              child: Text(
+                                'Setlist',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.white,
+                              ),
+                              onPressed: () async {
+                                final result = await SetlistEditorDialog.show(
+                                  context,
+                                  setlist: currentSetlist,
+                                );
+                                if (result == true && context.mounted) {
+                                  await setlistProvider.loadSetlists();
+                                }
+                              },
+                              tooltip: 'Edit setlist',
+                            ),
+                          ],
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.edit,
-                      color: Colors.white,
-                    ),
-                    onPressed: () async {
-                      final result = await SetlistEditorDialog.show(
-                        context,
-                        setlist: currentSetlist,
-                      );
-                      if (result == true && context.mounted) {
-                        await setlistProvider.loadSetlists();
-                      }
-                    },
-                    tooltip: 'Edit setlist',
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             // Logo area (200x200 placeholder)
@@ -870,66 +911,78 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           color: Colors.black.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          children: [
-            // Drag handle
-            ReorderableDragStartListener(
-              index: index,
-              child: const Icon(
-                Icons.drag_indicator,
-                color: Colors.white54,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Song info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (artist.isNotEmpty)
-                    Text(
-                      artist,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(
+                        Icons.drag_indicator,
+                        color: Colors.white54,
+                        size: 16,
                       ),
                     ),
-                ],
-              ),
-            ),
-            // Key and capo info
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  displayKey,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (capo > 0)
-                  Text(
-                    'CAPO $capo',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(width: 8),
+                    // Song info
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (artist.isNotEmpty)
+                            Text(
+                              artist,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                    // Key and capo info
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          displayKey,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (capo > 0)
+                          Text(
+                            'CAPO $capo',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -1231,18 +1284,28 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
-              children: [
-                Icon(Icons.add, color: Colors.white54, size: 16),
-                SizedBox(width: 8),
-                Text(
-                  'Add...',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.add, color: Colors.white54, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Add...',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
@@ -1315,8 +1378,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           updatedAt: DateTime.now(),
         );
 
-        debugPrint(
-            'Sidebar: About to call updateSetlist with ${newItems.length} items');
         await setlistProvider.updateSetlist(updatedSetlist);
 
         if (context.mounted) {
@@ -2561,6 +2622,11 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     List<Widget>? children,
     bool isExpanded = false,
   }) {
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+    final verticalPadding = isIOS ? 18.0 : 14.0;
+    final iconSize = isIOS ? 18.0 : 16.0;
+    final fontSize = isIOS ? 14.0 : 13.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2568,7 +2634,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onTap: onTap,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding:
+                EdgeInsets.symmetric(horizontal: 20, vertical: verticalPadding),
             decoration: BoxDecoration(
               color: isSelected ? Colors.blueAccent : Colors.transparent,
             ),
@@ -2577,7 +2644,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                 Icon(
                   icon,
                   color: Colors.white,
-                  size: 16,
+                  size: iconSize,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -2612,11 +2679,20 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     required VoidCallback onTap,
     int? count,
   }) {
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+    final verticalPadding = isIOS ? 12.0 : 8.0;
+    final fontSize = isIOS ? 13.0 : 12.0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.only(left: 44, right: 16, top: 8, bottom: 8),
+        padding: EdgeInsets.only(
+          left: 44,
+          right: 16,
+          top: verticalPadding,
+          bottom: verticalPadding,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.blueAccent.withValues(alpha: 0.3)
@@ -2627,9 +2703,9 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -2787,13 +2863,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     final globalSidebarProvider = context.read<GlobalSidebarProvider>();
     final setlistProvider = context.read<SetlistProvider>();
 
-    debugPrint('🔗 GlobalSidebar: _navigateToSongFromSetlist called');
-    debugPrint('   - song: ${song.title}');
-    debugPrint('   - setlistId: $_selectedSetlistId');
-    debugPrint('   - index: $index');
-    debugPrint('   - item.transposeSteps: ${item.transposeSteps}');
-    debugPrint('   - item.capo: ${item.capo}');
-
     // Set the active setlist and current song index
     await setlistProvider.setActiveSetlist(_selectedSetlistId!, index);
 
@@ -2803,7 +2872,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   /// Clear setlist state when navigating away from setlist view
   void _clearSetlistStateOnNavigation() {
-    debugPrint('🔗 GlobalSidebar: _clearSetlistStateOnNavigation called');
     context.read<GlobalSidebarProvider>().clearActiveSetlist();
     context.read<SetlistProvider>().clearActiveSetlist();
   }

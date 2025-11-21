@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -103,9 +102,7 @@ class AppDatabase extends _$AppDatabase {
     try {
       // Try to query the midi_profiles table
       await customSelect('SELECT COUNT(*) FROM midi_profiles').get();
-      debugPrint('🎹 midi_profiles table exists');
     } catch (e) {
-      debugPrint('🎹 midi_profiles table missing, creating it: $e');
       try {
         await customStatement('''
           CREATE TABLE IF NOT EXISTS midi_profiles (
@@ -119,9 +116,7 @@ class AppDatabase extends _$AppDatabase {
             updated_at INTEGER NOT NULL
           )
         ''');
-        debugPrint('🎹 midi_profiles table created successfully');
       } catch (createError) {
-        debugPrint('🎹 Error creating midi_profiles table: $createError');
         rethrow;
       }
     }
@@ -129,19 +124,13 @@ class AppDatabase extends _$AppDatabase {
     // Always check if profileId column exists in songs table (moved outside the catch block)
     try {
       await customSelect('SELECT profile_id FROM songs LIMIT 1').get();
-      debugPrint('🎹 profileId column exists in songs table');
     } catch (e) {
-      debugPrint('🎹 profileId column missing, adding it: $e');
       try {
         await customStatement('ALTER TABLE songs ADD COLUMN profile_id TEXT');
-        debugPrint('🎹 profileId column added successfully');
       } catch (alterError) {
-        debugPrint('🎹 Error adding profileId column: $alterError');
         rethrow;
       }
     }
-
-    debugPrint('🎹 MIDI profile schema verification completed');
   }
 
   /// Initialize database with migrations if needed
@@ -149,44 +138,31 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        debugPrint('🎹 Creating new database with all tables...');
         await m.createAll();
-        debugPrint('🎹 Database creation completed');
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        debugPrint('🎹 Upgrading database from schema $from to $to');
         // Handle schema migrations here when you update the database
         if (from <= 1 && to >= 2) {
           // Add isDeleted column to songs table
-          debugPrint('🎹 Adding isDeleted column to songs table');
           await m.addColumn(songs, songs.isDeleted);
         }
         if (from <= 2 && to >= 3) {
           // Add imagePath column to setlists table
-          debugPrint('🎹 Adding imagePath column to setlists table');
           await m.addColumn(setlists, setlists.imagePath);
         }
         if (from <= 3 && to >= 4) {
           // Add setlistSpecificEditsEnabled column with default true
-          debugPrint(
-              '🎹 Adding setlistSpecificEditsEnabled column to setlists table');
           await m.addColumn(setlists, setlists.setlistSpecificEditsEnabled);
         }
         if (from <= 4 && to >= 5) {
           // Create midi_mappings table
-          debugPrint('🎹 Creating midi_mappings table');
           await m.createTable(midiMappings);
-          debugPrint('🎹 midi_mappings table created successfully');
         }
         if (from <= 5 && to >= 6) {
           // Create midi_profiles table and add profile_id to songs
-          debugPrint('🎹 Creating midi_profiles table');
           await m.createTable(midiProfiles);
-          debugPrint('🎹 Adding profileId column to songs table');
           await m.addColumn(songs, songs.profileId);
-          debugPrint('🎹 MIDI profile system migration completed');
         }
-        debugPrint('🎹 Database upgrade completed');
       },
     );
   }
@@ -360,9 +336,6 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
-
-    // Debug: Print database location
-    debugPrint('📁 Database location: ${file.path}');
 
     return NativeDatabase(file);
   });

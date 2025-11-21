@@ -53,7 +53,6 @@ class MetronomeProvider extends ChangeNotifier {
 
     // Register MIDI tick action
     registerTickAction('midi_send_on_tick', _handleMidiSendOnTick);
-    debugPrint('🎹 MIDI DEBUG: Registered midi_send_on_tick tick action');
   }
 
   /// Set the metronome settings provider (called from UI)
@@ -133,7 +132,6 @@ class MetronomeProvider extends ChangeNotifier {
   void _stopMidiTimer() {
     _midiTimer?.cancel();
     _midiTimer = null;
-    debugPrint('🎹 MIDI DEBUG: MIDI timer stopped');
   }
 
   /// Stub MIDI handler - kept for compatibility but MIDI is handled by independent timer
@@ -178,8 +176,8 @@ class MetronomeProvider extends ChangeNotifier {
       try {
         _player?.dispose();
         _accentPlayer?.dispose();
-      } catch (e) {
-        debugPrint('Error disposing audio players: $e');
+      } catch (_) {
+        // Ignored: disposing during provider teardown.
       }
     }
     super.dispose();
@@ -213,10 +211,7 @@ class MetronomeProvider extends ChangeNotifier {
         await _accentPlayer!.setAsset('assets/audio/Synth_Block_B_hi.wav');
         await _accentPlayer!.setVolume(1.0);
       }
-    } catch (e, stack) {
-      debugPrint('Metronome audio failed to load: $e');
-      debugPrint('Audio plugin may not be available on this platform');
-      debugPrint(stack.toString());
+    } catch (_) {
       _audioAvailable = false; // Disable audio on failure
     } finally {
       _loadingCompleter?.complete();
@@ -244,18 +239,11 @@ class MetronomeProvider extends ChangeNotifier {
 
   /// Start independent MIDI timer that runs for 4 seconds regardless of metronome state
   void _startMidiTimer() {
-    debugPrint('🎹 MIDI DEBUG: Starting independent MIDI timer for 4 seconds');
-    debugPrint('🎹 MIDI DEBUG: Start time recorded: $_metronomeStartTime');
-
     // Calculate tick interval based on current tempo
     final intervalMs = (60000 / _tempoBpm).round();
-    debugPrint(
-        '🎹 MIDI DEBUG: Tempo: $_tempoBpm BPM, Interval: ${intervalMs}ms');
-    int midiTickCount = 0;
 
     _midiTimer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
       if (_metronomeStartTime == null) {
-        debugPrint('🎹 MIDI DEBUG: Start time is null, skipping');
         return;
       }
 
@@ -263,57 +251,34 @@ class MetronomeProvider extends ChangeNotifier {
       final elapsedMs = now.difference(_metronomeStartTime!).inMilliseconds;
       final elapsedSeconds = elapsedMs / 1000.0;
 
-      debugPrint(
-          '🎹 MIDI DEBUG: Tick #$midiTickCount - Elapsed: ${elapsedSeconds.toStringAsFixed(3)}s (${elapsedMs}ms)');
-
       if (elapsedSeconds > 4.0) {
-        debugPrint(
-            '🎹 MIDI DEBUG: 4 seconds elapsed (${elapsedSeconds.toStringAsFixed(3)}s), stopping MIDI timer');
         _stopMidiTimer();
         return;
       }
 
-      midiTickCount++;
-      debugPrint(
-          '🎹 MIDI DEBUG: Executing MIDI tick #$midiTickCount at ${elapsedSeconds.toStringAsFixed(3)}s');
-
       // Execute MIDI sending directly instead of using tick actions
-      _executeMidiSend(elapsedSeconds);
+      _executeMidiSend();
     });
   }
 
   /// Execute MIDI send directly (called by independent timer)
-  Future<void> _executeMidiSend(double elapsedSeconds) async {
+  Future<void> _executeMidiSend() async {
     if (_settingsProvider == null || _midiService == null) {
-      debugPrint('🎹 MIDI DEBUG: Missing settings or MIDI service');
       return;
     }
 
-    try {
-      final midiCommand = _settingsProvider!.midiSendOnTick;
-      debugPrint('🎹 MIDI DEBUG: MIDI command: "$midiCommand"');
+    final midiCommand = _settingsProvider!.midiSendOnTick;
 
-      if (midiCommand.isEmpty) {
-        debugPrint('🎹 MIDI DEBUG: No MIDI command configured');
-        return;
-      }
-
-      // Only send if MIDI device is connected
-      if (!_midiService!.isConnected) {
-        debugPrint('🎹 MIDI DEBUG: MIDI device not connected');
-        return;
-      }
-
-      // Send the MIDI command
-      debugPrint(
-          '🎹 MIDI DEBUG: Sending MIDI command at ${elapsedSeconds.toStringAsFixed(1)}s...');
-      await _sendMidiCommand(midiCommand);
-      debugPrint(
-          '🎹 MIDI sent at ${elapsedSeconds.toStringAsFixed(1)}s of 4.0s');
-    } catch (e, stack) {
-      debugPrint('Error in MIDI send on tick: $e');
-      debugPrint(stack.toString());
+    if (midiCommand.isEmpty) {
+      return;
     }
+
+    // Only send if MIDI device is connected
+    if (!_midiService!.isConnected) {
+      return;
+    }
+
+    await _sendMidiCommand(midiCommand);
   }
 
   void _handleTick() {
@@ -345,9 +310,7 @@ class MetronomeProvider extends ChangeNotifier {
         if (_accentPlayer != null) unawaited(_playSample(_accentPlayer!));
       }
       if (_player != null) await _playSample(_player!);
-    } catch (e, stack) {
-      debugPrint('Metronome playback failed: $e');
-      debugPrint(stack.toString());
+    } catch (_) {
       _audioAvailable = false; // Disable audio on playback failure
     }
   }
@@ -489,10 +452,7 @@ class MetronomeProvider extends ChangeNotifier {
 
   /// Send MIDI command based on string format
   Future<void> _sendMidiCommand(String commandText) async {
-    debugPrint('🎹 MIDI DEBUG: _sendMidiCommand called with: "$commandText"');
-
     if (_midiService == null) {
-      debugPrint('🎹 MIDI DEBUG: _midiService is null');
       return;
     }
 
@@ -501,15 +461,11 @@ class MetronomeProvider extends ChangeNotifier {
         .map((msg) => msg.trim())
         .where((msg) => msg.isNotEmpty);
 
-    debugPrint('🎹 MIDI DEBUG: Parsed ${messages.length} MIDI messages');
-
     for (final message in messages) {
       final lowerMessage = message.toLowerCase();
-      debugPrint('🎹 MIDI DEBUG: Processing message: "$message"');
 
       // Check timing command
       if (lowerMessage == 'timing') {
-        debugPrint('🎹 MIDI DEBUG: Sending timing clock');
         await _midiService!.sendMidiClock();
       }
       // Parse Program Change: "PC10" or "PC:10"
@@ -518,52 +474,40 @@ class MetronomeProvider extends ChangeNotifier {
             RegExp(r'^pc(\d+)$', caseSensitive: false).firstMatch(message) ??
                 RegExp(r'^pc:(\d+)$', caseSensitive: false).firstMatch(message);
 
-        if (pcMatch != null) {
-          final pcValue = int.tryParse(pcMatch.group(1)!);
-          if (pcValue != null && pcValue >= 0 && pcValue <= 127) {
-            debugPrint(
-                '🎹 MIDI DEBUG: Sending Program Change $pcValue on channel ${_midiService!.midiChannel}');
-            await _midiService!
-                .sendProgramChange(pcValue, channel: _midiService!.midiChannel);
-          } else {
-            debugPrint('🎹 MIDI DEBUG: Invalid PC value: $pcValue');
-          }
-        } else {
-          debugPrint(
-              '🎹 MIDI DEBUG: PC command format not matched: "$message"');
+        if (pcMatch == null) {
+          continue;
         }
+
+        final pcValue = int.tryParse(pcMatch.group(1)!);
+        if (pcValue == null || pcValue < 0 || pcValue > 127) {
+          continue;
+        }
+
+        await _midiService!
+            .sendProgramChange(pcValue, channel: _midiService!.midiChannel);
       }
       // Parse Control Change: "CC7:100"
       else if (lowerMessage.startsWith('cc')) {
         final ccMatch = RegExp(r'^cc(\d+):(\d+)$', caseSensitive: false)
             .firstMatch(message);
-        if (ccMatch != null) {
-          final controller = int.tryParse(ccMatch.group(1)!);
-          final value = int.tryParse(ccMatch.group(2)!);
-
-          if (controller != null &&
-              controller >= 0 &&
-              controller <= 119 &&
-              value != null &&
-              value >= 0 &&
-              value <= 127) {
-            debugPrint(
-                '🎹 MIDI DEBUG: Sending Control Change CC$controller:$value on channel ${_midiService!.midiChannel}');
-            await _midiService!.sendControlChange(controller, value,
-                channel: _midiService!.midiChannel);
-          } else {
-            debugPrint(
-                '🎹 MIDI DEBUG: Invalid CC values: controller=$controller, value=$value');
-          }
-        } else {
-          debugPrint(
-              '🎹 MIDI DEBUG: CC command format not matched: "$message"');
+        if (ccMatch == null) {
+          continue;
         }
-      } else {
-        debugPrint('🎹 MIDI DEBUG: Unknown command format: "$message"');
+
+        final controller = int.tryParse(ccMatch.group(1)!);
+        final value = int.tryParse(ccMatch.group(2)!);
+
+        final validController =
+            controller != null && controller >= 0 && controller <= 119;
+        final validValue = value != null && value >= 0 && value <= 127;
+
+        if (!validController || !validValue) {
+          continue;
+        }
+
+        await _midiService!.sendControlChange(controller, value,
+            channel: _midiService!.midiChannel);
       }
     }
-
-    debugPrint('🎹 MIDI DEBUG: _sendMidiCommand completed');
   }
 }

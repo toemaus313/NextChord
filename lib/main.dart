@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
@@ -15,6 +17,14 @@ import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Hide the iOS status bar while the app is open to avoid overlaying UI.
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
+  }
 
   // Initialize database
   final database = AppDatabase();

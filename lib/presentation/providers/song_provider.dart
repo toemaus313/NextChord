@@ -53,7 +53,6 @@ class SongProvider extends ChangeNotifier {
 
     try {
       _songs = await _repository.getAllSongs();
-      debugPrint('🎵 SongProvider: loadSongs() loaded ${_songs.length} songs');
       _applySearch();
       _errorMessage = null;
     } on SongRepositoryException catch (e) {
@@ -183,16 +182,12 @@ class SongProvider extends ChangeNotifier {
       final deletedSongs = await _repository.getDeletedSongs();
       return deletedSongs.length;
     } catch (e) {
-      debugPrint('Error getting deleted songs count: $e');
       return 0;
     }
   }
 
   /// Load deleted songs
   Future<void> loadDeletedSongs() async {
-    debugPrint('🗑️ SongProvider: loadDeletedSongs() called - STACK TRACE:');
-    debugPrint(StackTrace.current.toString());
-
     _isLoading = true;
     _errorMessage = null;
     _currentListType = SongListType.deleted;
@@ -200,8 +195,6 @@ class SongProvider extends ChangeNotifier {
 
     try {
       _songs = await _repository.getDeletedSongs();
-      debugPrint(
-          '🗑️ SongProvider: loadDeletedSongs() loaded ${_songs.length} deleted songs');
       _applySearch();
       _errorMessage = null;
     } on SongRepositoryException catch (e) {
@@ -412,8 +405,6 @@ class SongProvider extends ChangeNotifier {
   Future<void> saveMidiMapping(MidiMapping midiMapping) async {
     try {
       await _repository.saveMidiMapping(midiMapping);
-      debugPrint(
-          '🎹 SongProvider: MIDI mapping saved for song ${midiMapping.songId}');
     } catch (e) {
       _errorMessage = 'Failed to save MIDI mapping: $e';
       notifyListeners();

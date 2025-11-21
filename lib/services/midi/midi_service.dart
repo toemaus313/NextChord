@@ -87,9 +87,6 @@ class MidiService with ChangeNotifier {
     final intervalMicros = (clockIntervalMs * 1000).round().clamp(1, 999999);
     final clockInterval = Duration(microseconds: intervalMicros);
 
-    debugPrint(
-        '🎹 MIDI DEBUG: Streaming clock for ${durationSeconds}s at $effectiveBpm BPM => ${clockInterval.inMilliseconds}ms interval');
-
     final endTime = DateTime.now().add(Duration(seconds: durationSeconds));
     final clockData = Uint8List.fromList([0xF8]);
     final tickTimestamps = <DateTime>[];
@@ -122,9 +119,6 @@ class MidiService with ChangeNotifier {
 
     final actualBpm =
         actualIntervalMs > 0 ? 60000 / (actualIntervalMs * 24) : effectiveBpm;
-
-    debugPrint(
-        '🎹 MIDI DEBUG: Clock stream completed successfully. Requested bpm $effectiveBpm | Actual calculated bpm ${actualBpm.toStringAsFixed(2)} | Requested interval ${clockInterval.inMilliseconds}ms | Actual interval ${actualIntervalMs.toStringAsFixed(2)}ms | Messages sent $tickCount');
   }
 
   /// Load settings from SharedPreferences
@@ -159,7 +153,7 @@ class MidiService with ChangeNotifier {
         await prefs.setString('last_connected_midi_device_id', deviceId);
       }
     } catch (e) {
-      debugPrint('🎹 MIDI DEBUG: Failed to persist preferred device id: $e');
+      _setError('Failed to persist preferred device id: $e');
     }
   }
 
@@ -185,14 +179,10 @@ class MidiService with ChangeNotifier {
       _setConnectionState(MidiConnectionState.scanning);
       _clearError();
 
-      debugPrint('🎹 MIDI DEBUG: Starting device scan...');
-
       // Get all available MIDI devices
       final devices = await _midiCommand.devices ?? [];
 
       _availableDevices = devices;
-      debugPrint(
-          '🎹 MIDI DEBUG: Scan complete. Found ${devices.length} devices: ${devices.map((d) => d.name).join(', ')}');
 
       _setConnectionState(MidiConnectionState.disconnected);
 
@@ -223,16 +213,12 @@ class MidiService with ChangeNotifier {
       _preferredDeviceId = device.id;
       await _savePreferredDeviceId(device.id);
 
-      debugPrint('🎹 MIDI DEBUG: Connected to ${device.name} (${device.type})');
-
       notifyListeners();
 
       return true;
     } catch (e) {
       final message = e is PlatformException ? e.message ?? '' : e.toString();
       if (message.contains('Device already connected')) {
-        debugPrint(
-            '🎹 MIDI DEBUG: Platform already connected to ${device.name}; accepting existing session');
         _connectedDevice = device;
         _setConnectionState(MidiConnectionState.connected);
         _preferredDeviceId = device.id;
@@ -251,8 +237,6 @@ class MidiService with ChangeNotifier {
   Future<void> _disconnectDevice() async {
     try {
       if (_connectedDevice != null) {
-        debugPrint('🎹 MIDI DEBUG: Disconnecting ${_connectedDevice!.name}');
-        // Note: Disconnect functionality may vary by platform
         _connectedDevice = null;
       }
     } catch (e) {
@@ -491,7 +475,6 @@ class MidiService with ChangeNotifier {
 
   void _setError(String error) {
     _errorMessage = error;
-    debugPrint('🎹 MIDI ERROR: $error');
     notifyListeners();
   }
 

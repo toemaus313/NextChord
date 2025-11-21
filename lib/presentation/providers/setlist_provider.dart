@@ -35,7 +35,6 @@ class SetlistProvider extends ChangeNotifier {
       _setlists = await _repository.getAllSetlists();
       _errorMessage = null;
     } catch (e) {
-      debugPrint('SetlistProvider: Error loading setlists: $e');
       _errorMessage = 'Failed to load setlists: $e';
       _setlists = [];
     } finally {
@@ -113,7 +112,6 @@ class SetlistProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('SetlistProvider: Error setting active setlist: $e');
       _errorMessage = 'Failed to set active setlist: $e';
       notifyListeners();
     }
@@ -131,8 +129,6 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Clear the active setlist
   void clearActiveSetlist() {
-    debugPrint(
-        '📋 SetlistProvider: clearActiveSetlist called - was active: ${_activeSetlist?.id}');
     _activeSetlist = null;
     _currentSongIndex = -1;
     notifyListeners();
@@ -178,27 +174,17 @@ class SetlistProvider extends ChangeNotifier {
     int? transposeSteps,
     int? capo,
   }) async {
-    debugPrint('📋 SetlistProvider: updateCurrentSongAdjustments called');
-    debugPrint('   - isSetlistActive: $isSetlistActive');
-    debugPrint('   - activeSetlistId: ${_activeSetlist?.id}');
-    debugPrint(
-        '   - setlistSpecificEditsEnabled: ${_activeSetlist?.setlistSpecificEditsEnabled}');
-    debugPrint('   - transposeSteps: $transposeSteps, capo: $capo');
-
     if (!isSetlistActive || _activeSetlist == null) {
-      debugPrint('📋 SetlistProvider: ABORT - no active setlist');
       return;
     }
 
     final currentSongItem = getCurrentSongItem();
     if (currentSongItem == null) {
-      debugPrint('📋 SetlistProvider: ABORT - no current song item');
       return;
     }
 
     // Only update if setlist-specific edits are enabled
     if (!_activeSetlist!.setlistSpecificEditsEnabled) {
-      debugPrint('📋 SetlistProvider: ABORT - setlist-specific edits disabled');
       return;
     }
 
@@ -206,9 +192,6 @@ class SetlistProvider extends ChangeNotifier {
       transposeSteps: transposeSteps,
       capo: capo,
     );
-
-    debugPrint(
-        '📋 SetlistProvider: Updating setlist song item: ${currentSongItem.songId}');
 
     // Update the item in the active setlist
     final updatedActiveItems = List<SetlistItem>.from(_activeSetlist!.items);
@@ -225,8 +208,6 @@ class SetlistProvider extends ChangeNotifier {
       try {
         await _repository.updateSetlist(updatedActiveSetlist);
         _activeSetlist = updatedActiveSetlist;
-        debugPrint(
-            '📋 SetlistProvider: SUCCESS - active setlist updated in database');
 
         // Also update the item in the main setlists list for sidebar display
         final mainSetlistIndex = _setlists.indexWhere(
@@ -246,20 +227,14 @@ class SetlistProvider extends ChangeNotifier {
             updatedMainItems[mainItemIndex] = updatedItem;
             _setlists[mainSetlistIndex] =
                 _setlists[mainSetlistIndex].copyWith(items: updatedMainItems);
-            debugPrint(
-                '📋 SetlistProvider: SUCCESS - main setlist list updated for sidebar');
           }
         }
 
         notifyListeners();
       } catch (e) {
-        debugPrint('📋 SetlistProvider: ERROR - failed to update setlist: $e');
         _errorMessage = 'Failed to update song adjustments: $e';
         notifyListeners();
       }
-    } else {
-      debugPrint(
-          '📋 SetlistProvider: ERROR - song item not found in active setlist');
     }
   }
 

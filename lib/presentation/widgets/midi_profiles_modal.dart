@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/song_provider.dart';
 import '../../domain/entities/midi_profile.dart';
+import '../../services/midi/midi_service.dart';
 
 /// Modal for creating and managing MIDI profiles
 ///
@@ -40,6 +41,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   final _programChangeController = TextEditingController();
   final _controlChangeController = TextEditingController();
   final _notesController = TextEditingController();
+  final MidiService _midiService = MidiService();
   late final FocusNode _midiCodeFocusNode;
 
   MidiProfile? _selectedProfile;
@@ -79,7 +81,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('🎹 SQL Error in _loadProfiles: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         showDialog(
@@ -301,6 +302,70 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _testProfileMidiCommands() async {
+    if (!_midiService.isConnected) {
+      _showError('Connect a MIDI device before testing commands.');
+      return;
+    }
+
+    final programChangeText = _programChangeController.text.trim();
+    final programChange =
+        programChangeText.isEmpty ? null : int.tryParse(programChangeText);
+
+    if (programChangeText.isNotEmpty && programChange == null) {
+      _showError('Invalid Program Change number.');
+      return;
+    }
+
+    final hasCommands =
+        programChange != null || _controlChanges.isNotEmpty || _timing;
+
+    if (!hasCommands) {
+      _showError('Add some MIDI commands before testing.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      if (programChange != null) {
+        await _midiService.sendProgramChange(programChange,
+            channel: _midiService.midiChannel);
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+
+      for (final cc in _controlChanges) {
+        if (cc.controller == -1) {
+          await _midiService.sendProgramChange(cc.value,
+              channel: _midiService.midiChannel);
+        } else {
+          await _midiService.sendControlChange(cc.controller, cc.value,
+              channel: _midiService.midiChannel);
+        }
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+
+      if (_timing) {
+        await _midiService.sendMidiClock();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'MIDI commands sent on Channel ${_midiService.displayMidiChannel}.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Error testing MIDI commands: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -749,62 +814,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        // Delete button (only when editing)
-        if (_selectedProfile != null) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _deleteProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.withAlpha(100),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text('Delete', style: TextStyle(fontSize: 14)),
-            ),
-          ),
-          const SizedBox(height: 6),
-        ],
-        // Add MIDI button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _addControlChange,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withAlpha(20),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: _isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text('Add MIDI Command',
-                    style: TextStyle(fontSize: 14)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        // Save/New button
+        // Save/New button at top
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -831,6 +841,59 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                     style: const TextStyle(fontSize: 14)),
           ),
         ),
+        const SizedBox(height: 6),
+        // Test MIDI button (replaces add button)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _testProfileMidiCommands,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withAlpha(20),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Test', style: TextStyle(fontSize: 14)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Delete button at bottom (only when editing)
+        if (_selectedProfile != null)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _deleteProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withAlpha(100),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Delete', style: TextStyle(fontSize: 14)),
+            ),
+          ),
       ],
     );
   }

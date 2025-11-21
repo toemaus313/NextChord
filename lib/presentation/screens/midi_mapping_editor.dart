@@ -622,15 +622,6 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
       notes: _notesController.text.isEmpty ? null : _notesController.text,
     );
 
-    // TODO: Save to database via provider
-    debugPrint('🎹 Saving MIDI mapping for ${widget.song.title}:');
-    debugPrint('  PC: ${_programChangeNumber ?? 'None'}');
-    debugPrint('  CC: ${_controlChanges.length} messages');
-    for (final cc in _controlChanges) {
-      debugPrint(
-          '    CC${cc.controller}=${cc.value} (${cc.label ?? 'No label'})');
-    }
-
     Navigator.of(context).pop(mapping);
   }
 }

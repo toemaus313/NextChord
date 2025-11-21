@@ -334,8 +334,6 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
   Future<void> _sendTestMessages() async {
     final midiService = MidiService();
 
-    debugPrint('🎹 Sending test MIDI messages...');
-
     try {
       // Send Program Change messages (select presets 1, 5, 10)
       await midiService.sendProgramChange(1);
@@ -363,8 +361,6 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
       await midiService.sendControlChange(10, 64); // Pan center
       await midiService.sendControlChange(1, 0); // Modulation off
 
-      debugPrint('🎹 Test MIDI messages completed');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -374,7 +370,6 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
         );
       }
     } catch (e) {
-      debugPrint('🎹 Error sending test messages: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

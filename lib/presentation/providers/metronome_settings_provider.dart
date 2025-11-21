@@ -35,7 +35,6 @@ class MetronomeSettingsProvider extends ChangeNotifier {
       _midiSendOnTick = _prefs?.getString(_midiSendOnTickKey) ?? '';
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading metronome settings: $e');
       // Use defaults if loading fails
       _countInOnly = false;
       _countInMeasures = 1;

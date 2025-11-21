@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../domain/entities/song.dart';
 
 /// Provider for managing global sidebar visibility and navigation state across the app
@@ -53,8 +52,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
 
   /// Navigate to a song (show it in the main content area)
   void navigateToSong(Song song) {
-    debugPrint(
-        '🎵 GlobalSidebarProvider: navigateToSong called - clearing setlist state');
     _currentSong = song;
     // Clear active setlist when navigating to a song outside of setlist context
     _activeSetlistId = null;
@@ -86,7 +83,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
 
   /// Clear the active setlist (when user exits setlist view)
   void clearActiveSetlist() {
-    debugPrint('🎵 GlobalSidebarProvider: clearActiveSetlist called');
     _activeSetlistId = null;
     _currentSongIndex = -1;
     _currentSetlistSongItem = null;
@@ -96,7 +92,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
   /// Navigate to a song within an active setlist context
   void navigateToSongInSetlist(Song song, int songIndex,
       [SetlistSongItem? setlistSongItem]) {
-    debugPrint('🎵 GlobalSidebarProvider: navigateToSongInSetlist called');
     _currentSong = song;
     _currentSongIndex = songIndex;
     _currentSetlistSongItem = setlistSongItem;
