@@ -240,7 +240,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Count In Only',
+              'Count In',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -248,14 +248,48 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
               ),
             ),
           ),
-          Switch(
-            value: settingsProvider.countInOnly,
-            onChanged: (value) {
-              settingsProvider.setCountInOnly(value);
-            },
-            activeColor: const Color(0xFF0468cc),
-            inactiveThumbColor: Colors.white70,
-            inactiveTrackColor: Colors.white.withAlpha(30),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(10),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withAlpha(20)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: settingsProvider.countInMeasures,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                dropdownColor: const Color(0xFF0468cc),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                items: const [
+                  DropdownMenuItem<int>(
+                    value: 0,
+                    child: Text(
+                      'Off',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  DropdownMenuItem<int>(
+                    value: 1,
+                    child: Text(
+                      '1 measure',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  DropdownMenuItem<int>(
+                    value: 2,
+                    child: Text(
+                      '2 measure',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+                onChanged: (int? newMeasures) {
+                  if (newMeasures != null) {
+                    settingsProvider.setCountInMeasures(newMeasures);
+                  }
+                },
+              ),
+            ),
           ),
         ],
       ),

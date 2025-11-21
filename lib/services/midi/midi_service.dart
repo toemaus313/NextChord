@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,6 +36,7 @@ class MidiService with ChangeNotifier {
   MidiDevice? _connectedDevice;
   List<MidiDevice> _availableDevices = [];
   String? _errorMessage;
+  String? _preferredDeviceId;
 
   // MIDI Configuration
   int _midiChannel = 0; // Internal storage: 0-15 (displayed as 1-16)
@@ -131,6 +133,7 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _midiChannel = prefs.getInt('new_midi_channel') ?? 0;
       _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
+      _preferredDeviceId = prefs.getString('last_connected_midi_device_id');
     } catch (e) {
       _setError('Failed to load settings: $e');
     }
@@ -144,6 +147,19 @@ class MidiService with ChangeNotifier {
       await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
     } catch (e) {
       _setError('Failed to save settings: $e');
+    }
+  }
+
+  Future<void> _savePreferredDeviceId(String? deviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (deviceId == null) {
+        await prefs.remove('last_connected_midi_device_id');
+      } else {
+        await prefs.setString('last_connected_midi_device_id', deviceId);
+      }
+    } catch (e) {
+      debugPrint('🎹 MIDI DEBUG: Failed to persist preferred device id: $e');
     }
   }
 
@@ -169,13 +185,19 @@ class MidiService with ChangeNotifier {
       _setConnectionState(MidiConnectionState.scanning);
       _clearError();
 
+      debugPrint('🎹 MIDI DEBUG: Starting device scan...');
+
       // Get all available MIDI devices
       final devices = await _midiCommand.devices ?? [];
 
       _availableDevices = devices;
+      debugPrint(
+          '🎹 MIDI DEBUG: Scan complete. Found ${devices.length} devices: ${devices.map((d) => d.name).join(', ')}');
+
       _setConnectionState(MidiConnectionState.disconnected);
 
       notifyListeners();
+      await _autoConnectToPreferredDevice();
     } catch (e) {
       _setError('Failed to scan for MIDI devices: $e');
       _setConnectionState(MidiConnectionState.disconnected);
@@ -198,11 +220,27 @@ class MidiService with ChangeNotifier {
 
       _connectedDevice = device;
       _setConnectionState(MidiConnectionState.connected);
+      _preferredDeviceId = device.id;
+      await _savePreferredDeviceId(device.id);
+
+      debugPrint('🎹 MIDI DEBUG: Connected to ${device.name} (${device.type})');
 
       notifyListeners();
 
       return true;
     } catch (e) {
+      final message = e is PlatformException ? e.message ?? '' : e.toString();
+      if (message.contains('Device already connected')) {
+        debugPrint(
+            '🎹 MIDI DEBUG: Platform already connected to ${device.name}; accepting existing session');
+        _connectedDevice = device;
+        _setConnectionState(MidiConnectionState.connected);
+        _preferredDeviceId = device.id;
+        await _savePreferredDeviceId(device.id);
+        notifyListeners();
+        return true;
+      }
+
       _setError('Failed to connect to ${device.name}: $e');
       _setConnectionState(MidiConnectionState.disconnected);
       return false;
@@ -213,6 +251,7 @@ class MidiService with ChangeNotifier {
   Future<void> _disconnectDevice() async {
     try {
       if (_connectedDevice != null) {
+        debugPrint('🎹 MIDI DEBUG: Disconnecting ${_connectedDevice!.name}');
         // Note: Disconnect functionality may vary by platform
         _connectedDevice = null;
       }
@@ -452,12 +491,36 @@ class MidiService with ChangeNotifier {
 
   void _setError(String error) {
     _errorMessage = error;
+    debugPrint('🎹 MIDI ERROR: $error');
     notifyListeners();
   }
 
   void _clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> _autoConnectToPreferredDevice() async {
+    if (_availableDevices.isEmpty) {
+      return;
+    }
+
+    if (_connectedDevice != null) {
+      return;
+    }
+
+    MidiDevice? targetDevice;
+    if (_preferredDeviceId != null) {
+      for (final device in _availableDevices) {
+        if (device.id == _preferredDeviceId) {
+          targetDevice = device;
+          break;
+        }
+      }
+    }
+
+    targetDevice ??= _availableDevices.first;
+    await connectToDevice(targetDevice);
   }
 }
 

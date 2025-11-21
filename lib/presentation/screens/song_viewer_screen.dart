@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/song_repository.dart';
@@ -9,6 +8,7 @@ import '../../core/utils/chordpro_parser.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/metronome_provider.dart';
+import '../providers/metronome_settings_provider.dart';
 import '../providers/autoscroll_provider.dart';
 import '../providers/setlist_provider.dart';
 import '../widgets/chord_renderer.dart';
@@ -257,6 +257,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   int _transposeSteps = 0; // Semitones to transpose
   late Song _currentSong; // Mutable song that can be refreshed
   bool _showSettingsFlyout = false; // Compact settings flyout visibility
+  final FocusNode _focusNode = FocusNode(); // For keyboard navigation
   int _currentCapo = 0;
   bool _showTransposeFlyout = false;
   bool _showCapoFlyout = false;
@@ -277,6 +278,11 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
       _syncMetronomeSettings();
       _initializeAutoscroll();
       _sendMidiMappingOnOpen();
+
+      // Request focus for keyboard navigation
+      _focusNode.requestFocus();
+      debugPrint(
+          '🎹 KEYBOARD NAV: Focus requested, hasFocus: ${_focusNode.hasFocus}');
     });
     // Enable landscape mode
     SystemChrome.setPreferredOrientations([
@@ -396,8 +402,17 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
 
   void _initializeAutoscroll() {
     final autoscroll = context.read<AutoscrollProvider>();
+    final metronomeSettings = context.read<MetronomeSettingsProvider>();
+
+    // Stop any existing autoscroll when loading a new song
+    autoscroll.stop();
+
     autoscroll.initialize(_currentSong.body);
     autoscroll.setScrollController(_scrollController);
+    autoscroll.setMetronomeProviders(_metronome, metronomeSettings);
+
+    // Set up callback for metronome to check if autoscroll is active
+    _metronome.setAutoscrollActiveCallback(() => autoscroll.isActive);
   }
 
   @override
@@ -650,6 +665,25 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
     }
   }
 
+  /// Handle keyboard navigation for setlist songs
+  void _handleKeyboardNavigation(bool isNext) {
+    debugPrint(
+        '🎹 KEYBOARD NAV: _handleKeyboardNavigation called with isNext: $isNext');
+    final setlistProvider = context.read<SetlistProvider>();
+    debugPrint(
+        '🎹 KEYBOARD NAV: setlist active: ${setlistProvider.isSetlistActive}');
+
+    if (!setlistProvider.isSetlistActive) return;
+
+    if (isNext) {
+      debugPrint('🎹 KEYBOARD NAV: Navigating to next song');
+      _navigateToNextSong();
+    } else {
+      debugPrint('🎹 KEYBOARD NAV: Navigating to previous song');
+      _navigateToPreviousSong();
+    }
+  }
+
   /// Navigate to the next song in the setlist
   void _navigateToNextSong() async {
     final setlistProvider = context.read<SetlistProvider>();
@@ -875,6 +909,7 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
   void dispose() {
     _metronome.stop();
     _scrollController.dispose();
+    _focusNode.dispose();
     // Reset to portrait only when leaving
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -891,220 +926,265 @@ class _SongViewerScreenState extends State<SongViewerScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Listener(
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) {
-              // Check if Ctrl key is pressed (for mouse wheel zoom)
-              if (HardwareKeyboard.instance.isControlPressed) {
-                setState(() {
-                  // Scroll down = negative delta = increase font size
-                  // Scroll up = positive delta = decrease font size
-                  final delta = event.scrollDelta.dy;
-                  _fontSize = (_fontSize - delta * 0.05).clamp(12.0, 48.0);
-                });
-              }
+      body: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKey: (node, event) {
+          // Handle keyboard events at the Focus level to prevent buttons from stealing them
+          if (event is RawKeyDownEvent) {
+            final setlistProvider = context.read<SetlistProvider>();
+            if (!setlistProvider.isSetlistActive) return KeyEventResult.ignored;
+
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              debugPrint('🎹 KEYBOARD NAV: Left arrow pressed at Focus level');
+              _handleKeyboardNavigation(false);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              debugPrint('🎹 KEYBOARD NAV: Right arrow pressed at Focus level');
+              _handleKeyboardNavigation(true);
+              return KeyEventResult.handled;
             }
-          },
-          child: GestureDetector(
-            onScaleStart: (details) {
-              // Store the current font size when pinch starts
-              _baseFontSize = _fontSize;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: SafeArea(
+          child: Shortcuts(
+            shortcuts: {
+              LogicalKeySet(LogicalKeyboardKey.arrowLeft):
+                  const _NavigatePrevIntent(),
+              LogicalKeySet(LogicalKeyboardKey.arrowRight):
+                  const _NavigateNextIntent(),
             },
-            onScaleUpdate: (details) {
-              // Update font size based on pinch scale
-              setState(() {
-                _fontSize = (_baseFontSize * details.scale).clamp(12.0, 48.0);
-              });
-            },
-            child: Stack(
-              children: [
-                // Main content - scrollable lyrics/chords
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown: (_) => _closeAllFlyouts(),
-                  onHorizontalDragEnd: _handleHorizontalSwipeEnd,
-                  child: Column(
+            child: Actions(
+              actions: {
+                _NavigatePrevIntent: CallbackAction<_NavigatePrevIntent>(
+                  onInvoke: (_) => _handleKeyboardNavigation(false),
+                ),
+                _NavigateNextIntent: CallbackAction<_NavigateNextIntent>(
+                  onInvoke: (_) => _handleKeyboardNavigation(true),
+                ),
+              },
+              child: Listener(
+                onPointerSignal: (event) {
+                  if (event is PointerScrollEvent) {
+                    // Check if Ctrl key is pressed (for mouse wheel zoom)
+                    if (HardwareKeyboard.instance.isControlPressed) {
+                      setState(() {
+                        // Scroll down = negative delta = increase font size
+                        // Scroll up = positive delta = decrease font size
+                        final delta = event.scrollDelta.dy;
+                        _fontSize =
+                            (_fontSize - delta * 0.05).clamp(12.0, 48.0);
+                      });
+                    }
+                  }
+                },
+                child: GestureDetector(
+                  onScaleStart: (details) {
+                    // Store the current font size when pinch starts
+                    _baseFontSize = _fontSize;
+                  },
+                  onScaleUpdate: (details) {
+                    // Update font size based on pinch scale
+                    setState(() {
+                      _fontSize =
+                          (_baseFontSize * details.scale).clamp(12.0, 48.0);
+                    });
+                  },
+                  child: Stack(
                     children: [
-                      // Header with song info (always visible)
-                      _buildHeader(textColor),
+                      // Main content - scrollable lyrics/chords
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) => _closeAllFlyouts(),
+                        onHorizontalDragEnd: _handleHorizontalSwipeEnd,
+                        child: Column(
+                          children: [
+                            // Header with song info (always visible)
+                            _buildHeader(textColor),
 
-                      // Scrollable song body
-                      Expanded(
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Song metadata section
-                              _buildSongMetadata(textColor),
-                              const SizedBox(height: 24),
-                              // Song content
-                              ChordRenderer(
-                                chordProText: _currentSong.body,
-                                fontSize: _fontSize,
-                                isDarkMode: isDarkMode,
-                                transposeSteps: _effectiveTransposeSteps,
+                            // Scrollable song body
+                            Expanded(
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Song metadata section
+                                    _buildSongMetadata(textColor),
+                                    const SizedBox(height: 24),
+                                    // Song content
+                                    ChordRenderer(
+                                      chordProText: _currentSong.body,
+                                      fontSize: _fontSize,
+                                      isDarkMode: isDarkMode,
+                                      transposeSteps: _effectiveTransposeSteps,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Sidebar toggle button (always visible - static)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.menu,
+                            color: textColor,
+                            size: 28,
                           ),
+                          onPressed: () {
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .toggleSidebar();
+                          },
+                          tooltip: 'Toggle sidebar',
                         ),
                       ),
+
+                      // Share button (always visible)
+                      Positioned(
+                        top: 8,
+                        right: 104,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.share,
+                            color: isDarkMode
+                                ? const Color(0xFF00D9FF)
+                                : const Color(0xFF0468cc),
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Share functionality coming soon!'),
+                              ),
+                            );
+                          },
+                          tooltip: 'Share song',
+                        ),
+                      ),
+
+                      // Delete button (always visible)
+                      Positioned(
+                        top: 8,
+                        right: 56,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.red,
+                            size: 28,
+                          ),
+                          onPressed: _deleteSong,
+                          tooltip: 'Delete song',
+                        ),
+                      ),
+
+                      // Edit button (always visible)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.edit,
+                            color: isDarkMode
+                                ? const Color(0xFF00D9FF)
+                                : const Color(0xFF0468cc),
+                            size: 28,
+                          ),
+                          onPressed: () async {
+                            // Notify home screen that song is being edited
+                            widget.onSongEdit?.call();
+
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SongEditorScreen(
+                                    song: _currentSong,
+                                    setlistContext: widget.setlistContext),
+                              ),
+                            );
+
+                            // Handle the return from editor
+                            if (mounted) {
+                              if (result == 'deleted') {
+                                // Song was deleted - clear it from global state
+                                if (context.mounted) {
+                                  context
+                                      .read<GlobalSidebarProvider>()
+                                      .clearCurrentSong();
+                                }
+                              } else if (result == true) {
+                                // Song was updated, reload it
+                                final reloaded = await _reloadSong();
+                                if (!reloaded && context.mounted) {
+                                  // Song was deleted while editing, clear it
+                                  context
+                                      .read<GlobalSidebarProvider>()
+                                      .clearCurrentSong();
+                                } else if (context.mounted) {
+                                  // Update the song in global state with the reloaded version
+                                  context
+                                      .read<GlobalSidebarProvider>()
+                                      .navigateToSong(_currentSong);
+                                }
+                              }
+                            }
+                          },
+                          tooltip: 'Edit song',
+                        ),
+                      ),
+
+                      // Floating action buttons (bottom right)
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildSettingsFlyoutButton(isDarkMode),
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildTransposeButton(),
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildCapoButton(),
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildAutoscrollButton(),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: 96, // Fixed width to prevent shifting
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: _buildMetronomeButton(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const _MetronomeFlashOverlay(),
                     ],
                   ),
                 ),
-
-                // Sidebar toggle button (always visible - static)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.menu,
-                      color: textColor,
-                      size: 28,
-                    ),
-                    onPressed: () {
-                      context.read<GlobalSidebarProvider>().toggleSidebar();
-                    },
-                    tooltip: 'Toggle sidebar',
-                  ),
-                ),
-
-                // Share button (always visible)
-                Positioned(
-                  top: 8,
-                  right: 104,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.share,
-                      color: isDarkMode
-                          ? const Color(0xFF00D9FF)
-                          : const Color(0xFF0468cc),
-                      size: 28,
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Share functionality coming soon!'),
-                        ),
-                      );
-                    },
-                    tooltip: 'Share song',
-                  ),
-                ),
-
-                // Delete button (always visible)
-                Positioned(
-                  top: 8,
-                  right: 56,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.delete,
-                      color: Colors.red,
-                      size: 28,
-                    ),
-                    onPressed: _deleteSong,
-                    tooltip: 'Delete song',
-                  ),
-                ),
-
-                // Edit button (always visible)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.edit,
-                      color: isDarkMode
-                          ? const Color(0xFF00D9FF)
-                          : const Color(0xFF0468cc),
-                      size: 28,
-                    ),
-                    onPressed: () async {
-                      // Notify home screen that song is being edited
-                      widget.onSongEdit?.call();
-
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SongEditorScreen(
-                              song: _currentSong,
-                              setlistContext: widget.setlistContext),
-                        ),
-                      );
-
-                      // Handle the return from editor
-                      if (mounted) {
-                        if (result == 'deleted') {
-                          // Song was deleted - clear it from global state
-                          if (context.mounted) {
-                            context
-                                .read<GlobalSidebarProvider>()
-                                .clearCurrentSong();
-                          }
-                        } else if (result == true) {
-                          // Song was updated, reload it
-                          final reloaded = await _reloadSong();
-                          if (!reloaded && context.mounted) {
-                            // Song was deleted while editing, clear it
-                            context
-                                .read<GlobalSidebarProvider>()
-                                .clearCurrentSong();
-                          } else if (context.mounted) {
-                            // Update the song in global state with the reloaded version
-                            context
-                                .read<GlobalSidebarProvider>()
-                                .navigateToSong(_currentSong);
-                          }
-                        }
-                      }
-                    },
-                    tooltip: 'Edit song',
-                  ),
-                ),
-
-                // Floating action buttons (bottom right)
-                Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildSettingsFlyoutButton(isDarkMode),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildTransposeButton(),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildCapoButton(),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: _buildAutoscrollButton(),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: 96, // Fixed width to prevent shifting
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _buildMetronomeButton(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const _MetronomeFlashOverlay(),
-              ],
+              ),
             ),
           ),
         ),
@@ -1871,22 +1951,54 @@ class _MetronomeFlashOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<MetronomeProvider, bool>(
-      selector: (_, provider) => provider.flashActive,
-      builder: (context, isFlashing, _) {
+    return Selector<MetronomeProvider, (bool, bool, int)>(
+      selector: (_, provider) => (
+        provider.flashActive,
+        provider.isCountingIn,
+        provider.currentCountInBeat
+      ),
+      builder: (context, values, _) {
+        final isFlashing = values.$1;
+        final isCountingIn = values.$2;
+        final currentBeat = values.$3;
+
         return IgnorePointer(
           ignoring: true,
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 80),
-            opacity: isFlashing ? 1.0 : 0.0,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _sidebarTopColor.withValues(alpha: 0.5),
-                  width: 12,
+          child: Stack(
+            children: [
+              // Flash border (shows during normal flashing and count-in)
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 80),
+                opacity: isFlashing ? 1.0 : 0.0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _sidebarTopColor.withValues(alpha: 0.5),
+                      width: 12,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              // Beat number display (shows only during count-in)
+              if (isCountingIn && currentBeat > 0)
+                Positioned.fill(
+                  child: Center(
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 80),
+                      opacity: isFlashing ? 1.0 : 0.3,
+                      child: Text(
+                        currentBeat.toString(),
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.35,
+                          fontWeight: FontWeight.bold,
+                          color: _sidebarTopColor.withValues(alpha: 0.8),
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -1951,30 +2063,44 @@ class CapoIconPainter extends CustomPainter {
 class MetronomeIconPainter extends CustomPainter {
   final Color color;
 
-  MetronomeIconPainter({required this.color});
+  const MetronomeIconPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke
-      ..strokeJoin = StrokeJoin.miter;
+      ..style = PaintingStyle.fill;
 
-    // Draw triangle (metronome shape)
-    final path = Path();
-    path.moveTo(size.width * 0.5, 0); // Top point
-    path.lineTo(size.width * 0.9, size.height); // Bottom right
-    path.lineTo(size.width * 0.1, size.height); // Bottom left
-    path.close();
-
-    canvas.drawPath(path, paint);
+    // Draw triangle - adjusted to use more of the available space
+    final trianglePath = Path();
+    trianglePath.moveTo(
+        size.width * 0.5, size.height * 0.1); // Moved from 0.2 to 0.1
+    trianglePath.lineTo(
+        size.width * 0.3, size.height * 0.85); // Moved from 0.8 to 0.85
+    trianglePath.lineTo(
+        size.width * 0.7, size.height * 0.85); // Moved from 0.8 to 0.85
+    trianglePath.close();
+    canvas.drawPath(trianglePath, paint);
 
     // Draw tick marks
     final tickPaint = Paint()
       ..color = color
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    // Left tick
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.35), // Adjusted from 0.4
+      Offset(size.width * 0.35, size.height * 0.35), // Adjusted from 0.4
+      tickPaint,
+    );
+
+    // Right tick
+    canvas.drawLine(
+      Offset(size.width * 0.65, size.height * 0.35), // Adjusted from 0.4
+      Offset(size.width * 0.8, size.height * 0.35), // Adjusted from 0.4
+      tickPaint,
+    );
 
     // Center vertical tick
     canvas.drawLine(
@@ -1986,4 +2112,13 @@ class MetronomeIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Intent classes for keyboard navigation
+class _NavigatePrevIntent extends Intent {
+  const _NavigatePrevIntent();
+}
+
+class _NavigateNextIntent extends Intent {
+  const _NavigateNextIntent();
 }

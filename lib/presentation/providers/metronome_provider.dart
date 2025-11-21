@@ -7,6 +7,7 @@ import '../../services/midi/midi_service.dart';
 import 'metronome_settings_provider.dart';
 
 typedef MetronomeTickAction = FutureOr<void> Function(int tickCount);
+typedef AutoscrollActiveCallback = bool Function();
 
 /// Provides metronome state, timing, and extensibility hooks for UI and
 /// automation features.
@@ -20,6 +21,7 @@ class MetronomeProvider extends ChangeNotifier {
   final Map<String, MetronomeTickAction> _tickActions = {};
   MetronomeSettingsProvider? _settingsProvider;
   MidiService? _midiService;
+  AutoscrollActiveCallback? _isAutoscrollActiveCallback;
 
   Timer? _tickTimer;
   Timer? _flashTimer;
@@ -34,6 +36,9 @@ class MetronomeProvider extends ChangeNotifier {
   bool _audioAvailable = true; // Track if audio is working
   int _beatsSinceStart =
       0; // Track beats since metronome started for MIDI sends
+  bool _isCountingIn = false; // Track if we're in count-in phase
+  int _countInBeatsRemaining = 0; // Track remaining count-in beats
+  int _currentCountInBeat = 0; // Track current count-in beat number for display
 
   MetronomeProvider() {
     _ensurePlayerReady();
@@ -52,6 +57,11 @@ class MetronomeProvider extends ChangeNotifier {
   /// Set the metronome settings provider (called from UI)
   void setSettingsProvider(MetronomeSettingsProvider settingsProvider) {
     _settingsProvider = settingsProvider;
+  }
+
+  /// Set callback to check if autoscroll is active
+  void setAutoscrollActiveCallback(AutoscrollActiveCallback callback) {
+    _isAutoscrollActiveCallback = callback;
   }
 
   void setTimeSignature(String timeSignature) {
@@ -76,6 +86,8 @@ class MetronomeProvider extends ChangeNotifier {
   int get tempoBpm => _tempoBpm;
   bool get flashActive => _isRunning && _flashActive;
   int get tickCounter => _tickCounter;
+  bool get isCountingIn => _isCountingIn;
+  int get currentCountInBeat => _currentCountInBeat;
 
   Future<void> start() async {
     if (_isRunning) return;
@@ -83,6 +95,10 @@ class MetronomeProvider extends ChangeNotifier {
     _isRunning = true;
     _tickCounter = 0;
     _beatsSinceStart = 0; // Reset beat counter for MIDI sends
+
+    // Initialize count-in if enabled
+    _initializeCountIn();
+
     _safeNotifyListeners();
     _handleTick();
     _startTimer();
@@ -96,6 +112,12 @@ class MetronomeProvider extends ChangeNotifier {
     _flashTimer = null;
     _flashActive = false;
     _isRunning = false;
+
+    // Reset count-in state
+    _isCountingIn = false;
+    _countInBeatsRemaining = 0;
+    _currentCountInBeat = 0;
+
     unawaited(_player?.stop());
     unawaited(_accentPlayer?.stop());
     if (notifyListeners) {
@@ -204,10 +226,15 @@ class MetronomeProvider extends ChangeNotifier {
 
     _tickCounter++;
     _beatsSinceStart++; // Increment beats since start
-    _triggerFlash();
 
-    final isAccent = ((_tickCounter - 1) % _beatsPerMeasure) == 0;
-    unawaited(_playClick(isAccent: isAccent));
+    // Handle count-in phase
+    if (_isCountingIn) {
+      _handleCountInTick();
+      return;
+    }
+
+    // Handle normal metronome operation based on tick action setting
+    _handleNormalTick();
 
     for (final action in _tickActions.values) {
       try {
@@ -270,6 +297,115 @@ class MetronomeProvider extends ChangeNotifier {
           notifyListeners();
         }
       });
+    }
+  }
+
+  /// Initialize count-in based on settings
+  void _initializeCountIn() {
+    if (_settingsProvider == null) {
+      _isCountingIn = false;
+      _countInBeatsRemaining = 0;
+      return;
+    }
+
+    final countInMeasures = _settingsProvider!.countInMeasures;
+    if (countInMeasures == 0) {
+      // Off
+      _isCountingIn = false;
+      _countInBeatsRemaining = 0;
+    } else {
+      // Check if autoscroll is currently active - if so, bypass count-in
+      final isAutoscrollActive = _isAutoscrollActiveCallback?.call() ?? false;
+      if (isAutoscrollActive) {
+        debugPrint(
+            '🎵 METRONOME DEBUG: Autoscroll is active - bypassing count-in');
+        _isCountingIn = false;
+        _countInBeatsRemaining = 0;
+      } else {
+        // 1 or 2 measures
+        debugPrint(
+            '🎵 METRONOME DEBUG: Starting count-in - autoscroll not active');
+        _isCountingIn = true;
+        _countInBeatsRemaining = countInMeasures * _beatsPerMeasure;
+        _currentCountInBeat = 0;
+      }
+    }
+  }
+
+  /// Handle tick during count-in phase
+  void _handleCountInTick() {
+    debugPrint(
+        '🎵 METRONOME DEBUG: _handleCountInTick() called - _countInBeatsRemaining: $_countInBeatsRemaining');
+
+    if (_countInBeatsRemaining <= 0) {
+      // Count-in finished, transition to normal operation
+      debugPrint(
+          '🎵 METRONOME DEBUG: Count-in finished, transitioning to normal operation');
+      debugPrint(
+          '🎵 METRONOME DEBUG: tickAction: ${_settingsProvider?.tickAction}');
+
+      _isCountingIn = false;
+      _currentCountInBeat = 0;
+
+      // If "Count In Only" mode, stop here
+      if (_settingsProvider?.tickAction == 'Count In Only') {
+        debugPrint('🎵 METRONOME DEBUG: Count In Only mode - calling stop()');
+        stop();
+        return;
+      }
+
+      debugPrint(
+          '🎵 METRONOME DEBUG: Continuing with normal operation - calling _handleNormalTick()');
+      // Continue with normal operation
+      _handleNormalTick();
+      return;
+    }
+
+    _countInBeatsRemaining--;
+
+    // Calculate beat within the current measure (1-based)
+    final totalBeatsSoFar =
+        (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
+            _countInBeatsRemaining;
+    _currentCountInBeat = ((totalBeatsSoFar - 1) % _beatsPerMeasure) + 1;
+
+    // During count-in: always flash border and show beat number
+    _triggerFlash();
+
+    // Always play sound during count-in
+    final isAccent = _currentCountInBeat == 1;
+    unawaited(_playClick(isAccent: isAccent));
+
+    _safeNotifyListeners();
+  }
+
+  /// Handle normal tick based on user's tick action preference
+  void _handleNormalTick() {
+    if (_settingsProvider == null) {
+      // Default behavior (flash + tick)
+      _triggerFlash();
+      final isAccent = ((_tickCounter - 1) % _beatsPerMeasure) == 0;
+      unawaited(_playClick(isAccent: isAccent));
+      return;
+    }
+
+    final tickAction = _settingsProvider!.tickAction;
+    final isAccent = ((_tickCounter - 1) % _beatsPerMeasure) == 0;
+
+    switch (tickAction) {
+      case 'Flash':
+        _triggerFlash();
+        // No sound
+        break;
+      case 'Tick':
+        // Sound only, no flash
+        unawaited(_playClick(isAccent: isAccent));
+        break;
+      case 'Flash + Tick':
+      default:
+        _triggerFlash();
+        unawaited(_playClick(isAccent: isAccent));
+        break;
     }
   }
 

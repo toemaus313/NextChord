@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../core/utils/chordpro_parser.dart';
+import 'metronome_provider.dart';
+import 'metronome_settings_provider.dart';
 
 class AutoscrollProvider extends ChangeNotifier {
   static const int _defaultDurationSeconds = 180; // 3:00 default
@@ -14,6 +16,9 @@ class AutoscrollProvider extends ChangeNotifier {
   int _durationSeconds = _defaultDurationSeconds;
   int _originalDurationSeconds = _defaultDurationSeconds;
   bool _isUserScrolling = false;
+  MetronomeProvider? _metronomeProvider;
+  MetronomeSettingsProvider? _settingsProvider;
+  bool _isCountingIn = false;
 
   // Getters
   bool get isActive => _isActive;
@@ -44,6 +49,13 @@ class AutoscrollProvider extends ChangeNotifier {
     });
   }
 
+  // Set metronome providers for count-in integration
+  void setMetronomeProviders(MetronomeProvider metronomeProvider,
+      MetronomeSettingsProvider settingsProvider) {
+    _metronomeProvider = metronomeProvider;
+    _settingsProvider = settingsProvider;
+  }
+
   // Calculate the total scrollable extent
   void _calculateScrollExtent() {
     if (_scrollController == null || !_scrollController!.hasClients) return;
@@ -54,19 +66,34 @@ class AutoscrollProvider extends ChangeNotifier {
 
   // Start autoscrolling
   void start() {
-    if (_scrollController == null || !_scrollController!.hasClients) return;
+    debugPrint('🔧 AUTOSCROLL DEBUG: start() called');
+    if (_scrollController == null || !_scrollController!.hasClients) {
+      debugPrint('🔧 AUTOSCROLL DEBUG: No scroll controller or clients');
+      return;
+    }
 
-    _isActive = true;
-    _calculateScrollExtent();
-    _startScrolling();
-    notifyListeners();
+    // Check if we should do count-in
+    final shouldCountIn = _shouldDoCountIn();
+    debugPrint('🔧 AUTOSCROLL DEBUG: shouldDoCountIn: $shouldCountIn');
+
+    if (shouldCountIn) {
+      debugPrint('🔧 AUTOSCROLL DEBUG: Starting count-in');
+      _startCountIn();
+    } else {
+      debugPrint('🔧 AUTOSCROLL DEBUG: Skipping count-in, starting scrolling');
+      _startScrolling();
+    }
   }
 
   // Stop autoscrolling
   void stop() {
+    debugPrint(
+        '🔧 AUTOSCROLL DEBUG: stop() called - _isActive: $_isActive, _isCountingIn: $_isCountingIn');
     _isActive = false;
+    _isCountingIn = false;
     _scrollTimer?.cancel();
     _resumeTimer?.cancel();
+    _metronomeProvider?.stop();
     notifyListeners();
   }
 
@@ -121,12 +148,123 @@ class AutoscrollProvider extends ChangeNotifier {
     }
   }
 
-  // Start the actual scrolling animation
+  // Reset duration to original value from song metadata
+  void resetDuration() {
+    _durationSeconds = _originalDurationSeconds;
+
+    if (_isActive) {
+      _scrollTimer?.cancel();
+      _startScrolling();
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _scrollTimer?.cancel();
+    _resumeTimer?.cancel();
+    _scrollController?.removeListener(_onUserScroll);
+    super.dispose();
+  }
+
+  // Check if count-in should be performed
+  bool _shouldDoCountIn() {
+    debugPrint('🔧 AUTOSCROLL DEBUG: _shouldDoCountIn() called');
+
+    if (_metronomeProvider == null || _settingsProvider == null) {
+      debugPrint(
+          '🔧 AUTOSCROLL DEBUG: Missing providers - metronome: ${_metronomeProvider != null}, settings: ${_settingsProvider != null}');
+      return false;
+    }
+
+    // If autoscroll is already running, bypass count-in and just start metronome
+    if (_isActive) {
+      debugPrint(
+          '🔧 AUTOSCROLL DEBUG: Autoscroll already active - bypassing count-in');
+      return false;
+    }
+
+    // Check if count-in is enabled (not set to Off)
+    final countInMeasures = _settingsProvider!.countInMeasures;
+    debugPrint('🔧 AUTOSCROLL DEBUG: countInMeasures: $countInMeasures');
+    if (countInMeasures == 0) {
+      debugPrint('🔧 AUTOSCROLL DEBUG: Count-in disabled (0 measures)');
+      return false;
+    }
+
+    // Check if scroll position is at the beginning (within 50 pixels)
+    if (_scrollController != null && _scrollController!.hasClients) {
+      final currentOffset = _scrollController!.offset;
+      debugPrint('🔧 AUTOSCROLL DEBUG: currentOffset: $currentOffset');
+      return currentOffset <= 50.0;
+    }
+
+    debugPrint('🔧 AUTOSCROLL DEBUG: No scroll controller - returning false');
+    return false;
+  }
+
+  // Start count-in phase
+  void _startCountIn() {
+    if (_metronomeProvider == null) return;
+
+    _isCountingIn = true;
+    // DON'T set _isActive = true yet! This would cause the metronome callback
+    // to think autoscroll is already running and bypass the count-in.
+    // _isActive will be set to true when count-in completes and scrolling starts.
+    notifyListeners();
+
+    // Start metronome count-in
+    _metronomeProvider!.start();
+
+    // Listen for metronome count-in completion
+    _listenForCountInCompletion();
+  }
+
+  // Listen for count-in completion
+  void _listenForCountInCompletion() {
+    if (_metronomeProvider == null) return;
+
+    debugPrint('🔧 AUTOSCROLL DEBUG: Starting count-in completion listener');
+    debugPrint('🔧 AUTOSCROLL DEBUG: _isCountingIn: $_isCountingIn');
+
+    // Check periodically if count-in has finished
+    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (_metronomeProvider == null || !_isCountingIn) {
+        debugPrint(
+            '🔧 AUTOSCROLL DEBUG: Timer cancelled - metronome null or not counting in');
+        timer.cancel();
+        return;
+      }
+
+      debugPrint(
+          '🔧 AUTOSCROLL DEBUG: Checking count-in status - isCountingIn: ${_metronomeProvider!.isCountingIn}, isRunning: ${_metronomeProvider!.isRunning}');
+
+      // Count-in is finished when metronome is no longer counting in
+      if (!_metronomeProvider!.isCountingIn) {
+        debugPrint('🔧 AUTOSCROLL DEBUG: Count-in finished!');
+        timer.cancel();
+        _isCountingIn = false;
+
+        // Start scrolling after count-in completes (metronome should be stopped)
+        debugPrint('🔧 AUTOSCROLL DEBUG: Starting scrolling after count-in');
+        _startScrolling();
+      }
+    });
+  }
+
+  // Start the actual scrolling (called after count-in or directly)
   void _startScrolling() {
     if (_scrollController == null || !_scrollController!.hasClients) return;
 
+    _isActive = true;
     _calculateScrollExtent();
+    _performScrollStart();
+    notifyListeners();
+  }
 
+  // Perform the actual scroll start logic
+  void _performScrollStart() {
     if (_totalScrollExtent <= 0) return;
 
     final remainingDistance = _totalScrollExtent - _currentScrollOffset;
@@ -159,25 +297,5 @@ class AutoscrollProvider extends ChangeNotifier {
         _currentScrollOffset = newOffset;
       }
     });
-  }
-
-  // Reset duration to original value from song metadata
-  void resetDuration() {
-    _durationSeconds = _originalDurationSeconds;
-
-    if (_isActive) {
-      _scrollTimer?.cancel();
-      _startScrolling();
-    }
-
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _scrollTimer?.cancel();
-    _resumeTimer?.cancel();
-    _scrollController?.removeListener(_onUserScroll);
-    super.dispose();
   }
 }
