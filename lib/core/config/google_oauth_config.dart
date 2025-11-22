@@ -11,8 +11,8 @@ class GoogleOAuthConfig {
   // 6. Copy the Client ID and Client Secret here
 
   static const String clientId =
-      '466612959108-h5bq59mitmo2m1jsr77op695h74ktcvg.apps.googleusercontent.com';
-  static const String clientSecret = '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';
+      '466612959108-8jg6fk21nmj26b2euo2qgc71trkojdtr.apps.googleusercontent.com';
+  static const String clientSecret = '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';
 
   static bool get isConfigured =>
       clientId.isNotEmpty && clientSecret.isNotEmpty;

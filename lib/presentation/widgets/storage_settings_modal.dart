@@ -20,29 +20,31 @@ class StorageSettingsModal extends StatefulWidget {
               create: (_) => SyncProvider(database),
               child: Dialog(
                 backgroundColor: Colors.transparent,
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: 480, maxHeight: 600),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF0468cc),
-                        Color.fromARGB(150, 3, 73, 153),
+                child: SingleChildScrollView(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: 480, minHeight: 550),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF0468cc),
+                          Color.fromARGB(150, 3, 73, 153),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(100),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(100),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                    padding: const EdgeInsets.all(24),
+                    child: const StorageSettingsModal(),
                   ),
-                  padding: const EdgeInsets.all(24),
-                  child: const StorageSettingsModal(),
                 ),
               ),
             );
@@ -60,13 +62,16 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
   bool get _isPlatformSupported {
     if (kIsWeb) return true;
 
+    // Mobile platforms (iOS, Android) and macOS are supported
     final isMobileOrMac = defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS;
 
+    // Desktop platforms (Windows, Linux, macOS) need OAuth config
     final isDesktopWithConfig =
         (defaultTargetPlatform == TargetPlatform.windows ||
-                defaultTargetPlatform == TargetPlatform.linux) &&
+                defaultTargetPlatform == TargetPlatform.linux ||
+                defaultTargetPlatform == TargetPlatform.macOS) &&
             GoogleOAuthConfig.isConfigured;
 
     return isMobileOrMac || isDesktopWithConfig;

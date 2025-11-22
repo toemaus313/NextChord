@@ -28,6 +28,7 @@ SETTINGS
   - Make tools
   - Fix Metronome delay
   - iCloud for db storage
+- Different UI for phones - sidebar whole screen
 
 
 

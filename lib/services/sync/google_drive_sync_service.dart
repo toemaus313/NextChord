@@ -20,11 +20,23 @@ class GoogleDriveSyncService {
   static const String _syncMetadataFile = 'sync_metadata.json';
 
   final AppDatabase _database;
-  final GoogleSignIn _googleSignIn;
+  static GoogleSignIn? _googleSignInInstance;
   DateTime? _lastSyncTime;
 
-  GoogleDriveSyncService(this._database)
-      : _googleSignIn = GoogleDriveSyncService._createGoogleSignIn();
+  GoogleDriveSyncService(this._database);
+
+  GoogleSignIn get _googleSignIn =>
+      GoogleDriveSyncService._getGoogleSignInInstance();
+
+  static GoogleSignIn _getGoogleSignInInstance() {
+    _googleSignInInstance ??= _createGoogleSignIn();
+    return _googleSignInInstance!;
+  }
+
+  /// Reset the GoogleSignIn instance (useful for testing)
+  static void resetGoogleSignInInstance() {
+    _googleSignInInstance = null;
+  }
 
   static GoogleSignIn _createGoogleSignIn() {
     // Define the scopes needed for Google Drive access
@@ -34,10 +46,19 @@ class GoogleDriveSyncService {
       'https://www.googleapis.com/auth/drive.file',
     ];
 
-    // For desktop platforms (Windows, Linux), we need OAuth credentials
+    debugPrint('Creating GoogleSignIn for platform: ${defaultTargetPlatform}');
+    debugPrint('Client ID: ${GoogleOAuthConfig.clientId}');
+    debugPrint(
+        'Client Secret: ${GoogleOAuthConfig.clientSecret.isNotEmpty ? 'configured' : 'missing'}');
+    debugPrint('OAuth Configured: ${GoogleOAuthConfig.isConfigured}');
+
+    // For desktop platforms (Windows, Linux, macOS), we need OAuth credentials
+    // The package treats macOS as a desktop platform
     if (defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux) {
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
       if (GoogleOAuthConfig.isConfigured) {
+        debugPrint('Using OAuth credentials for desktop platform');
         return GoogleSignIn(
           params: GoogleSignInParams(
             clientId: GoogleOAuthConfig.clientId,
@@ -52,7 +73,8 @@ class GoogleDriveSyncService {
       }
     }
 
-    // For mobile platforms and web
+    // For mobile platforms (iOS, Android) and web - use standard flow
+    debugPrint('Using standard GoogleSignIn for mobile/web platform');
     return GoogleSignIn(
       params: GoogleSignInParams(
         scopes: scopes,
@@ -63,10 +85,12 @@ class GoogleDriveSyncService {
   static bool _isPlatformSupported() {
     if (kIsWeb) return true;
 
+    // Mobile platforms (iOS, Android) and macOS are supported
     final isMobileOrMac = defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS;
 
+    // Desktop platforms (Windows, Linux) need OAuth config
     final isDesktopWithConfig =
         (defaultTargetPlatform == TargetPlatform.windows ||
                 defaultTargetPlatform == TargetPlatform.linux) &&
@@ -92,10 +116,72 @@ class GoogleDriveSyncService {
       return false;
     }
     try {
-      final account = await _googleSignIn.signIn();
+      debugPrint('Starting Google Sign In...');
+      debugPrint('Platform: ${defaultTargetPlatform}');
+      debugPrint('OAuth Configured: ${GoogleOAuthConfig.isConfigured}');
+
+      // For macOS, try a different approach - use silentSignIn first
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        debugPrint('macOS detected - trying silent sign-in first...');
+        try {
+          final silentAccount = await _googleSignIn.silentSignIn();
+          if (silentAccount != null) {
+            debugPrint('Silent sign-in successful on macOS');
+            return true;
+          }
+        } catch (silentError) {
+          debugPrint('Silent sign-in failed on macOS: $silentError');
+        }
+      }
+
+      debugPrint('Attempting full sign-in flow...');
+      final account = await _googleSignIn.signIn().timeout(
+        const Duration(minutes: 2),
+        onTimeout: () {
+          debugPrint('Sign in timed out after 2 minutes');
+          throw Exception('Sign in timed out');
+        },
+      );
+
+      debugPrint('Sign in completed, checking account details...');
+      debugPrint(
+          'Access token exists: ${account?.accessToken.isNotEmpty == true}');
+
+      if (account != null) {
+        // Verify we can actually use the credentials
+        try {
+          final testCredentials = await _googleSignIn.silentSignIn();
+          debugPrint(
+              'Silent sign-in test: ${testCredentials != null ? 'Success' : 'Failed'}');
+        } catch (testError) {
+          debugPrint('Silent sign-in test failed: $testError');
+        }
+      }
+
       return account != null;
     } catch (e) {
       debugPrint('Google Sign In Error: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+
+      if (e.toString().contains('Operation not permitted')) {
+        debugPrint('macOS "Operation not permitted" error detected');
+        debugPrint('This is likely a macOS security restriction');
+        debugPrint('Try these solutions:');
+        debugPrint('1. Run: flutter run -d macos --release');
+        debugPrint('2. Check System Settings → Privacy & Security → Network');
+        debugPrint('3. Try building for distribution instead of debug');
+        debugPrint(
+            '4. Consider using iOS simulator instead of macOS for testing');
+      }
+
+      // Try to clean up any partial authentication state
+      try {
+        await _googleSignIn.signOut();
+        debugPrint('Cleaned up partial authentication state');
+      } catch (cleanupError) {
+        debugPrint('Error during cleanup: $cleanupError');
+      }
+
       return false;
     }
   }
@@ -107,37 +193,55 @@ class GoogleDriveSyncService {
 
   Future<void> sync() async {
     try {
+      debugPrint('=== Starting Google Drive Sync ===');
       final credentials = await _googleSignIn.silentSignIn();
       if (credentials == null) {
         debugPrint('Not signed in to Google');
         return;
       }
+      debugPrint('✓ Signed in to Google');
 
       final driveApi = await _createDriveApi();
+      debugPrint('✓ Drive API created');
       final folderId = await _getOrCreateNextChordFolder(driveApi);
+      debugPrint('✓ NextChord folder ID: $folderId');
       final localDbPath = await _getDatabasePath();
+      debugPrint('✓ Local DB path: $localDbPath');
 
       // Get sync metadata
       final metadata = await _getSyncMetadata(driveApi, folderId);
+      debugPrint('✓ Sync metadata retrieved');
       final localDbModified = await File(localDbPath).lastModified();
+      debugPrint('✓ Local DB modified: $localDbModified');
 
       // Only sync if local changes or enough time has passed since last sync
       if (_lastSyncTime == null ||
           localDbModified.isAfter(_lastSyncTime!) ||
           _lastSyncTime!
               .isBefore(DateTime.now().subtract(const Duration(minutes: 5)))) {
+        debugPrint('✓ Sync condition met, checking for remote backup...');
         final latestBackup = await _getLatestBackup(driveApi, folderId);
+        debugPrint('✓ Latest backup: ${latestBackup?.id ?? 'none'}');
 
         if (latestBackup != null) {
+          debugPrint('✓ Merging with remote database...');
           await _mergeWithRemote(driveApi, latestBackup, localDbPath, metadata);
+          debugPrint('✓ Merge completed');
         }
 
         // Upload current database as new backup
+        debugPrint('✓ Uploading current database...');
         await _uploadBackup(driveApi, folderId, localDbPath, metadata);
+        debugPrint('✓ Upload completed');
         _lastSyncTime = DateTime.now();
+        debugPrint('✓ Sync completed successfully');
+      } else {
+        debugPrint('✓ Sync not needed - no recent changes');
       }
     } catch (e) {
-      debugPrint('Sync failed: $e');
+      debugPrint('✗ Sync failed: $e');
+      debugPrint('✗ Error type: ${e.runtimeType}');
+      debugPrint('✗ Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
@@ -203,20 +307,34 @@ class GoogleDriveSyncService {
     final file = File(tempPath);
 
     try {
+      debugPrint('  → Downloading remote database...');
       // Download remote database
       final remoteData = await driveApi.files.get(
         remoteFile.id!,
         downloadOptions: drive.DownloadOptions.fullMedia,
       ) as drive.Media;
+      debugPrint('  → Download started, collecting bytes...');
 
       final bytes = await remoteData.stream.fold<List<int>>(
-        const [],
-        (previous, element) => previous..addAll(element),
+        <int>[],
+        (previous, element) {
+          final newList = List<int>.from(previous)..addAll(element);
+          return newList;
+        },
       );
+      debugPrint('  → Downloaded ${bytes.length} bytes');
       await file.writeAsBytes(bytes);
+      debugPrint('  → Temporary database file written');
 
       // Merge changes
+      debugPrint('  → Starting database merge...');
       await _database.mergeFromBackup(tempPath);
+      debugPrint('  → Database merge completed');
+    } catch (e) {
+      debugPrint('  → Merge failed: $e');
+      debugPrint('  → Error type: ${e.runtimeType}');
+      debugPrint('  → Stack trace: ${StackTrace.current}');
+      rethrow;
     } finally {
       if (await file.exists()) {
         await file.delete();

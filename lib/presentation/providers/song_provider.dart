@@ -351,8 +351,9 @@ class SongProvider extends ChangeNotifier {
     final songsToUpdate = selectedSongs;
     for (final song in songsToUpdate) {
       try {
+        final updatedTags = Set<String>.from(song.tags)..addAll(tags);
         final updatedSong = song.copyWith(
-          tags: {...song.tags, ...tags}.toList(),
+          tags: updatedTags.toList(),
         );
         await _repository.updateSong(updatedSong);
       } catch (e) {

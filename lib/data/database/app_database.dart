@@ -248,7 +248,7 @@ class AppDatabase extends _$AppDatabase {
     final allColumns = [...primaryKeys, ...columns];
     final columnsStr = allColumns.join(', ');
     final joinCondition =
-        primaryKeys.map((key) => 'local.$key = remote.$key').join(' AND ');
+        primaryKeys.map((key) => '$tableName.$key = remote.$key').join(' AND ');
 
     // Insert new records that don't exist locally
     await customStatement('''
