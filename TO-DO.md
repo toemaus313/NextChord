@@ -3,6 +3,10 @@
 - Add chord viewer and click on chords
  - RUn through and delete unused/unreferenced code
  - View by Keys in Songs
+- MIDI listener and config for functions (sroll/page up/down. Metronome/ascroll start/stop)
+- Music director features - cue sending and syncing 
+- DB in iCloud
+
 
 ##Future features
 - Use audio detection to start auto-scroll. When it detects the chord progression of the song it starts
