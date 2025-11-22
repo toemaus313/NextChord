@@ -7,13 +7,15 @@ version: 0.1.0+1
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
-# Explicitly exclude Linux platform to avoid record_linux compatibility issues
+# Cross-platform support including Windows, Linux, and mobile platforms
+# Note: Google Drive sync now supports ALL platforms using google_sign_in_all_platforms
 platforms:
   android:
   ios:
   macos:
-  web:
   windows:
+  linux:
+  web:
 
 dependency_overrides:
   # Exclude problematic Linux implementation that doesn't support startStream
@@ -30,6 +32,12 @@ dependencies:
   drift: ^2.16.0
   sqlite3_flutter_libs: ^0.5.0
   sqlite3: ^2.3.0
+  sqflite: ^2.3.0  # Added for database operations
+  
+  # Google Services
+  google_sign_in_all_platforms: ^2.0.1
+  googleapis: ^14.0.0
+  googleapis_auth: ^2.0.0
   
   # MIDI
   flutter_midi_command: ^0.5.3
@@ -48,7 +56,7 @@ dependencies:
   # File Handling
   file_selector: ^0.9.0
   file_picker: ^8.0.0
-  path_provider: ^2.0.0
+  path_provider: ^2.1.1  # Updated to match required version
   path: ^1.8.3
   shared_preferences: ^2.2.0
   
@@ -57,7 +65,7 @@ dependencies:
   
   # Utilities
   intl: ^0.18.0
-  uuid: ^3.0.0
+  uuid: ^3.0.7  # Updated to match required version
   equatable: ^2.0.5
   
   # HTTP & Web Scraping

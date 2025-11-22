@@ -13,7 +13,9 @@ import 'presentation/providers/metronome_provider.dart';
 import 'presentation/providers/metronome_settings_provider.dart';
 import 'presentation/providers/autoscroll_provider.dart';
 import 'presentation/providers/setlist_provider.dart';
+import 'providers/sync_provider.dart';
 import 'services/midi/midi_service.dart';
+import 'core/services/sync_service_locator.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
@@ -83,6 +85,13 @@ class NextChordApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => MetadataVisibilityProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) {
+            final syncProvider = SyncProvider(database);
+            SyncServiceLocator.initialize(syncProvider);
+            return syncProvider;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => MidiService(),

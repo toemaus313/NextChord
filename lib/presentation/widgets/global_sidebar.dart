@@ -18,6 +18,7 @@ import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
 import 'divider_dialog.dart';
 import 'tag_edit_dialog.dart';
+import '../../../presentation/widgets/storage_settings_modal.dart';
 
 /// Global sidebar widget that can overlay any screen
 class GlobalSidebar extends StatefulWidget {
@@ -484,6 +485,14 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                   isExpanded: _isSettingsExpanded,
                   children: _isSettingsExpanded
                       ? [
+                          _buildSubMenuItem(
+                            context,
+                            title: 'Storage',
+                            isSelected: false,
+                            onTap: () async {
+                              await StorageSettingsModal.show(context);
+                            },
+                          ),
                           _buildSubMenuItem(
                             context,
                             title: 'MIDI Options',

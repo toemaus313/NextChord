@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -165,6 +166,107 @@ class AppDatabase extends _$AppDatabase {
         }
       },
     );
+  }
+
+  Future<void> mergeFromBackup(String backupPath) async {
+    debugPrint('Starting database merge from backup');
+    await customStatement('ATTACH DATABASE ? AS remote', [backupPath]);
+    try {
+      await _mergeTable(
+        tableName: 'songs',
+        primaryKeys: ['id'],
+        columns: [
+          'title',
+          'artist',
+          'body',
+          'key',
+          'capo',
+          'bpm',
+          'time_signature',
+          'tags',
+          'audio_file_path',
+          'notes',
+          'profile_id',
+          'created_at',
+          'updated_at',
+          'is_deleted',
+        ],
+      );
+
+      await _mergeTable(
+        tableName: 'setlists',
+        primaryKeys: ['id'],
+        columns: [
+          'name',
+          'items',
+          'notes',
+          'image_path',
+          'setlist_specific_edits_enabled',
+          'created_at',
+          'updated_at',
+        ],
+      );
+
+      await _mergeTable(
+        tableName: 'midi_profiles',
+        primaryKeys: ['id'],
+        columns: [
+          'name',
+          'program_change_number',
+          'control_changes',
+          'timing',
+          'notes',
+          'created_at',
+          'updated_at',
+        ],
+      );
+
+      await _mergeTable(
+        tableName: 'midi_mappings',
+        primaryKeys: ['id'],
+        columns: [
+          'song_id',
+          'program_change_number',
+          'control_changes',
+          'timing',
+          'notes',
+          'created_at',
+          'updated_at',
+        ],
+      );
+    } finally {
+      await customStatement('DETACH DATABASE remote');
+    }
+    debugPrint('Database merge completed successfully');
+  }
+
+  Future<void> _mergeTable({
+    required String tableName,
+    required List<String> primaryKeys,
+    required List<String> columns,
+  }) async {
+    final allColumns = [...primaryKeys, ...columns];
+    final columnsStr = allColumns.join(', ');
+    final joinCondition =
+        primaryKeys.map((key) => 'local.$key = remote.$key').join(' AND ');
+
+    // Insert new records that don't exist locally
+    await customStatement('''
+      INSERT OR IGNORE INTO $tableName ($columnsStr)
+      SELECT $columnsStr
+      FROM remote.$tableName remote
+    ''');
+
+    // Update existing records where remote is newer
+    await customStatement('''
+      UPDATE $tableName
+      SET ${columns.map((c) => '$c = remote.$c').join(', ')}
+      FROM remote.$tableName remote
+      WHERE $joinCondition
+      AND remote.updated_at > $tableName.updated_at
+    ''');
+
+    debugPrint('Merged $tableName from backup');
   }
 }
 

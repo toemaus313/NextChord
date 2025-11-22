@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/setlist_repository.dart';
+import '../../core/services/sync_service_locator.dart';
 
 /// Provider for managing setlist state and operations
 class SetlistProvider extends ChangeNotifier {
@@ -59,6 +60,10 @@ class SetlistProvider extends ChangeNotifier {
     try {
       final id = await _repository.insertSetlist(setlist);
       await loadSetlists(); // Refresh the list
+
+      // Trigger auto-sync after adding setlist
+      SyncServiceLocator.triggerAutoSync();
+
       return id;
     } catch (e) {
       _errorMessage = 'Failed to add setlist: $e';
@@ -72,6 +77,9 @@ class SetlistProvider extends ChangeNotifier {
     try {
       await _repository.updateSetlist(setlist);
       await loadSetlists(); // Refresh the list
+
+      // Trigger auto-sync after updating setlist
+      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to update setlist: $e';
       notifyListeners();
@@ -84,6 +92,9 @@ class SetlistProvider extends ChangeNotifier {
     try {
       await _repository.deleteSetlist(id);
       await loadSetlists(); // Refresh the list
+
+      // Trigger auto-sync after deleting setlist
+      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();

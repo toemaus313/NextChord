@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
+import '../../core/services/sync_service_locator.dart';
 
 /// Enum to track what type of song list is currently loaded
 enum SongListType { all, deleted, filtered }
@@ -132,6 +133,10 @@ class SongProvider extends ChangeNotifier {
     try {
       final id = await _repository.insertSong(song);
       await loadSongs(); // Refresh the list
+
+      // Trigger auto-sync after adding song
+      SyncServiceLocator.triggerAutoSync();
+
       return id;
     } catch (e) {
       _errorMessage = 'Failed to add song: $e';
@@ -145,6 +150,9 @@ class SongProvider extends ChangeNotifier {
     try {
       await _repository.updateSong(song);
       await loadSongs(); // Refresh the list
+
+      // Trigger auto-sync after updating song
+      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to update song: $e';
       notifyListeners();
@@ -158,6 +166,9 @@ class SongProvider extends ChangeNotifier {
       await _repository.deleteSong(id);
       await loadSongs(); // Refresh the list
       onDeleted?.call(); // Notify that song was deleted
+
+      // Trigger auto-sync after deleting song
+      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to delete song: $e';
       notifyListeners();
@@ -360,6 +371,9 @@ class SongProvider extends ChangeNotifier {
       final updatedSong = song.copyWith(tags: newTags);
       await _repository.updateSong(updatedSong);
       await loadSongs();
+
+      // Trigger auto-sync after updating song tags
+      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to update song tags: $e';
       notifyListeners();
