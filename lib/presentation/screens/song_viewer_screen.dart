@@ -339,15 +339,21 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   /// Handle result from song editor
   Future<void> _handleEditResult(dynamic result) async {
     if (result == 'deleted') {
-      context.read<GlobalSidebarProvider>().clearCurrentSong();
+      if (mounted) {
+        context.read<GlobalSidebarProvider>().clearCurrentSong();
+      }
     } else if (result == true) {
       final reloaded = await _reloadSong();
       if (!reloaded) {
-        context.read<GlobalSidebarProvider>().clearCurrentSong();
+        if (mounted) {
+          context.read<GlobalSidebarProvider>().clearCurrentSong();
+        }
       } else {
-        context
-            .read<GlobalSidebarProvider>()
-            .navigateToSong(_songViewerProvider.currentSong);
+        if (mounted) {
+          context
+              .read<GlobalSidebarProvider>()
+              .navigateToSong(_songViewerProvider.currentSong);
+        }
       }
     }
   }
@@ -384,8 +390,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
             body: Focus(
               focusNode: _focusNode,
               autofocus: true,
-              onKey: (node, event) {
-                if (event is RawKeyDownEvent &&
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
                     _setlistNavigationService.canNavigate) {
                   if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
                     _handleKeyboardNavigation(false);
@@ -586,10 +592,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                 viewerProvider: _songViewerProvider,
               ),
               const SizedBox(height: SongViewerConstants.buttonSpacing),
-              SizedBox(
-                width: 96,
-                child: const MetronomeButton(),
-              ),
+              MetronomeButton(),
             ],
           ),
         ),

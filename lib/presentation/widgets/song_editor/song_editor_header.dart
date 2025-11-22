@@ -14,6 +14,8 @@ class SongEditorHeader extends StatelessWidget {
   final VoidCallback onConvertPressed;
   final VoidCallback onImportFromUltimateGuitarPressed;
   final VoidCallback onImportFromFilePressed;
+  final VoidCallback onToggleMetadata;
+  final bool isMetadataHidden;
 
   const SongEditorHeader({
     super.key,
@@ -29,6 +31,8 @@ class SongEditorHeader extends StatelessWidget {
     required this.onConvertPressed,
     required this.onImportFromUltimateGuitarPressed,
     required this.onImportFromFilePressed,
+    required this.onToggleMetadata,
+    required this.isMetadataHidden,
   });
 
   @override
@@ -79,6 +83,19 @@ class SongEditorHeader extends StatelessWidget {
             tooltip: 'Convert to ChordPro',
             onPressed: onConvertPressed,
             color: actionColor,
+            isDarkMode: isDarkMode,
+          ),
+        ),
+
+        // Keyboard toggle button (top right)
+        Positioned(
+          top: 8,
+          right: 104,
+          child: _buildActionButton(
+            icon: Icons.keyboard,
+            tooltip: isMetadataHidden ? 'Show Metadata' : 'Hide Metadata',
+            onPressed: onToggleMetadata,
+            color: isMetadataHidden ? Colors.grey : actionColor,
             isDarkMode: isDarkMode,
           ),
         ),

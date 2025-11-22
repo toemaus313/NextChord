@@ -8,6 +8,7 @@ import 'data/repositories/setlist_repository.dart';
 import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/global_sidebar_provider.dart';
+import 'presentation/providers/metadata_visibility_provider.dart';
 import 'presentation/providers/metronome_provider.dart';
 import 'presentation/providers/metronome_settings_provider.dart';
 import 'presentation/providers/autoscroll_provider.dart';
@@ -79,6 +80,9 @@ class NextChordApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => AutoscrollProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MetadataVisibilityProvider(),
         ),
         ChangeNotifierProvider(
           create: (_) => MidiService(),

@@ -102,45 +102,61 @@ class MetronomeIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Draw triangle outline (metronome body)
     final paint = Paint()
       ..color = color
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
 
-    // Draw triangle - adjusted to use more of the available space
     final trianglePath = Path();
-    trianglePath.moveTo(
-        size.width * 0.5, size.height * 0.1); // Moved from 0.2 to 0.1
-    trianglePath.lineTo(
-        size.width * 0.3, size.height * 0.85); // Moved from 0.8 to 0.85
-    trianglePath.lineTo(
-        size.width * 0.7, size.height * 0.85); // Moved from 0.8 to 0.85
+    trianglePath.moveTo(size.width * 0.5, size.height * 0.15);
+    trianglePath.lineTo(size.width * 0.25, size.height * 0.8);
+    trianglePath.lineTo(size.width * 0.75, size.height * 0.8);
     trianglePath.close();
     canvas.drawPath(trianglePath, paint);
+
+    // Draw pendulum
+    final pendulumPaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    // Pendulum arm
+    canvas.drawLine(
+      Offset(size.width * 0.5, size.height * 0.25),
+      Offset(size.width * 0.5, size.height * 0.65),
+      pendulumPaint,
+    );
+
+    // Pendulum weight (small triangle)
+    final weightPath = Path();
+    weightPath.moveTo(size.width * 0.45, size.height * 0.65);
+    weightPath.lineTo(size.width * 0.55, size.height * 0.65);
+    weightPath.lineTo(size.width * 0.5, size.height * 0.72);
+    weightPath.close();
+
+    final weightPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(weightPath, weightPaint);
 
     // Draw tick marks
     final tickPaint = Paint()
       ..color = color
-      ..strokeWidth = 2.0
+      ..strokeWidth = 1.0
       ..strokeCap = StrokeCap.round;
 
-    // Left tick
+    // Left tick marks
     canvas.drawLine(
-      Offset(size.width * 0.2, size.height * 0.35), // Adjusted from 0.4
-      Offset(size.width * 0.35, size.height * 0.35), // Adjusted from 0.4
+      Offset(size.width * 0.15, size.height * 0.4),
+      Offset(size.width * 0.22, size.height * 0.4),
       tickPaint,
     );
 
-    // Right tick
+    // Right tick marks
     canvas.drawLine(
-      Offset(size.width * 0.65, size.height * 0.35), // Adjusted from 0.4
-      Offset(size.width * 0.8, size.height * 0.35), // Adjusted from 0.4
-      tickPaint,
-    );
-
-    // Center vertical tick
-    canvas.drawLine(
-      Offset(size.width * 0.5, size.height * 0.3),
-      Offset(size.width * 0.5, size.height * 0.7),
+      Offset(size.width * 0.78, size.height * 0.4),
+      Offset(size.width * 0.85, size.height * 0.4),
       tickPaint,
     );
   }

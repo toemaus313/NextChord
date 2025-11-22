@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_profile.dart';
@@ -50,6 +49,9 @@ class _SongEditorScreenRefactoredState
   List<MidiProfile> _midiProfiles = [];
   MidiProfile? _selectedMidiProfile;
   bool _isLoadingProfiles = false;
+
+  // Local keyboard toggle state to avoid timing issues
+  bool _isMetadataHidden = false;
 
   @override
   void initState() {
@@ -181,6 +183,37 @@ class _SongEditorScreenRefactoredState
     });
   }
 
+  /// Handle keyboard toggle to match iOS Hide Keyboard button behavior
+  void _handleKeyboardToggle() {
+    final hasHardwareKb =
+        _bodyFocusNode.hasFocus && MediaQuery.viewInsetsOf(context).bottom == 0;
+    final isKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+
+    if (isKeyboardVisible) {
+      // iOS behavior: if keyboard is visible, dismiss it (metadata will auto-show)
+      _bodyFocusNode.unfocus();
+      setState(() {
+        _isMetadataHidden =
+            false; // Ensure metadata shows when keyboard is dismissed
+      });
+    } else {
+      // No keyboard visible - toggle metadata manually
+      setState(() {
+        _isMetadataHidden = !_isMetadataHidden;
+
+        // If hiding metadata and no hardware keyboard, show keyboard
+        if (_isMetadataHidden && !hasHardwareKb) {
+          // Use postFrameCallback to avoid timing issues
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _bodyFocusNode.requestFocus();
+            }
+          });
+        }
+      });
+    }
+  }
+
   void _handleMidiProfileChanged(MidiProfile? newProfile) {
     setState(() {
       _selectedMidiProfile = newProfile;
@@ -309,14 +342,16 @@ class _SongEditorScreenRefactoredState
           repository: songProvider.repository,
         );
 
-        if (result.success && result.song != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Song created successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          context.read<GlobalSidebarProvider>().navigateToSong(result.song!);
+        if (result.success && result.song != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Song created successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            context.read<GlobalSidebarProvider>().navigateToSong(result.song!);
+          }
         }
       }
 
@@ -618,7 +653,9 @@ class _SongEditorScreenRefactoredState
         // Refresh the song list in the provider
         await songProvider.loadSongs();
         // Return a special value to indicate deletion occurred
-        Navigator.of(context).pop('deleted');
+        if (mounted) {
+          Navigator.of(context).pop('deleted');
+        }
       } else if (!result.success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -665,7 +702,7 @@ class _SongEditorScreenRefactoredState
     final actionColor =
         isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
     final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-    final hideMetadata = isKeyboardOpen || _bodyFocusNode.hasFocus;
+    final hideMetadata = _isMetadataHidden || isKeyboardOpen;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -722,96 +759,91 @@ class _SongEditorScreenRefactoredState
                     ),
                   // Scrollable metadata section
                   if (!hideMetadata)
-                    Expanded(
-                      flex: 3,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            16.0,
-                            widget.setlistContext != null ? 16.0 : 60.0,
-                            16.0,
-                            16.0),
-                        child: Column(
-                          children: [
-                            // Metadata form
-                            SongMetadataForm(
-                              titleController: _titleController,
-                              artistController: _artistController,
-                              bpmController: _bpmController,
-                              durationController: _durationController,
-                              selectedKey: _selectedKey,
-                              selectedCapo: _selectedCapo,
-                              selectedTimeSignature: _selectedTimeSignature,
-                              textColor: textColor,
-                              isDarkMode: isDarkMode,
-                              hasSetlistContext: widget.setlistContext != null,
-                              onKeyChanged: _handleKeySelection,
-                              onCapoChanged: _handleCapoSelection,
-                              onTimeSignatureChanged:
-                                  _handleTimeSignatureChanged,
-                            ),
-                            const SizedBox(height: 12),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          16.0,
+                          widget.setlistContext != null ? 16.0 : 60.0,
+                          16.0,
+                          16.0),
+                      child: Column(
+                        children: [
+                          // Metadata form
+                          SongMetadataForm(
+                            titleController: _titleController,
+                            artistController: _artistController,
+                            bpmController: _bpmController,
+                            durationController: _durationController,
+                            selectedKey: _selectedKey,
+                            selectedCapo: _selectedCapo,
+                            selectedTimeSignature: _selectedTimeSignature,
+                            textColor: textColor,
+                            isDarkMode: isDarkMode,
+                            hasSetlistContext: widget.setlistContext != null,
+                            onKeyChanged: _handleKeySelection,
+                            onCapoChanged: _handleCapoSelection,
+                            onTimeSignatureChanged: _handleTimeSignatureChanged,
+                          ),
+                          const SizedBox(height: 12),
 
-                            // MIDI Sends and Tags in the same row
-                            Row(
-                              children: [
-                                // MIDI Sends section - left half
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: isDarkMode
-                                            ? Colors.grey.shade700
-                                            : Colors.grey.shade400,
-                                        width: 1.0,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
+                          // MIDI Sends and Tags in the same row
+                          Row(
+                            children: [
+                              // MIDI Sends section - left half
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: isDarkMode
+                                          ? Colors.grey.shade700
+                                          : Colors.grey.shade400,
+                                      width: 1.0,
                                     ),
-                                    child: MidiProfileSelector(
-                                      selectedProfile: _selectedMidiProfile,
-                                      onProfileChanged:
-                                          _handleMidiProfileChanged,
-                                      profiles: _midiProfiles,
-                                      isLoading: _isLoadingProfiles,
-                                      onProfilesReloaded: _loadMidiProfiles,
-                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: MidiProfileSelector(
+                                    selectedProfile: _selectedMidiProfile,
+                                    onProfileChanged: _handleMidiProfileChanged,
+                                    profiles: _midiProfiles,
+                                    isLoading: _isLoadingProfiles,
+                                    onProfilesReloaded: _loadMidiProfiles,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                // Tags section - right half
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: isDarkMode
-                                            ? Colors.grey.shade700
-                                            : Colors.grey.shade400,
-                                        width: 1.0,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
+                              ),
+                              const SizedBox(width: 12),
+                              // Tags section - right half
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: isDarkMode
+                                          ? Colors.grey.shade700
+                                          : Colors.grey.shade400,
+                                      width: 1.0,
                                     ),
-                                    child: TagEditor(
-                                      tags: _tags,
-                                      textColor: textColor,
-                                      isDarkMode: isDarkMode,
-                                      onTagsChanged: _handleTagsChanged,
-                                      onEditTags: _openTagsDialog,
-                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: TagEditor(
+                                    tags: _tags,
+                                    textColor: textColor,
+                                    isDarkMode: isDarkMode,
+                                    onTagsChanged: _handleTagsChanged,
+                                    onEditTags: _openTagsDialog,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
                   // Body (ChordPro text) field - borderless editing area
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: TextFormField(
@@ -861,6 +893,8 @@ class _SongEditorScreenRefactoredState
               onConvertPressed: _convertToChordPro,
               onImportFromUltimateGuitarPressed: _importFromUltimateGuitar,
               onImportFromFilePressed: _importFromFile,
+              onToggleMetadata: _handleKeyboardToggle,
+              isMetadataHidden: _isMetadataHidden,
             ),
           ],
         ),

@@ -50,6 +50,15 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   bool _timing = false;
   bool _isLoading = false;
 
+  // Store original values for cancel functionality
+  late List<MidiProfile> _originalProfiles;
+  MidiProfile? _originalSelectedProfile;
+  String _originalName = '';
+  String _originalProgramChange = '';
+  List<MidiCC> _originalControlChanges = [];
+  bool _originalTiming = false;
+  String _originalNotes = '';
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +87,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       final profiles = await songRepository.getAllMidiProfiles();
       setState(() {
         _profiles = profiles;
+        _originalProfiles = List.from(profiles); // Store original profiles
         _isLoading = false;
       });
     } catch (e) {
@@ -124,8 +134,17 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         _controlChanges = List.from(profile.controlChanges);
         _timing = profile.timing;
         _notesController.text = profile.notes ?? '';
+
+        // Store original values for the selected profile
+        _originalSelectedProfile = profile;
+        _originalName = profile.name;
+        _originalProgramChange = profile.programChangeNumber?.toString() ?? '';
+        _originalControlChanges = List.from(profile.controlChanges);
+        _originalTiming = profile.timing;
+        _originalNotes = profile.notes ?? '';
       } else {
         _clearForm();
+        _storeOriginalFormValues();
       }
     });
   }
@@ -137,6 +156,15 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     _notesController.clear();
     _controlChanges = [];
     _timing = false;
+  }
+
+  void _storeOriginalFormValues() {
+    _originalName = '';
+    _originalProgramChange = '';
+    _originalControlChanges = [];
+    _originalTiming = false;
+    _originalNotes = '';
+    _originalSelectedProfile = null;
   }
 
   void _addControlChange() {
@@ -158,12 +186,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           _notesController.clear();
         });
 
-        // Return focus to MIDI code field for next entry
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _midiCodeFocusNode.requestFocus();
-          }
-        });
+        // Focus restoration removed to prevent keyboard from popping back up
       } else {
         _showError(
             'Invalid format. Use "CC0:127" for Control Change or "PC5" for Program Change');
@@ -369,6 +392,29 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     }
   }
 
+  /// Cancel changes and restore original values
+  void _cancelChanges(BuildContext context) {
+    // Restore profiles list
+    setState(() {
+      _profiles = List.from(_originalProfiles);
+    });
+
+    // Restore form values
+    _nameController.text = _originalName;
+    _programChangeController.text = _originalProgramChange;
+    _controlChanges = List.from(_originalControlChanges);
+    _timing = _originalTiming;
+    _notesController.text = _originalNotes;
+    _selectedProfile = _originalSelectedProfile;
+
+    Navigator.of(context).pop();
+  }
+
+  /// Save changes and close modal
+  void _saveChanges(BuildContext context) {
+    Navigator.of(context).pop();
+  }
+
   Future<bool> _showConfirmDialog(String title, String content) async {
     final result = await showDialog<bool>(
       context: context,
@@ -393,13 +439,21 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate available screen height with padding
+    final screenHeight = MediaQuery.of(context).size.height;
+    final availableHeight =
+        screenHeight - 48; // Account for dialog padding (24 top + 24 bottom)
+    final dynamicMaxHeight =
+        availableHeight * 0.9; // Use 90% of available height
+
     return Center(
       child: ConstrainedBox(
-        // App Modal Design Standard: Constrained dialog size
-        constraints: const BoxConstraints(
+        // App Modal Design Standard: Dynamic dialog size based on content and screen
+        constraints: BoxConstraints(
           maxWidth: 480,
           minWidth: 320,
-          maxHeight: 650,
+          maxHeight: dynamicMaxHeight.clamp(
+              400, double.infinity), // Min 400, max based on screen
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -460,9 +514,9 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        // App Modal Design Standard: Header button styling
+        // Cancel button (upper left)
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => _cancelChanges(context),
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
@@ -473,7 +527,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
               side: const BorderSide(color: Colors.white24),
             ),
           ),
-          child: const Text('Close', style: TextStyle(fontSize: 14)),
+          child: const Text('Cancel', style: TextStyle(fontSize: 14)),
         ),
         const Spacer(),
         const Text(
@@ -485,9 +539,9 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           ),
         ),
         const Spacer(),
-        // New button
+        // OK button (upper right)
         TextButton(
-          onPressed: () => _selectProfile(null),
+          onPressed: () => _saveChanges(context),
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
@@ -498,7 +552,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
               side: const BorderSide(color: Colors.white24),
             ),
           ),
-          child: const Text('New', style: TextStyle(fontSize: 14)),
+          child: const Text('OK', style: TextStyle(fontSize: 14)),
         ),
       ],
     );
@@ -664,6 +718,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                   },
                   onFieldSubmitted: (value) {
                     _addControlChange();
+                    FocusScope.of(context).unfocus();
                   },
                 ),
               ],

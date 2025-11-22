@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../services/song_editor/transposition_service.dart';
 import 'package:flutter/services.dart';
 import 'capo_icon_painter.dart';
 import 'metronome_icon_painter.dart';
@@ -18,6 +19,11 @@ class SongMetadataForm extends StatelessWidget {
   final ValueChanged<String> onKeyChanged;
   final ValueChanged<int> onCapoChanged;
   final ValueChanged<String> onTimeSignatureChanged;
+
+  /// Normalize flat keys to sharp keys for dropdown compatibility
+  static String _normalizeKey(String key) {
+    return TranspositionService.flatToSharpMap[key] ?? key;
+  }
 
   static const List<String> keys = [
     'C',
@@ -157,8 +163,9 @@ class SongMetadataForm extends StatelessWidget {
   }
 
   Widget _buildKeyDropdown(double width) {
+    final normalizedKey = _normalizeKey(selectedKey);
     return DropdownButtonFormField<String>(
-      value: selectedKey,
+      initialValue: normalizedKey,
       style: TextStyle(fontSize: 14, color: textColor),
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.piano, size: 18),

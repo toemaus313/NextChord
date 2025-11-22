@@ -7,6 +7,7 @@ import '../providers/setlist_provider.dart';
 import '../providers/theme_provider.dart';
 import '../screens/library_screen.dart';
 import '../screens/song_editor_screen_refactored.dart';
+import '../screens/song_viewer_screen.dart';
 import '../screens/setlist_editor_screen.dart';
 import 'midi_settings_modal.dart';
 import 'midi_profiles_modal.dart';
@@ -15,6 +16,7 @@ import '../../domain/entities/song.dart';
 import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
 import 'divider_dialog.dart';
+import 'tag_edit_dialog.dart';
 
 /// Global sidebar widget that can overlay any screen
 class GlobalSidebar extends StatefulWidget {
@@ -904,6 +906,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           _navigateToSongFromSetlist(song, item, index);
         }
       },
+      onLongPress: () => _showSongContextMenu(context, item, song, index),
       onSecondaryTap: () => _showSongContextMenu(context, item, song, index),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
@@ -912,78 +915,69 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           color: Colors.black.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Drag handle
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(
-                        Icons.drag_indicator,
-                        color: Colors.white54,
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Song info
-                    Flexible(
-                      fit: FlexFit.loose,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (artist.isNotEmpty)
-                            Text(
-                              artist,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // Key and capo info
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          displayKey,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (capo > 0)
-                          Text(
-                            'CAPO $capo',
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+        child: Row(
+          children: [
+            // Drag handle
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(
+                Icons.drag_indicator,
+                color: Colors.white54,
+                size: 16,
               ),
-            );
-          },
+            ),
+            const SizedBox(width: 8),
+            // Song info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (artist.isNotEmpty)
+                    Text(
+                      artist,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Key and capo info
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  displayKey,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (capo > 0)
+                  Text(
+                    'CAPO $capo',
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -991,6 +985,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   void _showSongContextMenu(
       BuildContext context, SetlistSongItem item, Song? song, int index) {
+    if (song == null) return;
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -998,6 +994,49 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('View'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SongViewerScreen(song: song),
+                    ),
+                  );
+                  // Refresh the list if the song was updated
+                  if (result == true && context.mounted) {
+                    context.read<SongProvider>().loadSongs();
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          SongEditorScreenRefactored(song: song),
+                    ),
+                  );
+                  // Refresh the list if the song was updated
+                  if (result == true && context.mounted) {
+                    context.read<SongProvider>().loadSongs();
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tag),
+                title: const Text('Edit Tags...'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSingleSongTagDialog(context, song);
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text(
@@ -1058,6 +1097,35 @@ class _GlobalSidebarState extends State<GlobalSidebar>
         );
       }
     }
+  }
+
+  /// Show dialog to edit tags for a single song
+  Future<void> _showSingleSongTagDialog(BuildContext context, Song song) async {
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => TagEditDialog(
+        title: 'Edit Tags',
+        initialTags: song.tags.toSet(),
+        onTagsUpdated: (updatedTags) async {
+          try {
+            await context
+                .read<SongProvider>()
+                .updateSongTags(song.id, updatedTags);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tags updated')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to update tags: $e')),
+              );
+            }
+          }
+        },
+      ),
+    );
   }
 
   Widget _buildSetlistDividerItem(SetlistDividerItem item, int index) {

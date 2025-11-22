@@ -19,19 +19,22 @@ SETTINGS
  - Metronome sounds
 
  PUNCHLIST
-  - Transparent logo needs to be.... transparent. For Welcome Screen and app icon
-  - Make keyboard hide after entering a MIDI code in MIDI profiles
-  - Song key/Capo is not aligned to the right side in Set List display
+
+
   - Long press not bringing up menu in Setlist view
+  - Long press and add to setlist
   - Edit button in Setlist page of sidebar is not aligned to the right side
   - Detection for tab in parser not working quite right
         -Ex. I Hold On - Dierks Bentley. It is detecting the first line as a title and making it a tag
         - I think its also adding the chordpro-style metadata tags. Stop doing that
-  - In editor, need to slide the editor window up to the top when keyboard appears so that you can see what you're typing  
-  - In MIDI settings, profile and metronome modals, change upper right button to a OK button, upper left to Cancel. Change functionality.
-  - Metronome button not aligned
   - Make tools
   - Fix Metronome delay
-  - Fix MIDI profile assignment height in song editor
+
+
+Now I want to add an option in the long press menu that is called up from the Songs lists in the sidebar. This option should allow the user to add the song to a setlist.
+
+This option will access a new add_songs_to_setlist_modal that has the same basic design and color scheme as the midi_settings_modal. We will need a list of the set lists, with checkboxes so that users can add songs to multiple set lists if desired. 
+
+
 
 

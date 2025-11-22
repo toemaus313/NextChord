@@ -36,6 +36,10 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
   String? _initError;
   bool _isTestStreamActive = false;
 
+  // Store original values for cancel functionality
+  late int _originalMidiChannel;
+  late bool _originalSendMidiClock;
+
   @override
   void initState() {
     super.initState();
@@ -45,9 +49,17 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
   Future<void> _initializeMidiService() async {
     try {
       // Initialize MIDI service singleton safely
-      MidiService(); // Just initialize the singleton
+      final midiService = MidiService(); // Just initialize the singleton
       // Give it a moment to initialize
       await Future.delayed(const Duration(milliseconds: 100));
+
+      // Store original values after initialization
+      if (mounted) {
+        _originalMidiChannel = midiService.displayMidiChannel;
+        _originalSendMidiClock = midiService.sendMidiClockEnabled;
+        print(
+            'DEBUG MIDI: Stored original values - channel: $_originalMidiChannel, clock: $_originalSendMidiClock');
+      }
     } catch (e) {
       setState(() {
         _initError = e.toString();
@@ -148,57 +160,55 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        // App Modal Design Standard: Header button styling
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: const BorderSide(color: Colors.white24),
-            ),
-          ),
-          child: const Text('Close', style: TextStyle(fontSize: 14)),
-        ),
-        const Spacer(),
-        const Text(
-          'MIDI Settings',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const Spacer(),
-        // Test button (only when connected)
-        Consumer<MidiService>(
-          builder: (context, midiService, child) {
-            return TextButton(
-              onPressed: midiService.isConnected ? _toggleTestStream : null,
+    return Consumer<MidiService>(
+      builder: (context, midiService, child) {
+        return Row(
+          children: [
+            // Cancel button (upper left)
+            TextButton(
+              onPressed: () => _cancelChanges(context, midiService),
               style: TextButton.styleFrom(
-                foregroundColor:
-                    _isTestStreamActive ? Colors.red : Colors.white,
+                foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
                 minimumSize: const Size(0, 0),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
-                  side: BorderSide(
-                      color: _isTestStreamActive ? Colors.red : Colors.white24),
+                  side: const BorderSide(color: Colors.white24),
                 ),
               ),
-              child: Text(_isTestStreamActive ? 'Stop Test' : 'Test',
-                  style: const TextStyle(fontSize: 14)),
-            );
-          },
-        ),
-      ],
+              child: const Text('Cancel', style: TextStyle(fontSize: 14)),
+            ),
+            const Spacer(),
+            const Text(
+              'MIDI Settings',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            // OK button (upper right)
+            TextButton(
+              onPressed: () => _saveChanges(context, midiService),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  side: const BorderSide(color: Colors.white24),
+                ),
+              ),
+              child: const Text('OK', style: TextStyle(fontSize: 14)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -630,6 +640,22 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     );
   }
 
+  /// Cancel changes and restore original values
+  void _cancelChanges(BuildContext context, MidiService midiService) {
+    print(
+        'DEBUG MIDI: Cancel called - restoring channel: $_originalMidiChannel, clock: $_originalSendMidiClock');
+    print(
+        'DEBUG MIDI: Current service state - channel: ${midiService.displayMidiChannel}, clock: ${midiService.sendMidiClockEnabled}');
+    midiService.setMidiChannel(_originalMidiChannel);
+    midiService.setSendMidiClock(_originalSendMidiClock);
+    Navigator.of(context).pop();
+  }
+
+  /// Save changes and close modal
+  void _saveChanges(BuildContext context, MidiService midiService) {
+    Navigator.of(context).pop();
+  }
+
   /// Toggle the test stream on/off
   Future<void> _toggleTestStream() async {
     final midiService = MidiService();
@@ -640,8 +666,7 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       });
       try {
         await midiService.sendMidiStop();
-      } catch (e) {
-      }
+      } catch (e) {}
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

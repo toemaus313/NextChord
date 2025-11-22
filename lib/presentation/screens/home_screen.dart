@@ -74,18 +74,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
-                24,
-                24,
-                24,
-                24 + viewInsets.bottom,
-              ),
+            24,
+            24,
+            24,
+            24 + viewInsets.bottom,
+          ),
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/images/NextChord-Logo.png',
-                  width: 350,
+                  'assets/images/NextChord-Logo-transparent.png',
+                  width: 700,
                   fit: BoxFit.contain,
                   semanticLabel: 'NextChord logo',
                 ),
