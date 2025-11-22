@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NextChord needs microphone access to tune your guitar by analyzing the sound of your strings.</string>
 </dict>
 </plist>

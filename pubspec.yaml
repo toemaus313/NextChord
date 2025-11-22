@@ -7,6 +7,18 @@ version: 0.1.0+1
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
+# Explicitly exclude Linux platform to avoid record_linux compatibility issues
+platforms:
+  android:
+  ios:
+  macos:
+  web:
+  windows:
+
+dependency_overrides:
+  # Exclude problematic Linux implementation that doesn't support startStream
+  record_linux: ^1.0.0
+
 dependencies:
   flutter:
     sdk: flutter
@@ -22,9 +34,16 @@ dependencies:
   # MIDI
   flutter_midi_command: ^0.5.3
   
-  # Audio Playback
+  # Audio Playback & Recording
   just_audio: ^0.9.0
   just_audio_windows: ^0.2.2
+  audio_session: ^0.1.25
+  permission_handler: ^11.0.1
+  record: ^5.0.4
+  
+  # Audio Analysis
+  pitch_detector_dart: ^0.0.7
+  pitchupdart: ^0.0.6
   
   # File Handling
   file_selector: ^0.9.0

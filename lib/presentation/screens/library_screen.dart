@@ -6,6 +6,7 @@ import '../providers/global_sidebar_provider.dart';
 import '../widgets/song_list_tile.dart';
 import '../widgets/tag_edit_dialog.dart';
 import '../widgets/sidebar_select_all_bar.dart';
+import '../widgets/add_songs_to_setlist_modal.dart';
 import 'song_editor_screen_refactored.dart';
 import 'song_viewer_screen.dart';
 
@@ -575,16 +576,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       _showTagDialog(context);
                     },
                   ),
-                  // Add to setlist option (placeholder)
+                  // Add to setlist option
                   ListTile(
                     leading: const Icon(Icons.playlist_add),
                     title: const Text('Add to Setlist...'),
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Setlists feature coming soon!')),
-                      );
+                      _showBulkAddToSetlist(context, provider.selectedSongs);
                     },
                   ),
                 ],
@@ -777,6 +775,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.playlist_add),
+                title: const Text('Add to Setlist'),
+                onTap: () {
+                  Navigator.pop(context);
+                  AddSongsToSetlistModal.show(context, song);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title:
                     const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -841,5 +847,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
         );
       },
     );
+  }
+
+  /// Show bulk add to setlist functionality for multiple selected songs
+  void _showBulkAddToSetlist(BuildContext context, List<Song> selectedSongs) {
+    if (selectedSongs.isEmpty) return;
+
+    // For multiple songs, we'll show the modal for the first song
+    // but modify the modal to handle multiple songs
+    AddSongsToSetlistModal.showMultiple(context, selectedSongs);
   }
 }

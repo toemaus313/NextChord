@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_linux
   flutter_midi_command_linux
+  record_linux
   sqlite3_flutter_libs
 )
 

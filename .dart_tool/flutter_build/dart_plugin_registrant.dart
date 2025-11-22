@@ -18,6 +18,7 @@ import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_linux/file_selector_linux.dart' as file_selector_linux;
 import 'package:flutter_midi_command_linux/flutter_midi_command_linux.dart' as flutter_midi_command_linux;
 import 'package:path_provider_linux/path_provider_linux.dart' as path_provider_linux;
+import 'package:record_linux/record_linux.dart' as record_linux;
 import 'package:shared_preferences_linux/shared_preferences_linux.dart' as shared_preferences_linux;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_macos/file_selector_macos.dart' as file_selector_macos;
@@ -141,6 +142,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`path_provider_linux` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        record_linux.RecordLinux.registerWith();
+      } catch (err) {
+        print(
+          '`record_linux` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }

@@ -12,6 +12,7 @@ import '../screens/setlist_editor_screen.dart';
 import 'midi_settings_modal.dart';
 import 'midi_profiles_modal.dart';
 import 'metronome_settings_modal.dart';
+import 'guitar_tuner_modal.dart';
 import '../../domain/entities/song.dart';
 import '../../core/utils/chordpro_parser.dart';
 import 'sidebar_select_all_bar.dart';
@@ -32,6 +33,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   late Animation<double> _animation;
   bool _isSongsExpanded = false;
   bool _isSetlistsExpanded = false;
+  bool _isToolsExpanded = false;
   bool _isSettingsExpanded = false;
   String _currentView =
       'menu'; // 'menu', 'allSongs', 'deletedSongs', 'artistsList', 'artistSongs', 'tagsList', 'tagSongs', 'setlistView'
@@ -451,8 +453,23 @@ class _GlobalSidebarState extends State<GlobalSidebar>
                   title: 'Tools',
                   isSelected: false,
                   onTap: () {
-                    // Handle Tools navigation
+                    setState(() {
+                      _isToolsExpanded = !_isToolsExpanded;
+                    });
                   },
+                  isExpanded: _isToolsExpanded,
+                  children: _isToolsExpanded
+                      ? [
+                          _buildSubMenuItem(
+                            context,
+                            title: 'Guitar Tuner',
+                            isSelected: false,
+                            onTap: () async {
+                              await GuitarTunerModal.show(context);
+                            },
+                          ),
+                        ]
+                      : null,
                 ),
                 _buildMenuItem(
                   context,
@@ -727,62 +744,49 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               decoration: BoxDecoration(
                 color: Colors.black.withAlpha(20),
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minWidth: constraints.maxWidth),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              _clearSetlistStateOnNavigation();
-                              setState(() {
-                                _currentView = 'menu';
-                              });
-                            },
-                            tooltip: 'Back to menu',
-                          ),
-                          const Flexible(
-                            fit: FlexFit.loose,
-                            child: Text(
-                              'Setlist',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                            ),
-                            onPressed: () async {
-                              final result = await SetlistEditorDialog.show(
-                                context,
-                                setlist: currentSetlist,
-                              );
-                              if (result == true && context.mounted) {
-                                await setlistProvider.loadSetlists();
-                              }
-                            },
-                            tooltip: 'Edit setlist',
-                          ),
-                        ],
-                      ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
                     ),
-                  );
-                },
+                    onPressed: () {
+                      _clearSetlistStateOnNavigation();
+                      setState(() {
+                        _currentView = 'menu';
+                      });
+                    },
+                    tooltip: 'Back to menu',
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Setlist',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final result = await SetlistEditorDialog.show(
+                        context,
+                        setlist: currentSetlist,
+                      );
+                      if (result == true && context.mounted) {
+                        await setlistProvider.loadSetlists();
+                      }
+                    },
+                    tooltip: 'Edit setlist',
+                  ),
+                ],
               ),
             ),
             // Logo area (200x200 placeholder)

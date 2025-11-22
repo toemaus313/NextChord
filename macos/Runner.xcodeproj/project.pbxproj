@@ -356,10 +356,11 @@
 				Flutter/ephemeral/FlutterOutputs.xcfilelist,
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/flutter_build_complete.stamp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire";
+			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire && touch \"$DERIVED_FILE_DIR/flutter_build_complete.stamp\"";
 		};
 		344A83EE5F2037BC92B48637 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
