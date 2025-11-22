@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
 import '../../../providers/sync_provider.dart';
-import '../../../data/database/app_database.dart';
 import '../../../core/config/google_oauth_config.dart';
 
 class StorageSettingsModal extends StatefulWidget {
@@ -14,41 +13,33 @@ class StorageSettingsModal extends StatefulWidget {
       context: context,
       barrierDismissible: true,
       builder: (BuildContext dialogContext) {
-        return Consumer<AppDatabase>(
-          builder: (context, database, _) {
-            return ChangeNotifierProvider(
-              create: (_) => SyncProvider(database),
-              child: Dialog(
-                backgroundColor: Colors.transparent,
-                child: SingleChildScrollView(
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: 480, minHeight: 550),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF0468cc),
-                          Color.fromARGB(150, 3, 73, 153),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(100),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: const StorageSettingsModal(),
-                  ),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480, minHeight: 550),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0468cc),
+                    Color.fromARGB(150, 3, 73, 153),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(100),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            );
-          },
+              padding: const EdgeInsets.all(24),
+              child: const StorageSettingsModal(),
+            ),
+          ),
         );
       },
     );
@@ -198,7 +189,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
               const Spacer(),
               if (_isPlatformSupported)
                 Switch(
-                  value: syncProvider.isSignedIn,
+                  value: syncProvider.isSyncEnabled,
                   onChanged: (value) async {
                     if (value) {
                       await _handleSignIn(syncProvider);
@@ -255,7 +246,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
                 ],
               ),
             )
-          else if (syncProvider.isSignedIn) ...[
+          else if (syncProvider.isSyncEnabled) ...[
             const Text(
               'Your NextChord data is being synced with Google Drive.',
               style: TextStyle(
@@ -294,7 +285,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
           child: const Text('Close'),
         ),
         const Spacer(),
-        if (syncProvider.isSignedIn)
+        if (syncProvider.isSyncEnabled)
           TextButton.icon(
             onPressed: syncProvider.isSyncing
                 ? null

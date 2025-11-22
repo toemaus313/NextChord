@@ -1,25 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../services/sync/google_drive_sync_service.dart';
 import '../data/database/app_database.dart';
 
 class SyncProvider with ChangeNotifier {
+  static const String _syncEnabledKey = 'isSyncEnabled';
   final GoogleDriveSyncService _syncService;
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
   String? _lastError;
   bool _isSignedIn = false;
+  bool _isSyncEnabled = false;
   Timer? _periodicSyncTimer;
+  SharedPreferences? _prefs;
 
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncTime => _lastSyncTime;
   String? get lastError => _lastError;
   bool get isSignedIn => _isSignedIn;
+  bool get isSyncEnabled => _isSyncEnabled;
 
   SyncProvider(AppDatabase database)
       : _syncService = GoogleDriveSyncService(database) {
+    _loadSyncPreference();
     _startPeriodicSync();
+  }
+
+  /// Load sync preference from SharedPreferences
+  Future<void> _loadSyncPreference() async {
+    _prefs = await SharedPreferences.getInstance();
+    _isSyncEnabled = _prefs?.getBool(_syncEnabledKey) ?? false;
+
+    // If sync was previously enabled, try to restore sign-in state
+    if (_isSyncEnabled) {
+      try {
+        _isSignedIn = await _syncService.isSignedIn();
+        if (!_isSignedIn) {
+          // If we're no longer signed in, disable sync
+          _isSyncEnabled = false;
+          await _prefs?.setBool(_syncEnabledKey, false);
+        }
+      } catch (e) {
+        debugPrint('Failed to check sign-in status: $e');
+        _isSyncEnabled = false;
+        await _prefs?.setBool(_syncEnabledKey, false);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Enable or disable sync
+  Future<void> setSyncEnabled(bool enabled) async {
+    if (_isSyncEnabled == enabled) return;
+
+    _isSyncEnabled = enabled;
+    await _prefs?.setBool(_syncEnabledKey, enabled);
+
+    if (!enabled) {
+      // If disabling sync, sign out
+      await signOut();
+    }
+
+    notifyListeners();
   }
 
   void _startPeriodicSync() {
@@ -31,13 +75,13 @@ class SyncProvider with ChangeNotifier {
   }
 
   Future<void> _performPeriodicSync() async {
-    if (_isSignedIn && !_isSyncing) {
+    if (_isSignedIn && _isSyncEnabled && !_isSyncing) {
       await autoSync();
     }
   }
 
   Future<void> autoSync() async {
-    if (!_isSignedIn || _isSyncing) return;
+    if (!_isSignedIn || !_isSyncEnabled || _isSyncing) return;
 
     try {
       await _syncService.sync();
@@ -57,6 +101,8 @@ class SyncProvider with ChangeNotifier {
 
       _isSignedIn = await _syncService.signIn();
       if (_isSignedIn) {
+        // Enable sync when successfully signed in
+        await setSyncEnabled(true);
         await handleInitialSync();
       }
       return _isSignedIn;
@@ -77,6 +123,8 @@ class SyncProvider with ChangeNotifier {
 
       await _syncService.signOut();
       _isSignedIn = false;
+      _isSyncEnabled = false;
+      await _prefs?.setBool(_syncEnabledKey, false);
       _lastSyncTime = null;
       _lastError = null;
     } catch (e) {
