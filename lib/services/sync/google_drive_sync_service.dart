@@ -346,6 +346,32 @@ class GoogleDriveSyncService {
 
   Future<void> sync() async {
     try {
+      // CRITICAL: Check for sync failure marker to prevent empty DB uploads
+      final localDbPath = await _getLocalDatabasePath();
+      final markerFile = File('$localDbPath.sync_failed');
+      if (await markerFile.exists()) {
+        final markerContent = await markerFile.readAsString();
+        print('DEBUG: Sync failure marker found: $markerContent');
+
+        // Check if marker is older than 24 hours (auto-cleanup for transient failures)
+        try {
+          final markerStat = await markerFile.stat();
+          final markerAge = DateTime.now().difference(markerStat.modified);
+          if (markerAge.inHours > 24) {
+            print(
+                'DEBUG: Sync failure marker is older than 24 hours, auto-cleaning up');
+            await markerFile.delete();
+          } else {
+            throw Exception(
+                'Previous sync failed within the last 24 hours. Please check internet connection and try again. If the issue persists, delete the marker file at $localDbPath.sync_failed to force sync.');
+          }
+        } catch (statError) {
+          // If we can't read file stats, treat as recent failure
+          throw Exception(
+              'Previous sync failed. Please check internet connection and try again, or delete the marker file at $localDbPath.sync_failed to force sync.');
+        }
+      }
+
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
@@ -361,9 +387,6 @@ class GoogleDriveSyncService {
         throw Exception('Failed to create/find backup folder');
       }
 
-      // Get local database path
-      final localDbPath = await _getLocalDatabasePath();
-
       // Download and merge remote database bidirectionally
       await _bidirectionalMergeDatabase(driveApi, folderId, localDbPath);
 
@@ -373,6 +396,12 @@ class GoogleDriveSyncService {
         'platform': defaultTargetPlatform.toString(),
         'device_id': await _getDeviceId(),
       });
+
+      // Clean up sync failure marker on successful sync
+      if (await markerFile.exists()) {
+        await markerFile.delete();
+        print('DEBUG: Sync failure marker cleaned up after successful sync');
+      }
     } catch (e) {
       rethrow;
     }
@@ -386,6 +415,12 @@ class GoogleDriveSyncService {
   Future<void> _bidirectionalMergeDatabase(
       drive.DriveApi driveApi, String folderId, String localDbPath) async {
     try {
+      // DEBUG: Log database state at start
+      final localDbFile = File(localDbPath);
+      final localExists = await localDbFile.exists();
+      final localSize = localExists ? await localDbFile.length() : 0;
+      print('DEBUG: Local DB exists: $localExists, size: $localSize bytes');
+
       // Initialize databaseFactory for Windows (only once)
       if (_isWindows && !_databaseFactoryInitialized) {
         sqlite.databaseFactory = databaseFactoryFfi;
@@ -393,8 +428,8 @@ class GoogleDriveSyncService {
       }
 
       // Check if local database exists and get its content
-      final localDbFile = File(localDbPath);
-      bool localDbExists = await localDbFile.exists();
+      bool localDbExists = localExists && localSize > 0;
+      print('DEBUG: localDbExists after size check: $localDbExists');
 
       // EMERGENCY BACKUP: Create backup of local database before any merge
       String? backupPath;
@@ -434,6 +469,14 @@ class GoogleDriveSyncService {
       final existingMetadataFile =
           await _findExistingFile(driveApi, folderId, _syncMetadataFile);
       if (existingMetadataFile == null) {
+        return;
+      }
+
+      // CRITICAL FIX: If local database doesn't exist, download remote directly without merge
+      if (!localDbExists) {
+        print('DEBUG: Local DB empty, calling _downloadRemoteDatabase');
+        await _downloadRemoteDatabase(driveApi, existingDbFile, localDbPath);
+        print('DEBUG: _downloadRemoteDatabase completed');
         return;
       }
 
@@ -545,6 +588,31 @@ class GoogleDriveSyncService {
         return;
       }
     } catch (e) {}
+  }
+
+  Future<void> _downloadRemoteDatabase(
+      drive.DriveApi driveApi, drive.File remoteFile, String localPath) async {
+    try {
+      // Initialize databaseFactory for Windows (only once)
+      if (_isWindows && !_databaseFactoryInitialized) {
+        sqlite.databaseFactory = databaseFactoryFfi;
+        _databaseFactoryInitialized = true;
+      }
+
+      final response = await driveApi.files.get(remoteFile.id!,
+          downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
+
+      // Download directly to local path
+      final localFile = File(localPath);
+      await response.stream.pipe(localFile.openWrite());
+
+      // Validate the downloaded database
+      if (!await _validateDatabase(localPath)) {
+        throw Exception('Downloaded database is invalid');
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> _performBidirectionalMerge(
