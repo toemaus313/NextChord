@@ -638,17 +638,19 @@ class GoogleDriveSyncService {
       // Add remote records
       for (final song in remoteSongs) {
         final songId = song['id'] as String;
-        // Skip remote song if it was permanently deleted locally (doesn't exist in localSongs)
+        // Only include remote song if it still exists locally (wasn't permanently deleted)
         if (localSongIds.contains(songId)) {
           allSongs[songId] = song;
-        } else {}
+        }
+        // If song doesn't exist locally, it was permanently deleted - don't add it back
       }
       for (final setlist in remoteSetlists) {
         final setlistId = setlist['id'] as String;
-        // Skip remote setlist if it was permanently deleted locally (doesn't exist in localSetlists)
+        // Only include remote setlist if it still exists locally (wasn't permanently deleted)
         if (localSetlistIds.contains(setlistId)) {
           allSetlists[setlistId] = setlist;
-        } else {}
+        }
+        // If setlist doesn't exist locally, it was permanently deleted - don't add it back
       }
 
       // Add/update with local records (keeping newest, but respecting deletions)

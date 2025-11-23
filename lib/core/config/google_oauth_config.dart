@@ -26,8 +26,9 @@ class GoogleOAuthConfig {
   // Get the appropriate client ID for the current platform
   static String get clientId {
     if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android) {
-      return iosClientId; // Mobile platforms use iOS client ID
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return iosClientId; // Mobile and macOS platforms use iOS client ID
     } else {
       return desktopClientId; // Desktop/Web platforms use desktop client ID
     }
@@ -36,8 +37,9 @@ class GoogleOAuthConfig {
   // Get the appropriate client secret for the current platform
   static String get clientSecret {
     if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android) {
-      // Mobile platforms don't use client secret, but return desktop one for consistency
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      // Mobile and macOS platforms don't use client secret, but return desktop one for consistency
       return desktopClientSecret;
     } else {
       return desktopClientSecret;
