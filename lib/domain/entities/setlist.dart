@@ -8,6 +8,7 @@ class Setlist extends Equatable {
   final String notes;
   final String? imagePath;
   final bool setlistSpecificEditsEnabled;
+  final bool isDeleted;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,6 +19,7 @@ class Setlist extends Equatable {
     required this.notes,
     this.imagePath,
     required this.setlistSpecificEditsEnabled,
+    this.isDeleted = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -29,6 +31,7 @@ class Setlist extends Equatable {
     String? notes,
     String? imagePath,
     bool? setlistSpecificEditsEnabled,
+    bool? isDeleted,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -40,6 +43,7 @@ class Setlist extends Equatable {
       imagePath: imagePath ?? this.imagePath,
       setlistSpecificEditsEnabled:
           setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
+      isDeleted: isDeleted ?? this.isDeleted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -53,6 +57,7 @@ class Setlist extends Equatable {
         notes,
         imagePath,
         setlistSpecificEditsEnabled,
+        isDeleted,
         createdAt,
         updatedAt,
       ];

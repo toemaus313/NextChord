@@ -215,9 +215,9 @@ class StroboscopicPatternPainter extends CustomPainter {
   ) {
     // Different colors for each layer
     final colors = [
-      Colors.white.withOpacity(0.3),
-      Colors.blue.withOpacity(0.2),
-      Colors.cyan.withOpacity(0.15),
+      Colors.white.withValues(alpha: 0.3),
+      Colors.blue.withValues(alpha: 0.2),
+      Colors.cyan.withValues(alpha: 0.15),
     ];
 
     paint.color = colors[layer % colors.length];

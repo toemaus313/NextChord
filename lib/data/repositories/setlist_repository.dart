@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
-import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
@@ -21,6 +20,7 @@ class SetlistRepository {
       notes: setlist.notes,
       imagePath: setlist.imagePath,
       setlistSpecificEditsEnabled: setlist.setlistSpecificEditsEnabled,
+      isDeleted: setlist.isDeleted,
       createdAt: setlist.createdAt.millisecondsSinceEpoch,
       updatedAt: setlist.updatedAt.millisecondsSinceEpoch,
     );

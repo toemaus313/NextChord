@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
+import 'dart:math';
+import 'package:flutter/foundation.dart' show debugPrint, ChangeNotifier;
 import 'package:record/record.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
 import 'package:pitchupdart/instrument_type.dart';
@@ -292,7 +292,7 @@ class GuitarTunerService extends ChangeNotifier {
 
   /// Calculate cents difference between two frequencies
   double _calculateCents(double frequency1, double frequency2) {
-    return 1200 * log(frequency1 / frequency2) / ln2;
+    return 1200 * log(frequency1 / frequency2) / log(2);
   }
 
   /// Apply smoothing to reduce jumpiness in tuner readings

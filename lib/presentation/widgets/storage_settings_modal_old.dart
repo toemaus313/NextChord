@@ -125,7 +125,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
+        color: Colors.black.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -275,7 +275,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
-            backgroundColor: Colors.white.withOpacity(0.1),
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),

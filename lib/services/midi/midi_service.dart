@@ -1,10 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
-import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// MIDI Service singleton for managing MIDI device connections and message sending
+
 ///
 /// MIDI (Musical Instrument Digital Interface) is a protocol that allows electronic
 /// musical instruments, computers, and other devices to communicate with each other.
@@ -102,23 +103,20 @@ class MidiService with ChangeNotifier {
     }
 
     final tickCount = tickTimestamps.length;
-    double actualIntervalMs;
     if (tickCount < 2) {
-      actualIntervalMs = clockInterval.inMilliseconds.toDouble();
-    } else {
-      var totalInterval = 0.0;
-      for (var i = 1; i < tickCount; i++) {
-        totalInterval += tickTimestamps[i]
-                .difference(tickTimestamps[i - 1])
-                .inMicroseconds
-                .toDouble() /
-            1000;
-      }
-      actualIntervalMs = totalInterval / (tickCount - 1);
+      return;
     }
 
-    final actualBpm =
-        actualIntervalMs > 0 ? 60000 / (actualIntervalMs * 24) : effectiveBpm;
+    var totalInterval = 0.0;
+    for (var i = 1; i < tickCount; i++) {
+      totalInterval += tickTimestamps[i]
+              .difference(tickTimestamps[i - 1])
+              .inMicroseconds
+              .toDouble() /
+          1000;
+    }
+    // Calculate actual interval for potential future use
+    totalInterval / (tickCount - 1);
   }
 
   /// Load settings from SharedPreferences
