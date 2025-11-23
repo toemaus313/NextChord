@@ -37,6 +37,8 @@ class MidiMappings extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
+  BoolColumn get isDeleted =>
+      boolean().withDefault(const Constant(false))(); // Soft delete flag
 
   @override
   Set<Column> get primaryKey => {id};
@@ -54,6 +56,8 @@ class MidiProfiles extends Table {
   TextColumn get notes => text().nullable()();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
+  BoolColumn get isDeleted =>
+      boolean().withDefault(const Constant(false))(); // Soft delete flag
 
   @override
   Set<Column> get primaryKey => {id};
@@ -73,6 +77,20 @@ class Setlists extends Table {
   IntColumn get updatedAt => integer()();
   BoolColumn get isDeleted =>
       boolean().withDefault(const Constant(false))(); // Soft delete flag
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Drift table for sync state tracking
+@DataClassName('SyncStateModel')
+class SyncState extends Table {
+  IntColumn get id => integer()(); // Always 1 for singleton row
+  TextColumn get deviceId => text()(); // Unique device identifier
+  IntColumn get lastRemoteVersion => integer()
+      .withDefault(const Constant(0))(); // Last library version from remote
+  DateTimeColumn get lastSyncAt =>
+      dateTime().nullable()(); // Last successful sync timestamp
 
   @override
   Set<Column> get primaryKey => {id};

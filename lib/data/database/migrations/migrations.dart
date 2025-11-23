@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'dart:math';
 import '../app_database.dart';
 
 /// Database migration strategies
@@ -41,6 +42,24 @@ class DatabaseMigrations {
             // Add isDeleted column to setlists table
             final db = m.database as AppDatabase;
             await m.addColumn(db.setlists, db.setlists.isDeleted);
+          }
+          if (from <= 7 && to >= 8) {
+            // Add isDeleted columns to midi_mappings and midi_profiles tables
+            final db = m.database as AppDatabase;
+            await m.addColumn(db.midiMappings, db.midiMappings.isDeleted);
+            await m.addColumn(db.midiProfiles, db.midiProfiles.isDeleted);
+            await m.createTable(db.syncState);
+
+            // Initialize sync state with generated device ID
+            final deviceId = DatabaseMigrations._generateDeviceId();
+            await db.into(db.syncState).insert(
+                  SyncStateCompanion(
+                    id: const Value(1),
+                    deviceId: Value(deviceId),
+                    lastRemoteVersion: const Value(0),
+                    lastSyncAt: const Value(null),
+                  ),
+                );
           }
         },
       );
@@ -183,5 +202,13 @@ class DatabaseMigrations {
       WHERE $joinCondition
       AND remote.updated_at > $tableName.updated_at
     ''');
+  }
+
+  /// Generate a unique device ID for sync tracking
+  static String _generateDeviceId() {
+    final random = Random();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final randomBytes = List<int>.generate(8, (_) => random.nextInt(256));
+    return 'device_${timestamp}_${randomBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}';
   }
 }

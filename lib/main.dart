@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
 import 'data/repositories/setlist_repository.dart';
@@ -19,7 +16,6 @@ import 'presentation/providers/setlist_provider.dart';
 import 'providers/sync_provider.dart';
 import 'services/midi/midi_service.dart';
 import 'core/services/sync_service_locator.dart';
-import 'services/sync/google_drive_sync_service.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
@@ -32,9 +28,6 @@ void main() async {
       overlays: [],
     );
   }
-
-  // CRITICAL FIX: Check if local database exists, sync from cloud if missing
-  await _ensureDatabaseExists();
 
   // Initialize database
   final database = AppDatabase();
@@ -49,6 +42,7 @@ void main() async {
 
   // Initialize SyncProvider with refresh callback to ensure UI updates after sync
   final syncProvider = SyncProvider(
+    database: database,
     onSyncCompleted: () {
       // Refresh data in providers after successful sync
       songProvider.loadSongs();
@@ -138,65 +132,5 @@ class NextChordApp extends StatelessWidget {
         },
       ),
     );
-  }
-}
-
-/// Ensure local database exists, sync from cloud if missing
-Future<void> _ensureDatabaseExists() async {
-  try {
-    // Get database path (same as AppDatabase uses)
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(dbFolder.path, 'nextchord_db.sqlite');
-    final dbFile = File(dbPath);
-
-    print('DEBUG: _ensureDatabaseExists - checking if DB exists at: $dbPath');
-
-    // Check if database file exists and has content
-    if (await dbFile.exists() && await dbFile.length() > 0) {
-      print('DEBUG: Local database exists and has content, skipping sync');
-      return;
-    }
-
-    print(
-        'DEBUG: Local database missing or empty, attempting to sync from cloud');
-
-    // Initialize sync service and attempt to download from cloud
-    await GoogleDriveSyncService.initialize();
-    final syncService = GoogleDriveSyncService();
-
-    // Check if user is signed in
-    final isSignedIn = await syncService.isSignedIn();
-    if (!isSignedIn) {
-      print('DEBUG: User not signed in, will create empty database');
-      return;
-    }
-
-    // Attempt sync to download from cloud
-    print('DEBUG: User signed in, attempting sync to restore database');
-    await syncService.sync();
-
-    // Verify sync actually restored the database
-    if (await dbFile.exists() && await dbFile.length() > 0) {
-      print('DEBUG: Sync completed successfully, database restored');
-    } else {
-      print(
-          'DEBUG: Sync completed but database still missing - sync may have failed silently');
-      // Create a marker file to prevent accidental upload of empty DB
-      final markerFile = File('$dbPath.sync_failed');
-      await markerFile.writeAsString(
-          'sync_failed_at_${DateTime.now().millisecondsSinceEpoch}');
-    }
-  } catch (e) {
-    print('DEBUG: Error in _ensureDatabaseExists: $e');
-    // Create marker file to prevent accidental upload after failed sync
-    try {
-      final dbFolder = await getApplicationDocumentsDirectory();
-      final dbPath = p.join(dbFolder.path, 'nextchord_db.sqlite');
-      final markerFile = File('$dbPath.sync_failed');
-      await markerFile.writeAsString(
-          'sync_failed_at_${DateTime.now().millisecondsSinceEpoch}');
-    } catch (markerError) {
-      print('DEBUG: Failed to create sync failure marker: $markerError');
-    }
   }
 }

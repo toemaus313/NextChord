@@ -2,20 +2,24 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform, VoidCallback;
+    show
+        kIsWeb,
+        defaultTargetPlatform,
+        TargetPlatform,
+        VoidCallback,
+        debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart' as sqlite;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
+import '../../data/database/app_database.dart';
+import 'library_sync_service.dart';
 
 class GoogleDriveSyncService {
   final VoidCallback? _onDatabaseReplaced; // Callback to trigger reconnection
+  final LibrarySyncService _librarySyncService;
 
   static GoogleSignIn? _googleSignIn;
   static String? _windowsAccessToken;
@@ -24,11 +28,12 @@ class GoogleDriveSyncService {
   static HttpServer? _authServer;
 
   // SharedPreferences keys for Windows token persistence
-  static const String _accessTokenKey = 'windows_access_token';
-  static const String _refreshTokenKey = 'windows_refresh_token';
+  static const String _accessTokenKey = 'windows_access_token_v2';
+  static const String _refreshTokenKey = 'windows_refresh_token_v2';
 
-  // Static flag to prevent multiple database factory assignments
-  static bool _databaseFactoryInitialized = false;
+  // Backup configuration
+  static const String _backupFolderName = 'NextChord';
+  static const String _libraryFileName = 'library.json';
 
   static GoogleSignIn get _googleSignInInstance {
     _googleSignIn ??= GoogleSignIn(
@@ -133,13 +138,11 @@ class GoogleDriveSyncService {
     }
   }
 
-  // Backup configuration
-  static const String _backupFolderName = 'NextChord';
-  static const String _backupFileName = 'nextchord_backup.db';
-  static const String _syncMetadataFile = 'sync_metadata.json';
-
-  GoogleDriveSyncService({VoidCallback? onDatabaseReplaced})
-      : _onDatabaseReplaced = onDatabaseReplaced {
+  GoogleDriveSyncService({
+    required AppDatabase database,
+    VoidCallback? onDatabaseReplaced,
+  })  : _onDatabaseReplaced = onDatabaseReplaced,
+        _librarySyncService = LibrarySyncService(database) {
     // Note: Windows tokens will be loaded when needed or explicitly via initialize()
   }
 
@@ -346,32 +349,6 @@ class GoogleDriveSyncService {
 
   Future<void> sync() async {
     try {
-      // CRITICAL: Check for sync failure marker to prevent empty DB uploads
-      final localDbPath = await _getLocalDatabasePath();
-      final markerFile = File('$localDbPath.sync_failed');
-      if (await markerFile.exists()) {
-        final markerContent = await markerFile.readAsString();
-        print('DEBUG: Sync failure marker found: $markerContent');
-
-        // Check if marker is older than 24 hours (auto-cleanup for transient failures)
-        try {
-          final markerStat = await markerFile.stat();
-          final markerAge = DateTime.now().difference(markerStat.modified);
-          if (markerAge.inHours > 24) {
-            print(
-                'DEBUG: Sync failure marker is older than 24 hours, auto-cleaning up');
-            await markerFile.delete();
-          } else {
-            throw Exception(
-                'Previous sync failed within the last 24 hours. Please check internet connection and try again. If the issue persists, delete the marker file at $localDbPath.sync_failed to force sync.');
-          }
-        } catch (statError) {
-          // If we can't read file stats, treat as recent failure
-          throw Exception(
-              'Previous sync failed. Please check internet connection and try again, or delete the marker file at $localDbPath.sync_failed to force sync.');
-        }
-      }
-
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
@@ -387,140 +364,99 @@ class GoogleDriveSyncService {
         throw Exception('Failed to create/find backup folder');
       }
 
-      // Download and merge remote database bidirectionally
-      await _bidirectionalMergeDatabase(driveApi, folderId, localDbPath);
+      // Perform JSON-based sync
+      await _performJsonSync(driveApi, folderId);
 
-      // Upload the merged database to Google Drive
-      await _uploadBackup(driveApi, folderId, localDbPath, {
-        'last_sync': DateTime.now().toIso8601String(),
-        'platform': defaultTargetPlatform.toString(),
-        'device_id': await _getDeviceId(),
-      });
-
-      // Clean up sync failure marker on successful sync
-      if (await markerFile.exists()) {
-        await markerFile.delete();
-        print('DEBUG: Sync failure marker cleaned up after successful sync');
-      }
+      debugPrint('JSON-based sync completed successfully');
     } catch (e) {
+      debugPrint('Sync failed: $e');
       rethrow;
     }
   }
 
-  Future<String> _getDeviceId() async {
-    // Simple device identification using platform and timestamp
-    return '${defaultTargetPlatform.toString()}_${DateTime.now().millisecondsSinceEpoch}';
+  Future<void> _performJsonSync(
+      drive.DriveApi driveApi, String folderId) async {
+    try {
+      // Try to download existing library JSON from Google Drive
+      final existingLibraryFile =
+          await _findExistingFile(driveApi, folderId, _libraryFileName);
+
+      String? remoteJson;
+      if (existingLibraryFile != null) {
+        try {
+          // Download existing remote library
+          final response = await driveApi.files.get(
+            existingLibraryFile.id!,
+            downloadOptions: drive.DownloadOptions.fullMedia,
+          ) as drive.Media;
+
+          final bytes = await response.stream.fold<List<int>>(
+            [],
+            (list, chunk) => list..addAll(chunk),
+          );
+          remoteJson = utf8.decode(bytes);
+
+          // Validate JSON format
+          jsonDecode(remoteJson); // Will throw if invalid
+        } catch (e) {
+          debugPrint('Error reading or parsing remote library JSON: $e');
+          // Treat corrupted remote file as if it doesn't exist
+          remoteJson = null;
+        }
+      }
+
+      // Merge remote library into local database (if remote exists and is valid)
+      if (remoteJson != null && remoteJson.isNotEmpty) {
+        await _librarySyncService.importAndMergeLibraryFromJson(remoteJson);
+      }
+
+      // Export the merged library (now includes remote changes)
+      final mergedJson = await _librarySyncService.exportLibraryToJson();
+
+      // Upload the merged library back to Google Drive
+      await _uploadLibraryJson(driveApi, folderId, mergedJson);
+
+      debugPrint('JSON sync completed successfully');
+    } catch (e) {
+      debugPrint('Error during JSON sync: $e');
+      rethrow;
+    }
   }
 
-  Future<void> _bidirectionalMergeDatabase(
-      drive.DriveApi driveApi, String folderId, String localDbPath) async {
+  Future<void> _uploadLibraryJson(
+      drive.DriveApi driveApi, String folderId, String jsonContent) async {
     try {
-      // DEBUG: Log database state at start
-      final localDbFile = File(localDbPath);
-      final localExists = await localDbFile.exists();
-      final localSize = localExists ? await localDbFile.length() : 0;
-      print('DEBUG: Local DB exists: $localExists, size: $localSize bytes');
+      // Check if file already exists
+      final existingFile =
+          await _findExistingFile(driveApi, folderId, _libraryFileName);
 
-      // Initialize databaseFactory for Windows (only once)
-      if (_isWindows && !_databaseFactoryInitialized) {
-        sqlite.databaseFactory = databaseFactoryFfi;
-        _databaseFactoryInitialized = true;
-      }
+      final media = drive.Media(
+        Stream.value(utf8.encode(jsonContent)),
+        utf8.encode(jsonContent).length,
+      );
 
-      // Check if local database exists and get its content
-      bool localDbExists = localExists && localSize > 0;
-      print('DEBUG: localDbExists after size check: $localDbExists');
-
-      // EMERGENCY BACKUP: Create backup of local database before any merge
-      String? backupPath;
-      if (localDbExists) {
-        backupPath =
-            '$localDbPath.backup_${DateTime.now().millisecondsSinceEpoch}';
-        await File(localDbPath).copy(backupPath);
-      }
-
-      int localSongCount = 0;
-      int localSetlistCount = 0;
-
-      if (localDbExists) {
-        try {
-          final localDb = await sqlite.openDatabase(localDbPath);
-          final songResult =
-              await localDb.rawQuery('SELECT COUNT(*) as count FROM songs');
-          final setlistResult =
-              await localDb.rawQuery('SELECT COUNT(*) as count FROM setlists');
-          localSongCount = int.parse(songResult.first['count'].toString());
-          localSetlistCount =
-              int.parse(setlistResult.first['count'].toString());
-          await localDb.close();
-        } catch (e) {
-          localDbExists = false;
-        }
-      }
-
-      // Find existing database file
-      final existingDbFile =
-          await _findExistingFile(driveApi, folderId, _backupFileName);
-      if (existingDbFile == null) {
-        return;
-      }
-
-      // Find existing metadata file
-      final existingMetadataFile =
-          await _findExistingFile(driveApi, folderId, _syncMetadataFile);
-      if (existingMetadataFile == null) {
-        return;
-      }
-
-      // CRITICAL FIX: If local database doesn't exist, download remote directly without merge
-      if (!localDbExists) {
-        print('DEBUG: Local DB empty, calling _downloadRemoteDatabase');
-        await _downloadRemoteDatabase(driveApi, existingDbFile, localDbPath);
-        print('DEBUG: _downloadRemoteDatabase completed');
-        return;
-      }
-
-      // Download metadata to check timestamps
-      final metadataResponse = await driveApi.files.get(
-          existingMetadataFile.id!,
-          downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
-      final metadataBytes = await metadataResponse.stream
-          .fold<List<int>>([], (list, chunk) => list..addAll(chunk));
-      final metadata =
-          jsonDecode(utf8.decode(metadataBytes)) as Map<String, dynamic>;
-
-      final remoteLastSync = DateTime.parse(metadata['last_sync'] as String);
-      final localLastModified = await File(localDbPath).lastModified();
-
-      // EMERGENCY: Validate remote database content before merge
-      await _performBidirectionalMerge(driveApi, existingDbFile, localDbPath);
-
-      // Verify merge didn't lose data
-      final postMergeDb = await sqlite.openDatabase(localDbPath);
-      final postMergeSongCount =
-          await postMergeDb.rawQuery('SELECT COUNT(*) as count FROM songs');
-      final postMergeSetlistCount =
-          await postMergeDb.rawQuery('SELECT COUNT(*) as count FROM setlists');
-      await postMergeDb.close();
-
-      // EMERGENCY: Restore from backup if data was lost
-      final finalSongCount =
-          int.parse(postMergeSongCount.first['count'].toString());
-      final finalSetlistCount =
-          int.parse(postMergeSetlistCount.first['count'].toString());
-
-      if (finalSongCount < localSongCount ||
-          finalSetlistCount < localSetlistCount) {
-        if (backupPath != null) {
-          await File(localDbPath).delete();
-          await File(backupPath).copy(localDbPath);
-        }
+      if (existingFile != null) {
+        // Update existing file content (minimal metadata to avoid read-only field errors)
+        await driveApi.files.update(
+          drive.File(), // Empty metadata - only updating content, not metadata
+          existingFile.id!,
+          uploadMedia: media,
+        );
       } else {
-        if (backupPath != null) {
-          await File(backupPath).delete(); // Clean up backup only if it existed
-        }
+        // Create new file
+        final fileMetadata = drive.File()
+          ..name = _libraryFileName
+          ..parents = [folderId];
+
+        await driveApi.files.create(
+          fileMetadata,
+          uploadMedia: media,
+        );
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error uploading library JSON: $e');
+      rethrow;
+    }
   }
 
   Future<drive.File?> _findExistingFile(
@@ -565,21 +501,6 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<String> _getLocalDatabasePath() async {
-    try {
-      // Use the same path as AppDatabase _openConnection()
-      final dbFolder = await getApplicationDocumentsDirectory();
-      final dbPath = p.join(dbFolder.path, 'nextchord_db.sqlite');
-
-      // Check if the database file exists
-      final dbFile = File(dbPath);
-
-      return dbPath; // Always return path, even if file doesn't exist
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   Future<void> handleInitialSync() async {
     try {
       // Check authentication status
@@ -588,370 +509,6 @@ class GoogleDriveSyncService {
         return;
       }
     } catch (e) {}
-  }
-
-  Future<void> _downloadRemoteDatabase(
-      drive.DriveApi driveApi, drive.File remoteFile, String localPath) async {
-    try {
-      // Initialize databaseFactory for Windows (only once)
-      if (_isWindows && !_databaseFactoryInitialized) {
-        sqlite.databaseFactory = databaseFactoryFfi;
-        _databaseFactoryInitialized = true;
-      }
-
-      final response = await driveApi.files.get(remoteFile.id!,
-          downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
-
-      // Download directly to local path
-      final localFile = File(localPath);
-      await response.stream.pipe(localFile.openWrite());
-
-      // Validate the downloaded database
-      if (!await _validateDatabase(localPath)) {
-        throw Exception('Downloaded database is invalid');
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<void> _performBidirectionalMerge(
-      drive.DriveApi driveApi, drive.File remoteFile, String localPath) async {
-    final response = await driveApi.files.get(remoteFile.id!,
-        downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
-
-    // Download to temporary file
-    final tempPath = '$localPath.remote';
-    final tempFile = File(tempPath);
-
-    await response.stream.pipe(tempFile.openWrite());
-
-    // Validate the downloaded file
-    if (await _validateDatabase(tempPath)) {
-      // Perform bidirectional merge: merge remote into local AND local into remote
-      await _bidirectionalMergeData(tempPath, localPath);
-
-      // Clean up temporary file
-      await tempFile.delete();
-    } else {
-      await tempFile.delete();
-    }
-  }
-
-  // Helper function to safely parse timestamps from mixed formats
-  DateTime _parseTimestamp(dynamic timestamp) {
-    if (timestamp == null) {
-      return DateTime.now(); // Fallback to current time
-    }
-
-    if (timestamp is DateTime) {
-      return timestamp;
-    }
-
-    if (timestamp is String) {
-      try {
-        return DateTime.parse(timestamp);
-      } catch (e) {
-        return DateTime.now();
-      }
-    }
-
-    if (timestamp is int) {
-      try {
-        return DateTime.fromMillisecondsSinceEpoch(timestamp);
-      } catch (e) {
-        return DateTime.now();
-      }
-    }
-
-    return DateTime.now();
-  }
-
-  Future<void> _bidirectionalMergeData(
-      String remoteDbPath, String localDbPath) async {
-    try {
-      // Initialize databaseFactory for Windows (only once)
-      if (_isWindows && !_databaseFactoryInitialized) {
-        sqlite.databaseFactory = databaseFactoryFfi;
-        _databaseFactoryInitialized = true;
-      }
-
-      // Check if local database file exists
-      final localDbFile = File(localDbPath);
-      if (!await localDbFile.exists()) {
-        await File(remoteDbPath).copy(localDbPath);
-        return;
-      }
-
-      // Open both databases
-      final remoteDb = await sqlite.openDatabase(remoteDbPath);
-      final localDb = await sqlite.openDatabase(localDbPath);
-
-      // Get all data from both databases
-      final remoteSongs = await remoteDb.rawQuery('SELECT * FROM songs');
-      final localSongs = await localDb.rawQuery('SELECT * FROM songs');
-      final remoteSetlists = await remoteDb.rawQuery('SELECT * FROM setlists');
-      final localSetlists = await localDb.rawQuery('SELECT * FROM setlists');
-
-      // Create sets of local record IDs to track what exists locally
-      final localSongIds =
-          localSongs.map((song) => song['id'] as String).toSet();
-      final localSetlistIds =
-          localSetlists.map((setlist) => setlist['id'] as String).toSet();
-
-      // Create a map of all records by ID with their timestamps
-      final allSongs = <String, Map<String, dynamic>>{};
-      final allSetlists = <String, Map<String, dynamic>>{};
-
-      // Add remote records
-      for (final song in remoteSongs) {
-        final songId = song['id'] as String;
-        // Only include remote song if it still exists locally (wasn't permanently deleted)
-        if (localSongIds.contains(songId)) {
-          allSongs[songId] = song;
-        }
-        // If song doesn't exist locally, it was permanently deleted - don't add it back
-      }
-      for (final setlist in remoteSetlists) {
-        final setlistId = setlist['id'] as String;
-        // Only include remote setlist if it still exists locally (wasn't permanently deleted)
-        if (localSetlistIds.contains(setlistId)) {
-          allSetlists[setlistId] = setlist;
-        }
-        // If setlist doesn't exist locally, it was permanently deleted - don't add it back
-      }
-
-      // Add/update with local records (keeping newest, but respecting deletions)
-      for (final song in localSongs) {
-        final songId = song['id'] as String;
-        final localUpdated = _parseTimestamp(song['updated_at']);
-        final localIsDeleted =
-            song['is_deleted'] == 1 || song['is_deleted'] == true;
-
-        if (allSongs.containsKey(songId)) {
-          final remoteUpdated =
-              _parseTimestamp(allSongs[songId]!['updated_at']);
-          final remoteIsDeleted = allSongs[songId]!['is_deleted'] == 1 ||
-              allSongs[songId]!['is_deleted'] == true;
-
-          // If either version is deleted, the most recent deletion wins
-          if (localIsDeleted && remoteIsDeleted) {
-            // Both deleted - keep the most recently deleted version
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSongs[songId] = song;
-            }
-          } else if (localIsDeleted) {
-            // Local is deleted, remote is not - if local deletion is newer, keep deletion
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSongs[songId] = song;
-            }
-          } else if (remoteIsDeleted) {
-            // Remote is deleted, local is not - keep local version unless remote deletion is newer
-            if (remoteUpdated.isAfter(localUpdated)) {
-              allSongs[songId] = allSongs[songId]!;
-            } else {
-              // Local restoration wins - keep local version
-              allSongs[songId] = song;
-            }
-          } else {
-            // Neither deleted - keep newest version
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSongs[songId] = song;
-            }
-          }
-        } else {
-          allSongs[songId] = song;
-        }
-      }
-
-      for (final setlist in localSetlists) {
-        final setlistId = setlist['id'] as String;
-        final localUpdated = _parseTimestamp(setlist['updated_at']);
-        final localIsDeleted =
-            setlist['is_deleted'] == 1 || setlist['is_deleted'] == true;
-
-        if (allSetlists.containsKey(setlistId)) {
-          final remoteUpdated =
-              _parseTimestamp(allSetlists[setlistId]!['updated_at']);
-          final remoteIsDeleted = allSetlists[setlistId]!['is_deleted'] == 1 ||
-              allSetlists[setlistId]!['is_deleted'] == true;
-
-          // If either version is deleted, the most recent deletion wins
-          if (localIsDeleted && remoteIsDeleted) {
-            // Both deleted - keep the most recently deleted version
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSetlists[setlistId] = setlist;
-            }
-          } else if (localIsDeleted) {
-            // Local is deleted, remote is not - if local deletion is newer, keep deletion
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSetlists[setlistId] = setlist;
-            }
-          } else if (remoteIsDeleted) {
-            // Remote is deleted, local is not - if remote deletion is newer, keep deletion
-            if (!localUpdated.isAfter(remoteUpdated)) {
-              allSetlists[setlistId] = allSetlists[setlistId]!;
-            }
-          } else {
-            // Neither deleted - keep newest version
-            if (localUpdated.isAfter(remoteUpdated)) {
-              allSetlists[setlistId] = setlist;
-            }
-          }
-        } else {
-          allSetlists[setlistId] = setlist;
-        }
-      }
-
-      // Safety check: don't proceed if we have no data to merge
-      if (allSongs.isEmpty && allSetlists.isEmpty) {
-        await remoteDb.close();
-        await localDb.close();
-        return;
-      }
-
-      // Get local schema to check which columns exist
-      final localSongSchema =
-          await localDb.rawQuery("PRAGMA table_info(songs)");
-      final localSetlistSchema =
-          await localDb.rawQuery("PRAGMA table_info(setlists)");
-      final localSongColumns =
-          localSongSchema.map((col) => col['name'] as String).toSet();
-      final localSetlistColumns =
-          localSetlistSchema.map((col) => col['name'] as String).toSet();
-
-      // Filter records to only include columns that exist in local schema
-      final filteredSongs = allSongs.values.map((song) {
-        final filteredSong = <String, dynamic>{};
-        for (final entry in song.entries) {
-          if (localSongColumns.contains(entry.key)) {
-            filteredSong[entry.key] = entry.value;
-          }
-        }
-        return filteredSong;
-      }).toList();
-
-      final filteredSetlists = allSetlists.values.map((setlist) {
-        final filteredSetlist = <String, dynamic>{};
-        for (final entry in setlist.entries) {
-          if (localSetlistColumns.contains(entry.key)) {
-            filteredSetlist[entry.key] = entry.value;
-          }
-        }
-        return filteredSetlist;
-      }).toList();
-
-      // Use transaction to ensure atomic operation
-      await localDb.transaction((txn) async {
-        try {
-          // Clear local tables and insert merged data
-          await txn.delete('songs');
-          await txn.delete('setlists');
-
-          for (final song in filteredSongs) {
-            await txn.insert('songs', song);
-          }
-
-          for (final setlist in filteredSetlists) {
-            await txn.insert('setlists', setlist);
-          }
-        } catch (e) {
-          rethrow; // This will rollback the transaction
-        }
-      });
-
-      // Close databases
-      await remoteDb.close();
-      await localDb.close();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<bool> _validateDatabase(String dbPath) async {
-    try {
-      // Initialize databaseFactory for Windows (only once)
-      if (_isWindows && !_databaseFactoryInitialized) {
-        sqlite.databaseFactory = databaseFactoryFfi;
-        _databaseFactoryInitialized = true;
-      }
-
-      final db = await sqlite.openDatabase(dbPath);
-      // Simple validation: check if main table exists
-      final result = await db.rawQuery(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='songs'");
-      await db.close();
-      return result.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<void> _uploadBackup(drive.DriveApi driveApi, String folderId,
-      String localDbPath, Map<String, dynamic> metadata) async {
-    // Upload database file
-    final dbFile = File(localDbPath);
-    final dbStream = dbFile.openRead();
-
-    // Check if database file already exists
-    final existingDbFile =
-        await _findExistingFile(driveApi, folderId, _backupFileName);
-
-    drive.File uploadedDb;
-    if (existingDbFile != null) {
-      // Update existing file (parents field not allowed in update)
-      uploadedDb = await driveApi.files.update(
-        drive.File()..name = _backupFileName,
-        existingDbFile.id!,
-        uploadMedia: drive.Media(dbStream, dbFile.lengthSync()),
-      );
-    } else {
-      // Create new file
-      final dbMetadata = drive.File()
-        ..name = _backupFileName
-        ..parents = [folderId];
-
-      uploadedDb = await driveApi.files.create(
-        dbMetadata,
-        uploadMedia: drive.Media(dbStream, dbFile.lengthSync()),
-      );
-    }
-
-    // Update and upload metadata
-    metadata['lastSync'] = DateTime.now().toIso8601String();
-    metadata['databaseFileId'] = uploadedDb.id;
-
-    final metadataContent = utf8.encode(jsonEncode(metadata));
-    final metadataStream = Stream.value(metadataContent);
-
-    // Check if metadata file already exists
-    final existingMetadataFile =
-        await _findExistingFile(driveApi, folderId, _syncMetadataFile);
-
-    drive.File uploadedMetadata;
-    if (existingMetadataFile != null) {
-      // Update existing metadata file
-      uploadedMetadata = await driveApi.files.update(
-        drive.File()..name = _syncMetadataFile,
-        existingMetadataFile.id!,
-        uploadMedia: drive.Media(metadataStream, metadataContent.length),
-      );
-    } else {
-      // Create new metadata file
-      final metadataFile = drive.File()
-        ..name = _syncMetadataFile
-        ..parents = [folderId];
-
-      uploadedMetadata = await driveApi.files.create(
-        metadataFile,
-        uploadMedia: drive.Media(metadataStream, metadataContent.length),
-      );
-    }
-  }
-
-  /// Reset the GoogleSignIn instance (useful for testing and switching auth modes)
-  static void resetGoogleSignInInstance() {
-    _googleSignInInstance.signOut();
   }
 }
 

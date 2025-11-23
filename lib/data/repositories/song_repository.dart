@@ -267,6 +267,7 @@ class SongRepository {
                 createdAt: DateTime.now()
                     .millisecondsSinceEpoch, // Use current time since domain entity doesn't have createdAt
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
+                isDeleted: false, // Default to false for active mappings
               ),
             );
       } else {
@@ -282,6 +283,7 @@ class SongRepository {
                 notes: midiMapping.notes,
                 createdAt: DateTime.now().millisecondsSinceEpoch,
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
+                isDeleted: false, // Default to false for active mappings
               ),
             );
       }
@@ -369,6 +371,7 @@ class SongRepository {
                 notes: profile.notes,
                 createdAt: existingProfile.createdAt.millisecondsSinceEpoch,
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
+                isDeleted: false, // Default to false for active profiles
               ),
             );
       } else {
@@ -382,6 +385,7 @@ class SongRepository {
                 notes: profile.notes,
                 createdAt: DateTime.now().millisecondsSinceEpoch,
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
+                isDeleted: false, // Default to false for active profiles
               ),
             );
       }

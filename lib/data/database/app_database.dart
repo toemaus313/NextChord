@@ -4,18 +4,19 @@ import 'package:path_provider/path_provider.dart';
 import 'package:drift/native.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'tables/tables.dart';
 import 'migrations/migrations.dart';
 
 part 'app_database.g.dart';
 
 /// Main Drift database
-@DriftDatabase(tables: [Songs, Setlists, MidiMappings, MidiProfiles])
+@DriftDatabase(tables: [Songs, Setlists, MidiMappings, MidiProfiles, SyncState])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;
@@ -29,6 +30,16 @@ class AppDatabase extends _$AppDatabase {
   Future<List<SongModel>> getAllSongs() {
     return (select(songs)
           ..where((tbl) => tbl.isDeleted.equals(false))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
+          ]))
+        .get();
+  }
+
+  /// Get all songs including deleted ones (for sync)
+  Future<List<SongModel>> getAllSongsIncludingDeleted() {
+    return (select(songs)
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
@@ -183,6 +194,16 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  /// Get all setlists including deleted ones (for sync)
+  Future<List<SetlistModel>> getAllSetlistsIncludingDeleted() {
+    return (select(setlists)
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
+          ]))
+        .get();
+  }
+
   /// Get setlist by ID
   Future<SetlistModel?> getSetlistById(String id) {
     return (select(setlists)
@@ -263,6 +284,48 @@ class AppDatabase extends _$AppDatabase {
   /// Delete all songs (use with caution!)
   Future<void> deleteAllSongs() async {
     await delete(songs).go();
+  }
+
+  /// Get sync state (singleton row with id=1)
+  Future<SyncStateModel?> getSyncState() async {
+    return (select(syncState)..where((tbl) => tbl.id.equals(1)))
+        .getSingleOrNull();
+  }
+
+  /// Update sync state
+  Future<void> updateSyncState({
+    required int lastRemoteVersion,
+    DateTime? lastSyncAt,
+  }) async {
+    await (update(syncState)..where((tbl) => tbl.id.equals(1))).write(
+      SyncStateCompanion(
+        lastRemoteVersion: Value(lastRemoteVersion),
+        lastSyncAt: Value(lastSyncAt),
+      ),
+    );
+  }
+
+  /// Initialize sync state if it doesn't exist
+  Future<void> initializeSyncState() async {
+    final existing = await getSyncState();
+    if (existing == null) {
+      await into(syncState).insert(
+        SyncStateCompanion(
+          id: const Value(1),
+          deviceId: Value(_generateDeviceId()),
+          lastRemoteVersion: const Value(0),
+          lastSyncAt: const Value(null),
+        ),
+      );
+    }
+  }
+
+  /// Generate a unique device ID
+  String _generateDeviceId() {
+    final random = Random();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final randomBytes = List<int>.generate(8, (_) => random.nextInt(256));
+    return 'device_${timestamp}_${randomBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}';
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
+import '../data/database/app_database.dart';
 
 class SyncProvider with ChangeNotifier {
   static const String _syncEnabledKey = 'isSyncEnabled';
@@ -14,6 +15,7 @@ class SyncProvider with ChangeNotifier {
   bool _isSyncEnabled = false;
   Timer? _periodicSyncTimer;
   SharedPreferences? _prefs;
+  final AppDatabase _database;
 
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncTime => _lastSyncTime;
@@ -21,13 +23,17 @@ class SyncProvider with ChangeNotifier {
   bool get isSignedIn => _isSignedIn;
   bool get isSyncEnabled => _isSyncEnabled;
 
-  SyncProvider({VoidCallback? onSyncCompleted})
-      : _onSyncCompleted = onSyncCompleted {
+  SyncProvider({
+    required AppDatabase database,
+    VoidCallback? onSyncCompleted,
+  })  : _database = database,
+        _onSyncCompleted = onSyncCompleted {
     try {
       // Initialize Google Drive sync service (loads Windows tokens for persistence)
       GoogleDriveSyncService.initialize().then((_) {}).catchError((e) {});
 
       _syncService = GoogleDriveSyncService(
+        database: database,
         onDatabaseReplaced: () {
           if (_onSyncCompleted != null) {
             _onSyncCompleted!();
@@ -181,11 +187,16 @@ class SyncProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Check if user is signed in before attempting sync
+      if (!await _syncService.isSignedIn()) {
+        _lastError = 'Please sign in to Google Drive to sync your library';
+        return;
+      }
+
       await _syncService.sync();
       _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
-      rethrow;
     } finally {
       _isSyncing = false;
       notifyListeners();

@@ -1248,6 +1248,16 @@ class $MidiMappingsTable extends MidiMappings
   late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1257,7 +1267,8 @@ class $MidiMappingsTable extends MidiMappings
         timing,
         notes,
         createdAt,
-        updatedAt
+        updatedAt,
+        isDeleted
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1312,6 +1323,10 @@ class $MidiMappingsTable extends MidiMappings
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
     return context;
   }
 
@@ -1337,6 +1352,8 @@ class $MidiMappingsTable extends MidiMappings
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
     );
   }
 
@@ -1356,6 +1373,7 @@ class MidiMappingModel extends DataClass
   final String? notes;
   final int createdAt;
   final int updatedAt;
+  final bool isDeleted;
   const MidiMappingModel(
       {required this.id,
       required this.songId,
@@ -1364,7 +1382,8 @@ class MidiMappingModel extends DataClass
       required this.timing,
       this.notes,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.isDeleted});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1380,6 +1399,7 @@ class MidiMappingModel extends DataClass
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -1396,6 +1416,7 @@ class MidiMappingModel extends DataClass
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -1412,6 +1433,7 @@ class MidiMappingModel extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -1426,6 +1448,7 @@ class MidiMappingModel extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -1437,7 +1460,8 @@ class MidiMappingModel extends DataClass
           bool? timing,
           Value<String?> notes = const Value.absent(),
           int? createdAt,
-          int? updatedAt}) =>
+          int? updatedAt,
+          bool? isDeleted}) =>
       MidiMappingModel(
         id: id ?? this.id,
         songId: songId ?? this.songId,
@@ -1449,6 +1473,7 @@ class MidiMappingModel extends DataClass
         notes: notes.present ? notes.value : this.notes,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
   MidiMappingModel copyWithCompanion(MidiMappingsCompanion data) {
     return MidiMappingModel(
@@ -1464,6 +1489,7 @@ class MidiMappingModel extends DataClass
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -1477,14 +1503,15 @@ class MidiMappingModel extends DataClass
           ..write('timing: $timing, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, songId, programChangeNumber,
-      controlChanges, timing, notes, createdAt, updatedAt);
+      controlChanges, timing, notes, createdAt, updatedAt, isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1496,7 +1523,8 @@ class MidiMappingModel extends DataClass
           other.timing == this.timing &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
 }
 
 class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
@@ -1508,6 +1536,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
   final Value<String?> notes;
   final Value<int> createdAt;
   final Value<int> updatedAt;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const MidiMappingsCompanion({
     this.id = const Value.absent(),
@@ -1518,6 +1547,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MidiMappingsCompanion.insert({
@@ -1529,6 +1559,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
     this.notes = const Value.absent(),
     required int createdAt,
     required int updatedAt,
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         songId = Value(songId),
@@ -1543,6 +1574,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
     Expression<String>? notes,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1555,6 +1587,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1568,6 +1601,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
       Value<String?>? notes,
       Value<int>? createdAt,
       Value<int>? updatedAt,
+      Value<bool>? isDeleted,
       Value<int>? rowid}) {
     return MidiMappingsCompanion(
       id: id ?? this.id,
@@ -1578,6 +1612,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1609,6 +1644,9 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1626,6 +1664,7 @@ class MidiMappingsCompanion extends UpdateCompanion<MidiMappingModel> {
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1688,6 +1727,16 @@ class $MidiProfilesTable extends MidiProfiles
   late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1697,7 +1746,8 @@ class $MidiProfilesTable extends MidiProfiles
         timing,
         notes,
         createdAt,
-        updatedAt
+        updatedAt,
+        isDeleted
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1752,6 +1802,10 @@ class $MidiProfilesTable extends MidiProfiles
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
     return context;
   }
 
@@ -1777,6 +1831,8 @@ class $MidiProfilesTable extends MidiProfiles
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
     );
   }
 
@@ -1796,6 +1852,7 @@ class MidiProfileModel extends DataClass
   final String? notes;
   final int createdAt;
   final int updatedAt;
+  final bool isDeleted;
   const MidiProfileModel(
       {required this.id,
       required this.name,
@@ -1804,7 +1861,8 @@ class MidiProfileModel extends DataClass
       required this.timing,
       this.notes,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.isDeleted});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1820,6 +1878,7 @@ class MidiProfileModel extends DataClass
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -1836,6 +1895,7 @@ class MidiProfileModel extends DataClass
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -1852,6 +1912,7 @@ class MidiProfileModel extends DataClass
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -1866,6 +1927,7 @@ class MidiProfileModel extends DataClass
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -1877,7 +1939,8 @@ class MidiProfileModel extends DataClass
           bool? timing,
           Value<String?> notes = const Value.absent(),
           int? createdAt,
-          int? updatedAt}) =>
+          int? updatedAt,
+          bool? isDeleted}) =>
       MidiProfileModel(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -1889,6 +1952,7 @@ class MidiProfileModel extends DataClass
         notes: notes.present ? notes.value : this.notes,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
   MidiProfileModel copyWithCompanion(MidiProfilesCompanion data) {
     return MidiProfileModel(
@@ -1904,6 +1968,7 @@ class MidiProfileModel extends DataClass
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -1917,14 +1982,15 @@ class MidiProfileModel extends DataClass
           ..write('timing: $timing, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, name, programChangeNumber, controlChanges,
-      timing, notes, createdAt, updatedAt);
+      timing, notes, createdAt, updatedAt, isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1936,7 +2002,8 @@ class MidiProfileModel extends DataClass
           other.timing == this.timing &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
 }
 
 class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
@@ -1948,6 +2015,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
   final Value<String?> notes;
   final Value<int> createdAt;
   final Value<int> updatedAt;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const MidiProfilesCompanion({
     this.id = const Value.absent(),
@@ -1958,6 +2026,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MidiProfilesCompanion.insert({
@@ -1969,6 +2038,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
     this.notes = const Value.absent(),
     required int createdAt,
     required int updatedAt,
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1983,6 +2053,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
     Expression<String>? notes,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1995,6 +2066,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2008,6 +2080,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
       Value<String?>? notes,
       Value<int>? createdAt,
       Value<int>? updatedAt,
+      Value<bool>? isDeleted,
       Value<int>? rowid}) {
     return MidiProfilesCompanion(
       id: id ?? this.id,
@@ -2018,6 +2091,7 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2049,6 +2123,9 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2066,7 +2143,273 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncStateTable extends SyncState
+    with TableInfo<$SyncStateTable, SyncStateModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncStateTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _deviceIdMeta =
+      const VerificationMeta('deviceId');
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+      'device_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lastRemoteVersionMeta =
+      const VerificationMeta('lastRemoteVersion');
+  @override
+  late final GeneratedColumn<int> lastRemoteVersion = GeneratedColumn<int>(
+      'last_remote_version', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastSyncAtMeta =
+      const VerificationMeta('lastSyncAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncAt = GeneratedColumn<DateTime>(
+      'last_sync_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, deviceId, lastRemoteVersion, lastSyncAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_state';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncStateModel> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(_deviceIdMeta,
+          deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta));
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('last_remote_version')) {
+      context.handle(
+          _lastRemoteVersionMeta,
+          lastRemoteVersion.isAcceptableOrUnknown(
+              data['last_remote_version']!, _lastRemoteVersionMeta));
+    }
+    if (data.containsKey('last_sync_at')) {
+      context.handle(
+          _lastSyncAtMeta,
+          lastSyncAt.isAcceptableOrUnknown(
+              data['last_sync_at']!, _lastSyncAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncStateModel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncStateModel(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      deviceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_id'])!,
+      lastRemoteVersion: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}last_remote_version'])!,
+      lastSyncAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}last_sync_at']),
+    );
+  }
+
+  @override
+  $SyncStateTable createAlias(String alias) {
+    return $SyncStateTable(attachedDatabase, alias);
+  }
+}
+
+class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
+  final int id;
+  final String deviceId;
+  final int lastRemoteVersion;
+  final DateTime? lastSyncAt;
+  const SyncStateModel(
+      {required this.id,
+      required this.deviceId,
+      required this.lastRemoteVersion,
+      this.lastSyncAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['device_id'] = Variable<String>(deviceId);
+    map['last_remote_version'] = Variable<int>(lastRemoteVersion);
+    if (!nullToAbsent || lastSyncAt != null) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt);
+    }
+    return map;
+  }
+
+  SyncStateCompanion toCompanion(bool nullToAbsent) {
+    return SyncStateCompanion(
+      id: Value(id),
+      deviceId: Value(deviceId),
+      lastRemoteVersion: Value(lastRemoteVersion),
+      lastSyncAt: lastSyncAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncAt),
+    );
+  }
+
+  factory SyncStateModel.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncStateModel(
+      id: serializer.fromJson<int>(json['id']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      lastRemoteVersion: serializer.fromJson<int>(json['lastRemoteVersion']),
+      lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'lastRemoteVersion': serializer.toJson<int>(lastRemoteVersion),
+      'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
+    };
+  }
+
+  SyncStateModel copyWith(
+          {int? id,
+          String? deviceId,
+          int? lastRemoteVersion,
+          Value<DateTime?> lastSyncAt = const Value.absent()}) =>
+      SyncStateModel(
+        id: id ?? this.id,
+        deviceId: deviceId ?? this.deviceId,
+        lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
+        lastSyncAt: lastSyncAt.present ? lastSyncAt.value : this.lastSyncAt,
+      );
+  SyncStateModel copyWithCompanion(SyncStateCompanion data) {
+    return SyncStateModel(
+      id: data.id.present ? data.id.value : this.id,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      lastRemoteVersion: data.lastRemoteVersion.present
+          ? data.lastRemoteVersion.value
+          : this.lastRemoteVersion,
+      lastSyncAt:
+          data.lastSyncAt.present ? data.lastSyncAt.value : this.lastSyncAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStateModel(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastRemoteVersion: $lastRemoteVersion, ')
+          ..write('lastSyncAt: $lastSyncAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, deviceId, lastRemoteVersion, lastSyncAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncStateModel &&
+          other.id == this.id &&
+          other.deviceId == this.deviceId &&
+          other.lastRemoteVersion == this.lastRemoteVersion &&
+          other.lastSyncAt == this.lastSyncAt);
+}
+
+class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
+  final Value<int> id;
+  final Value<String> deviceId;
+  final Value<int> lastRemoteVersion;
+  final Value<DateTime?> lastSyncAt;
+  const SyncStateCompanion({
+    this.id = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.lastRemoteVersion = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+  });
+  SyncStateCompanion.insert({
+    this.id = const Value.absent(),
+    required String deviceId,
+    this.lastRemoteVersion = const Value.absent(),
+    this.lastSyncAt = const Value.absent(),
+  }) : deviceId = Value(deviceId);
+  static Insertable<SyncStateModel> custom({
+    Expression<int>? id,
+    Expression<String>? deviceId,
+    Expression<int>? lastRemoteVersion,
+    Expression<DateTime>? lastSyncAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deviceId != null) 'device_id': deviceId,
+      if (lastRemoteVersion != null) 'last_remote_version': lastRemoteVersion,
+      if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
+    });
+  }
+
+  SyncStateCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? deviceId,
+      Value<int>? lastRemoteVersion,
+      Value<DateTime?>? lastSyncAt}) {
+    return SyncStateCompanion(
+      id: id ?? this.id,
+      deviceId: deviceId ?? this.deviceId,
+      lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (lastRemoteVersion.present) {
+      map['last_remote_version'] = Variable<int>(lastRemoteVersion.value);
+    }
+    if (lastSyncAt.present) {
+      map['last_sync_at'] = Variable<DateTime>(lastSyncAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStateCompanion(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastRemoteVersion: $lastRemoteVersion, ')
+          ..write('lastSyncAt: $lastSyncAt')
           ..write(')'))
         .toString();
   }
@@ -2079,12 +2422,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SetlistsTable setlists = $SetlistsTable(this);
   late final $MidiMappingsTable midiMappings = $MidiMappingsTable(this);
   late final $MidiProfilesTable midiProfiles = $MidiProfilesTable(this);
+  late final $SyncStateTable syncState = $SyncStateTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [songs, setlists, midiMappings, midiProfiles];
+      [songs, setlists, midiMappings, midiProfiles, syncState];
 }
 
 typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
@@ -2640,6 +2984,7 @@ typedef $$MidiMappingsTableCreateCompanionBuilder = MidiMappingsCompanion
   Value<String?> notes,
   required int createdAt,
   required int updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 typedef $$MidiMappingsTableUpdateCompanionBuilder = MidiMappingsCompanion
@@ -2652,6 +2997,7 @@ typedef $$MidiMappingsTableUpdateCompanionBuilder = MidiMappingsCompanion
   Value<String?> notes,
   Value<int> createdAt,
   Value<int> updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 
@@ -2689,6 +3035,9 @@ class $$MidiMappingsTableFilterComposer
 
   ColumnFilters<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
 }
 
 class $$MidiMappingsTableOrderingComposer
@@ -2725,6 +3074,9 @@ class $$MidiMappingsTableOrderingComposer
 
   ColumnOrderings<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 }
 
 class $$MidiMappingsTableAnnotationComposer
@@ -2759,6 +3111,9 @@ class $$MidiMappingsTableAnnotationComposer
 
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$MidiMappingsTableTableManager extends RootTableManager<
@@ -2795,6 +3150,7 @@ class $$MidiMappingsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MidiMappingsCompanion(
@@ -2806,6 +3162,7 @@ class $$MidiMappingsTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2817,6 +3174,7 @@ class $$MidiMappingsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             required int createdAt,
             required int updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MidiMappingsCompanion.insert(
@@ -2828,6 +3186,7 @@ class $$MidiMappingsTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -2862,6 +3221,7 @@ typedef $$MidiProfilesTableCreateCompanionBuilder = MidiProfilesCompanion
   Value<String?> notes,
   required int createdAt,
   required int updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 typedef $$MidiProfilesTableUpdateCompanionBuilder = MidiProfilesCompanion
@@ -2874,6 +3234,7 @@ typedef $$MidiProfilesTableUpdateCompanionBuilder = MidiProfilesCompanion
   Value<String?> notes,
   Value<int> createdAt,
   Value<int> updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 
@@ -2911,6 +3272,9 @@ class $$MidiProfilesTableFilterComposer
 
   ColumnFilters<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
 }
 
 class $$MidiProfilesTableOrderingComposer
@@ -2947,6 +3311,9 @@ class $$MidiProfilesTableOrderingComposer
 
   ColumnOrderings<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 }
 
 class $$MidiProfilesTableAnnotationComposer
@@ -2981,6 +3348,9 @@ class $$MidiProfilesTableAnnotationComposer
 
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$MidiProfilesTableTableManager extends RootTableManager<
@@ -3017,6 +3387,7 @@ class $$MidiProfilesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MidiProfilesCompanion(
@@ -3028,6 +3399,7 @@ class $$MidiProfilesTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -3039,6 +3411,7 @@ class $$MidiProfilesTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             required int createdAt,
             required int updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MidiProfilesCompanion.insert(
@@ -3050,6 +3423,7 @@ class $$MidiProfilesTableTableManager extends RootTableManager<
             notes: notes,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -3074,6 +3448,158 @@ typedef $$MidiProfilesTableProcessedTableManager = ProcessedTableManager<
     ),
     MidiProfileModel,
     PrefetchHooks Function()>;
+typedef $$SyncStateTableCreateCompanionBuilder = SyncStateCompanion Function({
+  Value<int> id,
+  required String deviceId,
+  Value<int> lastRemoteVersion,
+  Value<DateTime?> lastSyncAt,
+});
+typedef $$SyncStateTableUpdateCompanionBuilder = SyncStateCompanion Function({
+  Value<int> id,
+  Value<String> deviceId,
+  Value<int> lastRemoteVersion,
+  Value<DateTime?> lastSyncAt,
+});
+
+class $$SyncStateTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncStateTable> {
+  $$SyncStateTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastRemoteVersion => $composableBuilder(
+      column: $table.lastRemoteVersion,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$SyncStateTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncStateTable> {
+  $$SyncStateTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastRemoteVersion => $composableBuilder(
+      column: $table.lastRemoteVersion,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SyncStateTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncStateTable> {
+  $$SyncStateTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<int> get lastRemoteVersion => $composableBuilder(
+      column: $table.lastRemoteVersion, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncAt => $composableBuilder(
+      column: $table.lastSyncAt, builder: (column) => column);
+}
+
+class $$SyncStateTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncStateTable,
+    SyncStateModel,
+    $$SyncStateTableFilterComposer,
+    $$SyncStateTableOrderingComposer,
+    $$SyncStateTableAnnotationComposer,
+    $$SyncStateTableCreateCompanionBuilder,
+    $$SyncStateTableUpdateCompanionBuilder,
+    (
+      SyncStateModel,
+      BaseReferences<_$AppDatabase, $SyncStateTable, SyncStateModel>
+    ),
+    SyncStateModel,
+    PrefetchHooks Function()> {
+  $$SyncStateTableTableManager(_$AppDatabase db, $SyncStateTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncStateTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncStateTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncStateTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> deviceId = const Value.absent(),
+            Value<int> lastRemoteVersion = const Value.absent(),
+            Value<DateTime?> lastSyncAt = const Value.absent(),
+          }) =>
+              SyncStateCompanion(
+            id: id,
+            deviceId: deviceId,
+            lastRemoteVersion: lastRemoteVersion,
+            lastSyncAt: lastSyncAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String deviceId,
+            Value<int> lastRemoteVersion = const Value.absent(),
+            Value<DateTime?> lastSyncAt = const Value.absent(),
+          }) =>
+              SyncStateCompanion.insert(
+            id: id,
+            deviceId: deviceId,
+            lastRemoteVersion: lastRemoteVersion,
+            lastSyncAt: lastSyncAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$SyncStateTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncStateTable,
+    SyncStateModel,
+    $$SyncStateTableFilterComposer,
+    $$SyncStateTableOrderingComposer,
+    $$SyncStateTableAnnotationComposer,
+    $$SyncStateTableCreateCompanionBuilder,
+    $$SyncStateTableUpdateCompanionBuilder,
+    (
+      SyncStateModel,
+      BaseReferences<_$AppDatabase, $SyncStateTable, SyncStateModel>
+    ),
+    SyncStateModel,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3086,4 +3612,6 @@ class $AppDatabaseManager {
       $$MidiMappingsTableTableManager(_db, _db.midiMappings);
   $$MidiProfilesTableTableManager get midiProfiles =>
       $$MidiProfilesTableTableManager(_db, _db.midiProfiles);
+  $$SyncStateTableTableManager get syncState =>
+      $$SyncStateTableTableManager(_db, _db.syncState);
 }
