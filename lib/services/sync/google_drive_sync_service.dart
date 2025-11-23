@@ -2,12 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart'
-    show
-        kIsWeb,
-        defaultTargetPlatform,
-        TargetPlatform,
-        debugPrint,
-        VoidCallback;
+    show kIsWeb, defaultTargetPlatform, TargetPlatform, VoidCallback;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
@@ -15,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqlite;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
 
 class GoogleDriveSyncService {
@@ -22,8 +19,16 @@ class GoogleDriveSyncService {
 
   static GoogleSignIn? _googleSignIn;
   static String? _windowsAccessToken;
+  static String? _windowsRefreshToken;
   static const String _windowsAuthRedirectUri = 'http://localhost:8000';
   static HttpServer? _authServer;
+
+  // SharedPreferences keys for Windows token persistence
+  static const String _accessTokenKey = 'windows_access_token';
+  static const String _refreshTokenKey = 'windows_refresh_token';
+
+  // Static flag to prevent multiple database factory assignments
+  static bool _databaseFactoryInitialized = false;
 
   static GoogleSignIn get _googleSignInInstance {
     _googleSignIn ??= GoogleSignIn(
@@ -38,13 +43,112 @@ class GoogleDriveSyncService {
 
   static bool get _isWindows => defaultTargetPlatform == TargetPlatform.windows;
 
+  /// Save Windows tokens to SharedPreferences for persistence
+  static Future<void> _saveWindowsTokens(
+      String accessToken, String? refreshToken) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_accessTokenKey, accessToken);
+      if (refreshToken != null) {
+        await prefs.setString(_refreshTokenKey, refreshToken);
+      }
+    } catch (e) {}
+  }
+
+  /// Load Windows tokens from SharedPreferences on app startup
+  static Future<void> _loadWindowsTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _windowsAccessToken = prefs.getString(_accessTokenKey);
+      _windowsRefreshToken = prefs.getString(_refreshTokenKey);
+    } catch (e) {}
+  }
+
+  /// Clear Windows tokens from SharedPreferences
+  static Future<void> _clearWindowsTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_accessTokenKey);
+      await prefs.remove(_refreshTokenKey);
+      _windowsAccessToken = null;
+      _windowsRefreshToken = null;
+    } catch (e) {}
+  }
+
+  /// Refresh Windows access token using stored refresh token
+  static Future<bool> _refreshWindowsToken() async {
+    try {
+      if (_windowsRefreshToken == null) {
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.https('oauth2.googleapis.com', 'token'),
+        body: {
+          'client_id': GoogleOAuthConfig.webAuthClientId,
+          'client_secret': GoogleOAuthConfig.webAuthClientSecret,
+          'refresh_token': _windowsRefreshToken,
+          'grant_type': 'refresh_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final tokenData = jsonDecode(response.body);
+        _windowsAccessToken = tokenData['access_token'];
+
+        // Save the new access token (refresh token stays the same)
+        await _saveWindowsTokens(_windowsAccessToken!, _windowsRefreshToken);
+
+        return true;
+      } else {
+        // Check if refresh token is expired/invalid
+        if (response.statusCode == 400 || response.statusCode == 401) {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody['error'] == 'invalid_grant' ||
+              errorBody['error'] == 'invalid_token' ||
+              errorBody['error_description']
+                      ?.toString()
+                      .toLowerCase()
+                      .contains('expired') ==
+                  true) {
+            await _clearWindowsTokens();
+            return false;
+          }
+        }
+
+        // For other errors (network, server issues), don't clear tokens
+        return false;
+      }
+    } catch (e) {
+      // Don't clear tokens on network errors - they might be temporary
+      if (e.toString().toLowerCase().contains('connection') ||
+          e.toString().toLowerCase().contains('network') ||
+          e.toString().toLowerCase().contains('timeout')) {
+        // Network error - preserve tokens
+      } else {
+        await _clearWindowsTokens();
+      }
+
+      return false;
+    }
+  }
+
   // Backup configuration
   static const String _backupFolderName = 'NextChord';
   static const String _backupFileName = 'nextchord_backup.db';
   static const String _syncMetadataFile = 'sync_metadata.json';
 
   GoogleDriveSyncService({VoidCallback? onDatabaseReplaced})
-      : _onDatabaseReplaced = onDatabaseReplaced;
+      : _onDatabaseReplaced = onDatabaseReplaced {
+    // Note: Windows tokens will be loaded when needed or explicitly via initialize()
+  }
+
+  /// Explicit async initialization for Windows token loading
+  static Future<void> initialize() async {
+    if (_isWindows) {
+      await _loadWindowsTokens();
+    }
+  }
 
   static bool _isPlatformSupported() {
     if (kIsWeb) return true;
@@ -70,9 +174,7 @@ class GoogleDriveSyncService {
       if (kIsWeb) {
         await _googleSignInInstance.signOut();
       }
-    } catch (e) {
-      debugPrint('Error clearing web tokens: $e');
-    }
+    } catch (e) {}
   }
 
   Future<bool> isSignedIn() async {
@@ -83,7 +185,6 @@ class GoogleDriveSyncService {
         return await _googleSignInInstance.isSignedIn();
       }
     } catch (e) {
-      debugPrint('Error checking sign in status: $e');
       return false;
     }
   }
@@ -98,15 +199,12 @@ class GoogleDriveSyncService {
         return account != null;
       }
     } catch (e) {
-      debugPrint('Error signing in: $e');
       return false;
     }
   }
 
   Future<bool> _signInWindows() async {
     try {
-      debugPrint('Starting Windows OAuth authentication...');
-
       // Create local server for OAuth callback
       _authServer = await HttpServer.bind('localhost', 8000);
 
@@ -147,6 +245,11 @@ class GoogleDriveSyncService {
           if (response.statusCode == 200) {
             final tokenData = jsonDecode(response.body);
             _windowsAccessToken = tokenData['access_token'];
+            _windowsRefreshToken = tokenData['refresh_token'];
+
+            // Save tokens to persistent storage
+            await _saveWindowsTokens(
+                _windowsAccessToken!, _windowsRefreshToken);
 
             // Close server and send success response
             await _authServer!.close();
@@ -155,7 +258,6 @@ class GoogleDriveSyncService {
               ..write('Authentication successful! You can close this window.');
             await request.response.close();
 
-            debugPrint('Windows OAuth authentication successful');
             return true;
           } else {
             throw Exception(
@@ -172,7 +274,6 @@ class GoogleDriveSyncService {
         return false;
       }
     } catch (e) {
-      debugPrint('Windows OAuth authentication error: $e');
       if (_authServer != null) {
         await _authServer!.close();
       }
@@ -186,14 +287,12 @@ class GoogleDriveSyncService {
   Future<void> signOut() async {
     try {
       if (_isWindows) {
-        _windowsAccessToken = null;
+        await _clearWindowsTokens();
       } else {
         await _googleSignInInstance.signOut();
       }
       await _clearWebTokens();
-    } catch (e) {
-      debugPrint('Error signing out: $e');
-    }
+    } catch (e) {}
   }
 
   Future<drive.DriveApi> _createDriveApi() async {
@@ -204,7 +303,23 @@ class GoogleDriveSyncService {
         }
 
         final httpClient = GoogleHttpClient();
-        await httpClient.authenticateWithAccessToken(_windowsAccessToken!);
+
+        // Try to authenticate with current access token
+        try {
+          await httpClient.authenticateWithAccessToken(_windowsAccessToken!);
+        } catch (e) {
+          // If authentication fails, try to refresh the token
+          if (await _refreshWindowsToken()) {
+            if (_windowsAccessToken == null) {
+              throw Exception(
+                  'Token refresh failed - user not authenticated on Windows');
+            }
+            await httpClient.authenticateWithAccessToken(_windowsAccessToken!);
+          } else {
+            throw Exception('Token refresh failed - please sign in again');
+          }
+        }
+
         return drive.DriveApi(httpClient);
       } else {
         final GoogleSignInAccount? account =
@@ -225,7 +340,6 @@ class GoogleDriveSyncService {
         return drive.DriveApi(httpClient);
       }
     } catch (e) {
-      debugPrint('Error creating Drive API client: $e');
       rethrow;
     }
   }
@@ -235,8 +349,7 @@ class GoogleDriveSyncService {
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
-        debugPrint('Not signed in to Google');
-        return;
+        throw Exception('Not signed in to Google');
       }
 
       // Create Drive API client
@@ -245,8 +358,7 @@ class GoogleDriveSyncService {
       // Find or create backup folder
       final folderId = await _findOrCreateFolder(driveApi);
       if (folderId == null) {
-        debugPrint('✗ Failed to create/find backup folder');
-        return;
+        throw Exception('Failed to create/find backup folder');
       }
 
       // Get local database path
@@ -261,10 +373,7 @@ class GoogleDriveSyncService {
         'platform': defaultTargetPlatform.toString(),
         'device_id': await _getDeviceId(),
       });
-
-      debugPrint('✓ Sync completed successfully');
     } catch (e) {
-      debugPrint('✗ Sync failed: $e');
       rethrow;
     }
   }
@@ -277,10 +386,11 @@ class GoogleDriveSyncService {
   Future<void> _bidirectionalMergeDatabase(
       drive.DriveApi driveApi, String folderId, String localDbPath) async {
     try {
-      debugPrint('=== EMERGENCY: Checking remote database before merge ===');
-      debugPrint('Folder ID: $folderId');
-      debugPrint('Database filename: $_backupFileName');
-      debugPrint('Metadata filename: $_syncMetadataFile');
+      // Initialize databaseFactory for Windows (only once)
+      if (_isWindows && !_databaseFactoryInitialized) {
+        sqlite.databaseFactory = databaseFactoryFfi;
+        _databaseFactoryInitialized = true;
+      }
 
       // Check if local database exists and get its content
       final localDbFile = File(localDbPath);
@@ -291,10 +401,7 @@ class GoogleDriveSyncService {
       if (localDbExists) {
         backupPath =
             '$localDbPath.backup_${DateTime.now().millisecondsSinceEpoch}';
-        debugPrint('🚨 CREATING EMERGENCY BACKUP: $backupPath');
         await File(localDbPath).copy(backupPath);
-      } else {
-        debugPrint('🚨 No local database to backup (will download from cloud)');
       }
 
       int localSongCount = 0;
@@ -312,33 +419,23 @@ class GoogleDriveSyncService {
               int.parse(setlistResult.first['count'].toString());
           await localDb.close();
         } catch (e) {
-          debugPrint('⚠️ Error reading local database: $e');
           localDbExists = false;
         }
       }
-
-      debugPrint('🚨 LOCAL DATABASE BEFORE MERGE:');
-      debugPrint('  Exists: $localDbExists');
-      debugPrint('  Songs: $localSongCount');
-      debugPrint('  Setlists: $localSetlistCount');
 
       // Find existing database file
       final existingDbFile =
           await _findExistingFile(driveApi, folderId, _backupFileName);
       if (existingDbFile == null) {
-        debugPrint('✓ No remote database found, keeping local database');
         return;
       }
-      debugPrint('✓ Found remote database file: ${existingDbFile.id}');
 
       // Find existing metadata file
       final existingMetadataFile =
           await _findExistingFile(driveApi, folderId, _syncMetadataFile);
       if (existingMetadataFile == null) {
-        debugPrint('✓ No remote metadata found, keeping local database');
         return;
       }
-      debugPrint('✓ Found remote metadata file: ${existingMetadataFile.id}');
 
       // Download metadata to check timestamps
       final metadataResponse = await driveApi.files.get(
@@ -352,13 +449,7 @@ class GoogleDriveSyncService {
       final remoteLastSync = DateTime.parse(metadata['last_sync'] as String);
       final localLastModified = await File(localDbPath).lastModified();
 
-      debugPrint('Remote last sync: $remoteLastSync');
-      debugPrint('Local last modified: $localLastModified');
-      debugPrint(
-          'Remote is newer: ${remoteLastSync.isAfter(localLastModified)}');
-
       // EMERGENCY: Validate remote database content before merge
-      debugPrint('🚨 VALIDATING REMOTE DATABASE CONTENT...');
       await _performBidirectionalMerge(driveApi, existingDbFile, localDbPath);
 
       // Verify merge didn't lose data
@@ -369,10 +460,6 @@ class GoogleDriveSyncService {
           await postMergeDb.rawQuery('SELECT COUNT(*) as count FROM setlists');
       await postMergeDb.close();
 
-      debugPrint('🚨 LOCAL DATABASE AFTER MERGE:');
-      debugPrint('  Songs: ${postMergeSongCount.first['count']}');
-      debugPrint('  Setlists: ${postMergeSetlistCount.first['count']}');
-
       // EMERGENCY: Restore from backup if data was lost
       final finalSongCount =
           int.parse(postMergeSongCount.first['count'].toString());
@@ -381,50 +468,36 @@ class GoogleDriveSyncService {
 
       if (finalSongCount < localSongCount ||
           finalSetlistCount < localSetlistCount) {
-        debugPrint('🚨🚨🚨 DATA LOSS DETECTED! RESTORING FROM BACKUP!');
         if (backupPath != null) {
           await File(localDbPath).delete();
           await File(backupPath).copy(localDbPath);
-          debugPrint('✓ Database restored from backup');
-        } else {
-          debugPrint('⚠️ No backup available to restore from');
         }
       } else {
-        debugPrint('✓ Merge successful - no data loss detected');
         if (backupPath != null) {
           await File(backupPath).delete(); // Clean up backup only if it existed
         }
       }
-    } catch (e) {
-      debugPrint('✗ Error checking remote database: $e');
-    }
+    } catch (e) {}
   }
 
   Future<drive.File?> _findExistingFile(
       drive.DriveApi driveApi, String folderId, String fileName) async {
     try {
-      debugPrint('=== Searching for file: $fileName in folder: $folderId ===');
       final response = await driveApi.files.list(
         q: "name='$fileName' and '$folderId' in parents",
         spaces: 'drive',
       );
 
-      debugPrint('Found ${response.files?.length ?? 0} files matching search');
       if (response.files != null && response.files!.isNotEmpty) {
-        debugPrint('✓ Found file: ${response.files!.first.id}');
         return response.files!.first;
       }
-      debugPrint('✗ No files found matching search criteria');
       return null;
     } catch (e) {
-      debugPrint('Error finding existing file: $e');
       return null;
     }
   }
 
   Future<String?> _findOrCreateFolder(drive.DriveApi driveApi) async {
-    debugPrint('=== Finding or creating backup folder ===');
-
     try {
       // Search for existing folder
       final response = await driveApi.files.list(
@@ -434,21 +507,17 @@ class GoogleDriveSyncService {
 
       if (response.files != null && response.files!.isNotEmpty) {
         final existingFolder = response.files!.first;
-        debugPrint('✓ Found existing folder: ${existingFolder.id}');
         return existingFolder.id;
       }
 
       // Create new folder
-      debugPrint('Creating new backup folder...');
       final folderMetadata = drive.File()
         ..name = _backupFolderName
         ..mimeType = 'application/vnd.google-apps.folder';
 
       final createdFolder = await driveApi.files.create(folderMetadata);
-      debugPrint('✓ Created new folder: ${createdFolder.id}');
       return createdFolder.id;
     } catch (e) {
-      debugPrint('✗ Failed to find or create folder: $e');
       return null;
     }
   }
@@ -461,41 +530,25 @@ class GoogleDriveSyncService {
 
       // Check if the database file exists
       final dbFile = File(dbPath);
-      if (await dbFile.exists()) {
-        debugPrint('✓ Found database at: $dbPath');
-      } else {
-        debugPrint(
-            '⚠️ Database file not found at: $dbPath (will download from cloud)');
-      }
 
       return dbPath; // Always return path, even if file doesn't exist
     } catch (e) {
-      debugPrint('Error getting local database path: $e');
       rethrow;
     }
   }
 
   Future<void> handleInitialSync() async {
     try {
-      debugPrint('=== Starting Initial Sync ===');
-
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
-        debugPrint('Not signed in to Google - skipping initial sync');
         return;
       }
-
-      debugPrint('✓ Initial sync completed');
-    } catch (e) {
-      debugPrint('Initial sync failed: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _performBidirectionalMerge(
       drive.DriveApi driveApi, drive.File remoteFile, String localPath) async {
-    debugPrint('=== Performing bidirectional database merge ===');
-
     final response = await driveApi.files.get(remoteFile.id!,
         downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
 
@@ -507,17 +560,12 @@ class GoogleDriveSyncService {
 
     // Validate the downloaded file
     if (await _validateDatabase(tempPath)) {
-      debugPrint('✓ Remote database is valid, performing bidirectional merge');
-
       // Perform bidirectional merge: merge remote into local AND local into remote
       await _bidirectionalMergeData(tempPath, localPath);
 
       // Clean up temporary file
       await tempFile.delete();
-
-      debugPrint('✓ Bidirectional database merge completed successfully');
     } else {
-      debugPrint('✗ Downloaded database is invalid, keeping original');
       await tempFile.delete();
     }
   }
@@ -536,7 +584,6 @@ class GoogleDriveSyncService {
       try {
         return DateTime.parse(timestamp);
       } catch (e) {
-        debugPrint('Failed to parse string timestamp: $timestamp, error: $e');
         return DateTime.now();
       }
     }
@@ -545,28 +592,26 @@ class GoogleDriveSyncService {
       try {
         return DateTime.fromMillisecondsSinceEpoch(timestamp);
       } catch (e) {
-        debugPrint('Failed to parse int timestamp: $timestamp, error: $e');
         return DateTime.now();
       }
     }
 
-    debugPrint(
-        'Unknown timestamp type: ${timestamp.runtimeType}, value: $timestamp');
     return DateTime.now();
   }
 
   Future<void> _bidirectionalMergeData(
       String remoteDbPath, String localDbPath) async {
     try {
-      debugPrint('=== Starting bidirectional merge ===');
+      // Initialize databaseFactory for Windows (only once)
+      if (_isWindows && !_databaseFactoryInitialized) {
+        sqlite.databaseFactory = databaseFactoryFfi;
+        _databaseFactoryInitialized = true;
+      }
 
       // Check if local database file exists
       final localDbFile = File(localDbPath);
       if (!await localDbFile.exists()) {
-        debugPrint(
-            '🚨 Local database does not exist - copying remote database directly');
         await File(remoteDbPath).copy(localDbPath);
-        debugPrint('✓ Remote database copied to local location');
         return;
       }
 
@@ -580,10 +625,11 @@ class GoogleDriveSyncService {
       final remoteSetlists = await remoteDb.rawQuery('SELECT * FROM setlists');
       final localSetlists = await localDb.rawQuery('SELECT * FROM setlists');
 
-      debugPrint(
-          'Remote songs: ${remoteSongs.length}, Local songs: ${localSongs.length}');
-      debugPrint(
-          'Remote setlists: ${remoteSetlists.length}, Local setlists: ${localSetlists.length}');
+      // Create sets of local record IDs to track what exists locally
+      final localSongIds =
+          localSongs.map((song) => song['id'] as String).toSet();
+      final localSetlistIds =
+          localSetlists.map((setlist) => setlist['id'] as String).toSet();
 
       // Create a map of all records by ID with their timestamps
       final allSongs = <String, Map<String, dynamic>>{};
@@ -591,10 +637,18 @@ class GoogleDriveSyncService {
 
       // Add remote records
       for (final song in remoteSongs) {
-        allSongs[song['id'] as String] = song;
+        final songId = song['id'] as String;
+        // Skip remote song if it was permanently deleted locally (doesn't exist in localSongs)
+        if (localSongIds.contains(songId)) {
+          allSongs[songId] = song;
+        } else {}
       }
       for (final setlist in remoteSetlists) {
-        allSetlists[setlist['id'] as String] = setlist;
+        final setlistId = setlist['id'] as String;
+        // Skip remote setlist if it was permanently deleted locally (doesn't exist in localSetlists)
+        if (localSetlistIds.contains(setlistId)) {
+          allSetlists[setlistId] = setlist;
+        } else {}
       }
 
       // Add/update with local records (keeping newest, but respecting deletions)
@@ -622,9 +676,12 @@ class GoogleDriveSyncService {
               allSongs[songId] = song;
             }
           } else if (remoteIsDeleted) {
-            // Remote is deleted, local is not - if remote deletion is newer, keep deletion
-            if (!localUpdated.isAfter(remoteUpdated)) {
+            // Remote is deleted, local is not - keep local version unless remote deletion is newer
+            if (remoteUpdated.isAfter(localUpdated)) {
               allSongs[songId] = allSongs[songId]!;
+            } else {
+              // Local restoration wins - keep local version
+              allSongs[songId] = song;
             }
           } else {
             // Neither deleted - keep newest version
@@ -678,14 +735,10 @@ class GoogleDriveSyncService {
 
       // Safety check: don't proceed if we have no data to merge
       if (allSongs.isEmpty && allSetlists.isEmpty) {
-        debugPrint('⚠️ No data to merge - keeping existing local data');
         await remoteDb.close();
         await localDb.close();
         return;
       }
-
-      debugPrint(
-          '✓ Merging data: ${allSongs.length} songs, ${allSetlists.length} setlists');
 
       // Get local schema to check which columns exist
       final localSongSchema =
@@ -696,9 +749,6 @@ class GoogleDriveSyncService {
           localSongSchema.map((col) => col['name'] as String).toSet();
       final localSetlistColumns =
           localSetlistSchema.map((col) => col['name'] as String).toSet();
-
-      debugPrint('Local song columns: $localSongColumns');
-      debugPrint('Local setlist columns: $localSetlistColumns');
 
       // Filter records to only include columns that exist in local schema
       final filteredSongs = allSongs.values.map((song) {
@@ -736,30 +786,26 @@ class GoogleDriveSyncService {
             await txn.insert('setlists', setlist);
           }
         } catch (e) {
-          debugPrint('🚨 TRANSACTION FAILED - ROLLING BACK: $e');
           rethrow; // This will rollback the transaction
         }
       });
 
-      debugPrint(
-          '✓ Bidirectional merge completed: ${allSongs.length} songs, ${allSetlists.length} setlists');
-
       // Close databases
       await remoteDb.close();
       await localDb.close();
-
-      // Trigger data refresh callback
-      if (_onDatabaseReplaced != null) {
-        _onDatabaseReplaced!();
-      }
     } catch (e) {
-      debugPrint('✗ Bidirectional merge failed: $e');
       rethrow;
     }
   }
 
   Future<bool> _validateDatabase(String dbPath) async {
     try {
+      // Initialize databaseFactory for Windows (only once)
+      if (_isWindows && !_databaseFactoryInitialized) {
+        sqlite.databaseFactory = databaseFactoryFfi;
+        _databaseFactoryInitialized = true;
+      }
+
       final db = await sqlite.openDatabase(dbPath);
       // Simple validation: check if main table exists
       final result = await db.rawQuery(
@@ -767,30 +813,22 @@ class GoogleDriveSyncService {
       await db.close();
       return result.isNotEmpty;
     } catch (e) {
-      debugPrint('Database validation failed: $e');
       return false;
     }
   }
 
   Future<void> _uploadBackup(drive.DriveApi driveApi, String folderId,
       String localDbPath, Map<String, dynamic> metadata) async {
-    debugPrint('=== Uploading backup ===');
-    debugPrint('Folder ID: $folderId');
-    debugPrint('Local DB path: $localDbPath');
-
     // Upload database file
     final dbFile = File(localDbPath);
     final dbStream = dbFile.openRead();
 
     // Check if database file already exists
-    debugPrint('=== Checking for existing database file ===');
     final existingDbFile =
         await _findExistingFile(driveApi, folderId, _backupFileName);
 
     drive.File uploadedDb;
     if (existingDbFile != null) {
-      debugPrint(
-          '✓ Found existing database file, updating: ${existingDbFile.id}');
       // Update existing file (parents field not allowed in update)
       uploadedDb = await driveApi.files.update(
         drive.File()..name = _backupFileName,
@@ -798,7 +836,6 @@ class GoogleDriveSyncService {
         uploadMedia: drive.Media(dbStream, dbFile.lengthSync()),
       );
     } else {
-      debugPrint('✓ No existing database file found, creating new file');
       // Create new file
       final dbMetadata = drive.File()
         ..name = _backupFileName
@@ -810,8 +847,6 @@ class GoogleDriveSyncService {
       );
     }
 
-    debugPrint('✓ Database uploaded: ${uploadedDb.id}');
-
     // Update and upload metadata
     metadata['lastSync'] = DateTime.now().toIso8601String();
     metadata['databaseFileId'] = uploadedDb.id;
@@ -820,14 +855,11 @@ class GoogleDriveSyncService {
     final metadataStream = Stream.value(metadataContent);
 
     // Check if metadata file already exists
-    debugPrint('=== Checking for existing metadata file ===');
     final existingMetadataFile =
         await _findExistingFile(driveApi, folderId, _syncMetadataFile);
 
     drive.File uploadedMetadata;
     if (existingMetadataFile != null) {
-      debugPrint(
-          '✓ Found existing metadata file, updating: ${existingMetadataFile.id}');
       // Update existing metadata file
       uploadedMetadata = await driveApi.files.update(
         drive.File()..name = _syncMetadataFile,
@@ -835,7 +867,6 @@ class GoogleDriveSyncService {
         uploadMedia: drive.Media(metadataStream, metadataContent.length),
       );
     } else {
-      debugPrint('✓ No existing metadata file found, creating new file');
       // Create new metadata file
       final metadataFile = drive.File()
         ..name = _syncMetadataFile
@@ -846,8 +877,6 @@ class GoogleDriveSyncService {
         uploadMedia: drive.Media(metadataStream, metadataContent.length),
       );
     }
-
-    debugPrint('✓ Metadata uploaded: ${uploadedMetadata.id}');
   }
 
   /// Reset the GoogleSignIn instance (useful for testing and switching auth modes)

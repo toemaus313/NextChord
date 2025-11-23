@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -64,14 +62,11 @@ String convertToChordPro(String rawData, String title, String artist,
 
 /// Main script to preview the import
 void main() async {
-  print('🎵 Justchords to NextChord Import Preview\n');
-
   const libraryPath = 'examples/library.json';
 
   try {
     final file = File(libraryPath);
     if (!await file.exists()) {
-      print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
 
@@ -80,11 +75,8 @@ void main() async {
 
     final songsJson = data['songs'] as List<dynamic>?;
     if (songsJson == null || songsJson.isEmpty) {
-      print('❌ Error: No songs found in library.json');
       exit(1);
     }
-
-    print('📊 Total songs in library: ${songsJson.length}\n');
 
     // Select 5 random songs
     final random = Random();
@@ -104,10 +96,6 @@ void main() async {
         selectedSongs.add(song);
       }
     }
-
-    print(
-        '✅ Selected ${selectedSongs.length} random songs for import preview\n');
-    print('=' * 80);
 
     // Create output file
     final outputFile = File('examples/imported_songs_preview.txt');
@@ -145,8 +133,6 @@ void main() async {
         isMinor = keyChord['minor'] as bool? ?? false;
       }
 
-      print('\n${i + 1}. Converting: "$title" by $artist');
-
       output.writeln('=' * 80);
       output.writeln('SONG ${i + 1}');
       output.writeln('=' * 80);
@@ -177,18 +163,7 @@ void main() async {
 
     // Write to file
     await outputFile.writeAsString(output.toString());
-
-    print('\n${'=' * 80}');
-    print('✅ Preview completed successfully!');
-    print('📄 Output written to: ${outputFile.path}');
-    print('\n📝 Summary:');
-    print('   - ${selectedSongs.length} songs converted');
-    print('   - Format: ChordPro with metadata directives');
-    print('   - Tags added: ["imported", "justchords"]');
-    print('   - Ready for import into NextChord database');
   } catch (e, stackTrace) {
-    print('❌ Error: $e');
-    print('Stack trace: $stackTrace');
     exit(1);
   }
 }

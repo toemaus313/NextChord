@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../../providers/sync_provider.dart';
 
 /// Global service locator for accessing sync functionality throughout the app
@@ -17,11 +16,8 @@ class SyncServiceLocator {
   static Future<void> triggerAutoSync() async {
     if (_syncProvider != null && _syncProvider!.isSignedIn) {
       try {
-        debugPrint('Triggering auto-sync after database change');
         await _syncProvider!.autoSync();
-      } catch (e) {
-        debugPrint('Auto-sync trigger failed: $e');
-      }
+      } catch (e) {}
     }
   }
 

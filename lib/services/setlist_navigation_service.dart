@@ -1,4 +1,3 @@
-import '../core/utils/logger.dart';
 import '../data/repositories/song_repository.dart';
 import '../domain/entities/song.dart';
 import '../domain/entities/setlist.dart';
@@ -22,18 +21,12 @@ class SetlistNavigationService {
 
   /// Navigate to the next song in the setlist
   Future<Song?> navigateToNextSong() async {
-    Logger.methodEntry('SetlistNavigationService', 'navigateToNextSong');
-
     if (!_setlistProvider.isSetlistActive) {
-      Logger.navigation('No active setlist - cannot navigate');
-      Logger.methodExit('SetlistNavigationService', 'navigateToNextSong', null);
       return null;
     }
 
     final nextSongItem = _setlistProvider.getNextSongItem();
     if (nextSongItem == null) {
-      Logger.navigation('No next song item found');
-      Logger.methodExit('SetlistNavigationService', 'navigateToNextSong', null);
       return null;
     }
 
@@ -45,10 +38,6 @@ class SetlistNavigationService {
       // Get the next song from repository
       final nextSong = await _songRepository.getSongById(nextSongItem.songId);
       if (nextSong == null) {
-        Logger.navigation(
-            'Next song not found in repository: ${nextSongItem.songId}');
-        Logger.methodExit(
-            'SetlistNavigationService', 'navigateToNextSong', null);
         return null;
       }
 
@@ -56,34 +45,20 @@ class SetlistNavigationService {
       _globalSidebarProvider.navigateToSongInSetlist(
           nextSong, _setlistProvider.currentSongIndex, nextSongItem);
 
-      Logger.navigation(
-          'Successfully navigated to next song: ${nextSong.title}');
-      Logger.methodExit(
-          'SetlistNavigationService', 'navigateToNextSong', nextSong);
       return nextSong;
     } catch (e) {
-      Logger.error('Error navigating to next song', e);
-      Logger.methodExit('SetlistNavigationService', 'navigateToNextSong', null);
       return null;
     }
   }
 
   /// Navigate to the previous song in the setlist
   Future<Song?> navigateToPreviousSong() async {
-    Logger.methodEntry('SetlistNavigationService', 'navigateToPreviousSong');
-
     if (!_setlistProvider.isSetlistActive) {
-      Logger.navigation('No active setlist - cannot navigate');
-      Logger.methodExit(
-          'SetlistNavigationService', 'navigateToPreviousSong', null);
       return null;
     }
 
     final prevSongItem = _setlistProvider.getPreviousSongItem();
     if (prevSongItem == null) {
-      Logger.navigation('No previous song item found');
-      Logger.methodExit(
-          'SetlistNavigationService', 'navigateToPreviousSong', null);
       return null;
     }
 
@@ -95,10 +70,6 @@ class SetlistNavigationService {
       // Get the previous song from repository
       final prevSong = await _songRepository.getSongById(prevSongItem.songId);
       if (prevSong == null) {
-        Logger.navigation(
-            'Previous song not found in repository: ${prevSongItem.songId}');
-        Logger.methodExit(
-            'SetlistNavigationService', 'navigateToPreviousSong', null);
         return null;
       }
 
@@ -106,41 +77,26 @@ class SetlistNavigationService {
       _globalSidebarProvider.navigateToSongInSetlist(
           prevSong, _setlistProvider.currentSongIndex, prevSongItem);
 
-      Logger.navigation(
-          'Successfully navigated to previous song: ${prevSong.title}');
-      Logger.methodExit(
-          'SetlistNavigationService', 'navigateToPreviousSong', prevSong);
       return prevSong;
     } catch (e) {
-      Logger.error('Error navigating to previous song', e);
-      Logger.methodExit(
-          'SetlistNavigationService', 'navigateToPreviousSong', null);
       return null;
     }
   }
 
   /// Get the next song display text for the header
   Future<String?> getNextSongDisplayText() async {
-    Logger.methodEntry('SetlistNavigationService', 'getNextSongDisplayText');
-
     if (!_setlistProvider.isSetlistActive) {
-      Logger.methodExit(
-          'SetlistNavigationService', 'getNextSongDisplayText', null);
       return null;
     }
 
     final nextSongItem = _setlistProvider.getNextSongItem();
     if (nextSongItem == null) {
-      Logger.methodExit(
-          'SetlistNavigationService', 'getNextSongDisplayText', null);
       return null;
     }
 
     try {
       final nextSong = await _songRepository.getSongById(nextSongItem.songId);
       if (nextSong == null) {
-        Logger.methodExit(
-            'SetlistNavigationService', 'getNextSongDisplayText', null);
         return null;
       }
 
@@ -151,13 +107,8 @@ class SetlistNavigationService {
           ? 'Next: ${nextSong.title} ($effectiveKey)'
           : 'Next: ${nextSong.title}';
 
-      Logger.methodExit(
-          'SetlistNavigationService', 'getNextSongDisplayText', displayText);
       return displayText;
     } catch (e) {
-      Logger.error('Error getting next song display text', e);
-      Logger.methodExit(
-          'SetlistNavigationService', 'getNextSongDisplayText', null);
       return null;
     }
   }

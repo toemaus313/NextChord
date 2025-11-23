@@ -32,6 +32,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.0
   sqlite3: ^2.3.0
   sqflite: ^2.3.0  # Added for database operations
+  sqflite_common_ffi: ^2.3.0  # For Windows desktop support
   
   # Google Services
   google_sign_in: ^6.2.0

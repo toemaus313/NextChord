@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -11,26 +9,18 @@ import 'package:uuid/uuid.dart';
 /// Standalone import script that works without Flutter
 /// Directly writes to the SQLite database
 void main(List<String> args) async {
-  print('🎵 Justchords to NextChord - Standalone Importer\n');
-
   final cliOptions = _parseCliOptions(args);
   final libraryPath = _resolveLibraryPath(cliOptions.libraryPath);
   final dbPath = await _findDatabasePath();
 
   if (dbPath == null) {
-    print('❌ Could not find NextChord database.');
-    print('💡 Run the app at least once to create the database.');
     exit(1);
   }
-
-  print('📂 Reading from: $libraryPath');
-  print('💾 Database: $dbPath\n');
 
   try {
     // Read and parse library.json
     final file = File(libraryPath);
     if (!await file.exists()) {
-      print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
 
@@ -39,11 +29,8 @@ void main(List<String> args) async {
 
     final songsJson = data['songs'] as List<dynamic>?;
     if (songsJson == null || songsJson.isEmpty) {
-      print('❌ Error: No songs found in library.json');
       exit(1);
     }
-
-    print('📊 Total songs in library: ${songsJson.length}\n');
 
     // Extract MIDI profiles for import
     final midiProfiles = <String, List<Map<String, dynamic>>>{};
@@ -58,12 +45,10 @@ void main(List<String> args) async {
         }
       }
     }
-    print('🎹 Found ${midiProfiles.length} MIDI profiles\n');
 
     final selectedSongs = <Map<String, dynamic>>[];
     if (cliOptions.titleFilter != null) {
       final normalizedFilter = cliOptions.titleFilter!.trim().toLowerCase();
-      print('🎯 Filtering titles containing: "${cliOptions.titleFilter}"');
       for (final song in songsJson.whereType<Map<String, dynamic>>()) {
         final title = (song['title'] as String? ?? '').trim();
         final rawData = song['rawData'] as String? ?? '';
@@ -74,8 +59,6 @@ void main(List<String> args) async {
       }
 
       if (selectedSongs.isEmpty) {
-        print(
-            '❌ No songs matched the title filter "${cliOptions.titleFilter}".');
         exit(1);
       }
     } else {
@@ -98,41 +81,30 @@ void main(List<String> args) async {
       }
     }
 
-    print('✅ Selected ${selectedSongs.length} songs:\n');
-
     // Display selected songs
     for (var i = 0; i < selectedSongs.length; i++) {
       final song = selectedSongs[i];
       final title = song['title'] as String? ?? 'Untitled';
       final artist =
           song['subtitle'] as String? ?? song['artist'] as String? ?? 'Unknown';
-      print('${i + 1}. "$title" by $artist');
     }
 
-    print('\n💾 Would you like to import these songs to the database? (y/n)');
     final response = stdin.readLineSync()?.toLowerCase();
 
     if (response != 'y' && response != 'yes') {
-      print('\n❌ Import cancelled.');
       exit(0);
     }
-
-    print('\n📝 Importing songs...\n');
 
     // Open database
     final db = sqlite3.open(dbPath);
 
     try {
       // Ensure database schema is up to date
-      print('🔍 Validating database schema...');
       await _ensureDatabaseSchema(db);
-      print('✅ Database schema validated\n');
 
       // Import MIDI profiles first
       if (midiProfiles.isNotEmpty) {
-        print('🎹 Importing MIDI profiles...');
         await _importMidiProfiles(db, data);
-        print('✅ MIDI profiles imported\n');
       }
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -205,20 +177,16 @@ void main(List<String> args) async {
         ]);
 
         if (profileId != null) {
-          print('   ✓ Imported: $title (with MIDI profile)');
+          // Imported with MIDI profile
         } else {
-          print('   ✓ Imported: $title');
+          // Imported
         }
         imported++;
       }
-
-      print('\n✅ Successfully imported $imported songs!');
     } finally {
       db.dispose();
     }
   } catch (e, stackTrace) {
-    print('❌ Error: $e');
-    print('Stack trace: $stackTrace');
     exit(1);
   }
 }
@@ -281,7 +249,6 @@ _CliOptions _parseCliOptions(List<String> args) {
 
     if (arg == '--title' || arg == '-t') {
       if (i + 1 >= args.length) {
-        print('❌ Missing value for --title option.');
         exit(64);
       }
       titleFilter = args[++i];
@@ -295,14 +262,11 @@ _CliOptions _parseCliOptions(List<String> args) {
 
     if (arg == '--songs' || arg == '-n') {
       if (i + 1 >= args.length) {
-        print('❌ Missing value for --songs option.');
         exit(64);
       }
       final value = args[++i];
       final parsed = int.tryParse(value);
       if (parsed == null || parsed <= 0) {
-        print(
-            '❌ Invalid value for --songs: "$value". Must be a positive integer.');
         exit(64);
       }
       songsToImport = parsed;
@@ -313,8 +277,6 @@ _CliOptions _parseCliOptions(List<String> args) {
       final value = arg.substring('--songs='.length);
       final parsed = int.tryParse(value);
       if (parsed == null || parsed <= 0) {
-        print(
-            '❌ Invalid value for --songs: "$value". Must be a positive integer.');
         exit(64);
       }
       songsToImport = parsed;
@@ -338,7 +300,6 @@ Future<String?> _findDatabasePath() async {
   final homeDir = env['HOME'] ?? env['USERPROFILE'];
 
   if (homeDir == null) {
-    print('❗ Unable to determine home directory.');
     return null;
   }
 
@@ -367,22 +328,10 @@ Future<String?> _findDatabasePath() async {
 
   possiblePaths.add('nextchord_db.sqlite'); // Current directory fallback
 
-  print('🔍 Searching for database in:');
-  for (final path in possiblePaths) {
-    print('   - $path');
-    if (await File(path).exists()) {
-      print('   ✓ Found!\n');
-      return path;
-    }
-  }
-
-  print('   ✗ Not found in standard locations\n');
-
   if (deepSearchRoot != null && await deepSearchRoot.exists()) {
     await for (final entity
         in deepSearchRoot.list(recursive: true, followLinks: false)) {
       if (entity is File && entity.path.endsWith('nextchord_db.sqlite')) {
-        print('   ✓ Found at: ${entity.path}\n');
         return entity.path;
       }
     }
@@ -457,7 +406,6 @@ Future<void> _ensureDatabaseSchema(Database db) async {
     ''');
 
     if (tables.isEmpty) {
-      print('📝 Creating midi_profiles table...');
       db.execute('''
         CREATE TABLE midi_profiles (
           id TEXT NOT NULL PRIMARY KEY,
@@ -470,24 +418,17 @@ Future<void> _ensureDatabaseSchema(Database db) async {
           updated_at INTEGER NOT NULL
         )
       ''');
-      print('✅ midi_profiles table created');
-    } else {
-      print('✅ midi_profiles table already exists');
     }
 
     // Check if profile_id column exists in songs table
     try {
       db.select('SELECT profile_id FROM songs LIMIT 1');
-      print('✅ profile_id column exists in songs table');
     } catch (e) {
-      print('📝 Adding profile_id column to songs table...');
       db.execute('ALTER TABLE songs ADD COLUMN profile_id TEXT');
-      print('✅ profile_id column added to songs table');
     }
 
     return;
   } catch (e) {
-    print('❌ Error ensuring database schema: $e');
     rethrow;
   }
 }
@@ -516,7 +457,6 @@ Future<void> _importMidiProfiles(Database db, Map<String, dynamic> data) async {
 
       // Skip if profile already exists
       if (existingProfileIds.contains(id)) {
-        print('   ⏭️  Skipping existing profile: "$name" (ID: $id)');
         continue;
       }
 
@@ -546,13 +486,9 @@ Future<void> _importMidiProfiles(Database db, Map<String, dynamic> data) async {
         now,
       ]);
 
-      print('   ✅ Imported profile: "$name" (ID: $id)');
       imported++;
     }
-
-    print('🎉 MIDI profile import completed! Imported: $imported');
   } catch (e) {
-    print('❌ Error importing MIDI profiles: $e');
     rethrow;
   }
 }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../../data/repositories/song_repository.dart';
@@ -16,12 +15,9 @@ class MidiProfileService {
   /// Load all MIDI profiles from the database
   Future<List<MidiProfile>> loadProfiles() async {
     try {
-      debugPrint('Loading MIDI profiles...');
       final profiles = await _repository.getAllMidiProfiles();
-      debugPrint('Loaded ${profiles.length} MIDI profiles');
       return profiles;
     } catch (e) {
-      debugPrint('Failed to load MIDI profiles: $e');
       rethrow;
     }
   }
@@ -35,8 +31,6 @@ class MidiProfileService {
     String? id,
   }) async {
     try {
-      debugPrint('Saving MIDI profile: $name');
-
       // Separate program changes from control changes
       final separated =
           MidiCommandParser.separateProgramChanges(controlChanges);
@@ -53,9 +47,7 @@ class MidiProfileService {
       );
 
       await _repository.saveMidiProfile(profile);
-      debugPrint('MIDI profile saved successfully');
     } catch (e) {
-      debugPrint('Failed to save MIDI profile: $e');
       rethrow;
     }
   }
@@ -63,11 +55,8 @@ class MidiProfileService {
   /// Delete a MIDI profile from the database
   Future<void> deleteProfile(String profileId) async {
     try {
-      debugPrint('Deleting MIDI profile: $profileId');
       await _repository.deleteMidiProfile(profileId);
-      debugPrint('MIDI profile deleted successfully');
     } catch (e) {
-      debugPrint('Failed to delete MIDI profile: $e');
       rethrow;
     }
   }
@@ -94,8 +83,6 @@ class MidiProfileService {
         throw Exception('Add some MIDI commands before testing.');
       }
 
-      debugPrint('Testing MIDI commands...');
-
       // Send program change if present
       if (separated.programChangeNumber != null) {
         await _midiService.sendProgramChange(
@@ -119,10 +106,7 @@ class MidiProfileService {
       if (timing) {
         await _midiService.sendMidiClock();
       }
-
-      debugPrint('MIDI commands sent successfully');
     } catch (e) {
-      debugPrint('Failed to test MIDI commands: $e');
       rethrow;
     }
   }

@@ -84,7 +84,6 @@ class DatabaseMigrations {
 
   /// Merge database from backup
   static Future<void> mergeFromBackup(AppDatabase db, String backupPath) async {
-    print('Starting database merge from backup');
     await db.customStatement('ATTACH DATABASE ? AS remote', [backupPath]);
     try {
       await _mergeTable(
@@ -156,7 +155,6 @@ class DatabaseMigrations {
     } finally {
       await db.customStatement('DETACH DATABASE remote');
     }
-    print('Database merge completed successfully');
   }
 
   static Future<void> _mergeTable(
@@ -185,7 +183,5 @@ class DatabaseMigrations {
       WHERE $joinCondition
       AND remote.updated_at > $tableName.updated_at
     ''');
-
-    print('Merged $tableName from backup');
   }
 }

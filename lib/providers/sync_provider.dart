@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
@@ -24,9 +23,10 @@ class SyncProvider with ChangeNotifier {
 
   SyncProvider({VoidCallback? onSyncCompleted})
       : _onSyncCompleted = onSyncCompleted {
-    _writeStartupLog('SyncProvider constructor called');
-
     try {
+      // Initialize Google Drive sync service (loads Windows tokens for persistence)
+      GoogleDriveSyncService.initialize().then((_) {}).catchError((e) {});
+
       _syncService = GoogleDriveSyncService(
         onDatabaseReplaced: () {
           if (_onSyncCompleted != null) {
@@ -34,9 +34,7 @@ class SyncProvider with ChangeNotifier {
           }
         },
       );
-      _writeStartupLog('GoogleDriveSyncService created successfully');
     } catch (e) {
-      _writeStartupLog('ERROR creating GoogleDriveSyncService: $e');
       rethrow;
     }
 
@@ -44,23 +42,10 @@ class SyncProvider with ChangeNotifier {
     _startPeriodicSync();
   }
 
-  /// Write a timestamped log to a local file for debugging startup sync
-  Future<void> _writeStartupLog(String message) async {
-    try {
-      final logFile = File('/tmp/nextchord_startup.log');
-      final timestamp = DateTime.now().toIso8601String();
-      await logFile.writeAsString('$timestamp: $message\n',
-          mode: FileMode.append);
-    } catch (e) {
-      // Silently fail if we can't write log file
-    }
-  }
-
   /// Load sync preference from SharedPreferences
   Future<void> _loadSyncPreference() async {
     _prefs = await SharedPreferences.getInstance();
     _isSyncEnabled = _prefs?.getBool(_syncEnabledKey) ?? false;
-    _writeStartupLog('Sync enabled from preferences: $_isSyncEnabled');
 
     // If sync was previously enabled, optimistically set sign-in status
     if (_isSyncEnabled) {
@@ -74,10 +59,7 @@ class SyncProvider with ChangeNotifier {
       Future.delayed(const Duration(seconds: 5), () async {
         try {
           await autoSync();
-          await _writeStartupLog('Startup autoSync completed successfully');
-        } catch (e) {
-          await _writeStartupLog('Startup autoSync failed: $e');
-        }
+        } catch (e) {}
       });
     }
   }
@@ -164,7 +146,6 @@ class SyncProvider with ChangeNotifier {
       return _isSignedIn;
     } catch (e) {
       _lastError = e.toString();
-      debugPrint('Sign in error: $e');
       return false;
     } finally {
       _isSyncing = false;
@@ -185,7 +166,6 @@ class SyncProvider with ChangeNotifier {
       _lastError = null;
     } catch (e) {
       _lastError = e.toString();
-      debugPrint('Sign out error: $e');
       rethrow;
     } finally {
       _isSyncing = false;
@@ -205,7 +185,6 @@ class SyncProvider with ChangeNotifier {
       _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
-      debugPrint('Sync error: $e');
       rethrow;
     } finally {
       _isSyncing = false;
@@ -225,7 +204,6 @@ class SyncProvider with ChangeNotifier {
       _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
-      debugPrint('Initial sync error: $e');
       rethrow;
     } finally {
       _isSyncing = false;

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:math';
-import 'package:flutter/foundation.dart' show debugPrint, ChangeNotifier;
+import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'package:record/record.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
 import 'package:pitchupdart/instrument_type.dart';
@@ -111,7 +111,6 @@ class GuitarTunerService extends ChangeNotifier {
       return _hasPermission;
     } catch (e) {
       _errorMessage = 'Failed to initialize tuner: $e';
-      debugPrint('Tuner initialization error: $e');
       notifyListeners();
       return false;
     }
@@ -133,7 +132,6 @@ class GuitarTunerService extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Permission check failed: $e');
       _hasPermission = false;
       _errorMessage = 'Failed to check microphone permission: $e';
       notifyListeners();
@@ -234,9 +232,7 @@ class GuitarTunerService extends ChangeNotifier {
           _audioBuffer.removeRange(0, _audioBuffer.length - requiredBytes);
         }
       }
-    } catch (e) {
-      debugPrint('Audio processing error: $e');
-    }
+    } catch (e) {}
   }
 
   /// Analyze pitch using pitch detection libraries
@@ -269,9 +265,7 @@ class GuitarTunerService extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {
-      debugPrint('Pitch analysis error: $e');
-    }
+    } catch (e) {}
   }
 
   /// Find the closest guitar string to a given frequency

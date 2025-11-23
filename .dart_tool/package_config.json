@@ -848,6 +848,12 @@
       "languageVersion": "3.8"
     },
     {
+      "name": "sqflite_common_ffi",
+      "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_common_ffi-2.3.6",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "sqflite_darwin",
       "rootUri": "file:///C:/Users/tanto/AppData/Local/Pub/Cache/hosted/pub.dev/sqflite_darwin-2.4.2",
       "packageUri": "lib/",

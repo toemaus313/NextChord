@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/song_viewer_constants.dart';
-import '../../core/utils/logger.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
@@ -94,15 +93,11 @@ class SongViewerProvider extends ChangeNotifier {
 
   // Update methods
   void updateSong(Song newSong) {
-    Logger.methodEntry(
-        'SongViewerProvider', 'updateSong', {'songTitle': newSong.title});
-
     _currentSong = newSong;
     _transposeSteps = _setlistContext?.transposeSteps ?? 0;
     _currentCapo = _setlistContext?.capo ?? newSong.capo;
     _initializeViewerAdjustments();
 
-    Logger.methodExit('SongViewerProvider', 'updateSong');
     notifyListeners();
   }
 
@@ -155,9 +150,6 @@ class SongViewerProvider extends ChangeNotifier {
 
   // Flyout management
   void toggleFlyout(FlyoutType type) {
-    Logger.methodEntry(
-        'SongViewerProvider', 'toggleFlyout', {'type': type.toString()});
-
     // Close all flyouts first
     _closeAllFlyouts();
 
@@ -176,8 +168,6 @@ class SongViewerProvider extends ChangeNotifier {
         _showAutoscrollFlyout = !_showAutoscrollFlyout;
         break;
     }
-
-    Logger.methodExit('SongViewerProvider', 'toggleFlyout');
     notifyListeners();
   }
 

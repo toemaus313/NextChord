@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/song_repository.dart';
-import '../../core/utils/logger.dart';
 import '../../core/constants/song_viewer_constants.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -58,7 +57,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   @override
   void initState() {
     super.initState();
-    Logger.methodEntry('SongViewerScreen', 'initState');
 
     // Initialize providers and services
     _songViewerProvider = SongViewerProvider(
@@ -80,8 +78,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-
-    Logger.methodExit('SongViewerScreen', 'initState');
   }
 
   void _initializeServices() {
@@ -235,9 +231,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
           _songViewerProvider.currentSong.copyWith(tags: updatedTags.toList());
       await repository.updateSong(updatedSong);
       await _reloadSong();
-    } catch (e) {
-      Logger.error('Failed to update song tags', e);
-    }
+    } catch (e) {}
   }
 
   /// Reorder song tags in database
@@ -265,9 +259,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
         _syncMetronomeSettings();
         return true;
       }
-    } catch (e) {
-      Logger.error('Failed to reload song', e);
-    }
+    } catch (e) {}
     return false;
   }
 
@@ -360,7 +352,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   @override
   void dispose() {
-    Logger.methodEntry('SongViewerScreen', 'dispose');
     _metronome.stop();
     disposeGestures();
     _focusNode.dispose();
@@ -368,13 +359,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     // Reset to portrait only when leaving
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
-    Logger.methodExit('SongViewerScreen', 'dispose');
   }
 
   @override
   Widget build(BuildContext context) {
-    Logger.methodEntry('SongViewerScreen', 'build');
-
     return ChangeNotifierProvider.value(
       value: _songViewerProvider,
       child: Consumer<SongViewerProvider>(

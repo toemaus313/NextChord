@@ -171,19 +171,11 @@ class SetlistEditorDialog extends StatefulWidget {
                         return CheckboxListTile(
                           value: isSelected,
                           onChanged: (value) {
-                            debugPrint(
-                                '=== Checkbox onChanged: value=$value, songId=${song.id}, isSelected=$isSelected ===');
                             if (value == true) {
-                              debugPrint(
-                                  '=== Calling songProvider.selectSong ===');
                               songProvider.selectSong(song);
                             } else {
-                              debugPrint(
-                                  '=== Calling songProvider.deselectSong ===');
                               songProvider.deselectSong(song);
                             }
-                            debugPrint(
-                                '=== After selection: selectedSongs=${songProvider.selectedSongs.length} ===');
                           },
                           title: Text(
                             song.title,
@@ -272,7 +264,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
           setState(() => _imageBytes = bytes);
         }
       } catch (e) {
-        debugPrint('Failed to load image: $e');
       } finally {
         if (mounted) {
           setState(() => _imageLoading = false);

@@ -181,17 +181,13 @@ class _StorageSettingsModalState extends State<StorageSettingsModal>
   Future<void> _handleSignIn(SyncProvider syncProvider) async {
     try {
       await syncProvider.signIn();
-    } catch (e) {
-      debugPrint('Sign in error: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _handleSignOut(SyncProvider syncProvider) async {
     try {
       await syncProvider.signOut();
-    } catch (e) {
-      debugPrint('Sign out error: $e');
-    }
+    } catch (e) {}
   }
 
   String _formatLastSync(DateTime dateTime) {

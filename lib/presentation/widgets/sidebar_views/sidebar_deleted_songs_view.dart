@@ -32,6 +32,32 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
               icon: Icons.delete_outline,
               onClose: widget.onBack,
             ),
+            // Select Songs button
+            Consumer<SongProvider>(
+              builder: (context, provider, child) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      provider.toggleSelectionMode();
+                    },
+                    icon: Icon(
+                        provider.selectionMode ? Icons.close : Icons.checklist,
+                        size: 16),
+                    label: Text(provider.selectionMode
+                        ? 'Cancel Selection'
+                        : 'Select Songs'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: provider.selectionMode
+                          ? Colors.red.withAlpha(20)
+                          : Colors.white.withAlpha(20),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 36),
+                    ),
+                  ),
+                );
+              },
+            ),
             if (provider.selectionMode && deletedSongs.isNotEmpty)
               Column(
                 children: [
@@ -58,7 +84,7 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
                               onPressed: () =>
                                   _bulkRestoreDeletedSongs(context),
                               icon: const Icon(Icons.restore, size: 16),
-                              label: const Text('Restore Selected',
+                              label: const Text('Restore',
                                   style: TextStyle(fontSize: 12)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green,
@@ -74,7 +100,7 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
                               onPressed: () =>
                                   _bulkPermanentlyDeleteSongs(context),
                               icon: const Icon(Icons.delete_forever, size: 16),
-                              label: const Text('Delete Forever',
+                              label: const Text('Delete',
                                   style: TextStyle(fontSize: 12)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
@@ -127,42 +153,40 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
                         final isSelected =
                             provider.selectedSongs.contains(song);
 
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: Colors.white.withAlpha(51),
-                            child: Text(
-                              song.title.isNotEmpty
-                                  ? song.title[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            song.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: song.artist.isNotEmpty
-                              ? Text(
-                                  song.artist,
-                                  style: TextStyle(
-                                    color: Colors.white.withAlpha(179),
-                                    fontSize: 11,
-                                  ),
-                                )
-                              : null,
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: Row(
                             children: [
+                              // Song title and artist
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      song.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (song.artist.isNotEmpty)
+                                      Text(
+                                        song.artist,
+                                        style: TextStyle(
+                                          color: Colors.white.withAlpha(179),
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              // Action buttons
                               if (provider.selectionMode)
                                 Checkbox(
                                   value: isSelected,
@@ -176,48 +200,41 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
                                   activeColor: Colors.blue,
                                   checkColor: Colors.white,
                                 )
-                              else
-                                PopupMenuButton<String>(
+                              else ...[
+                                // Restore button
+                                IconButton(
+                                  onPressed: () => _restoreSong(context, song),
                                   icon: const Icon(
-                                    Icons.more_vert,
-                                    color: Colors.white70,
+                                    Icons.restore,
+                                    color: Colors.green,
                                     size: 16,
                                   ),
-                                  onSelected: (value) {
-                                    if (value == 'restore') {
-                                      _restoreSong(context, song);
-                                    } else if (value == 'delete') {
-                                      _permanentlyDeleteSong(context, song);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'restore',
-                                      child: Text('Restore'),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Permanently Delete'),
-                                    ),
-                                  ],
+                                  tooltip: 'Restore',
+                                  padding: const EdgeInsets.all(2),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 28,
+                                    minHeight: 28,
+                                  ),
                                 ),
+                                // Delete button
+                                IconButton(
+                                  onPressed: () =>
+                                      _permanentlyDeleteSong(context, song),
+                                  icon: const Icon(
+                                    Icons.delete_forever,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
+                                  tooltip: 'Permanently Delete',
+                                  padding: const EdgeInsets.all(2),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 28,
+                                    minHeight: 28,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                          onTap: () {
-                            if (provider.selectionMode) {
-                              if (isSelected) {
-                                provider.deselectSong(song);
-                              } else {
-                                provider.selectSong(song);
-                              }
-                            }
-                          },
-                          onLongPress: () {
-                            if (!provider.selectionMode) {
-                              provider.toggleSelectionMode();
-                              provider.selectSong(song);
-                            }
-                          },
                         );
                       },
                     ),

@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -23,30 +21,18 @@ class CliOptions {
 /// Standalone MIDI profile import script that works without Flutter
 /// Directly writes to the SQLite database
 void main(List<String> args) async {
-  print('🎹 MIDI Profiles - Standalone Importer\n');
-
   final cliOptions = _parseCliOptions(args);
   final libraryPath = _resolveLibraryPath(cliOptions.libraryPath);
   final dbPath = await _findDatabasePath();
 
   if (dbPath == null) {
-    print('❌ Could not find NextChord database.');
-    print('💡 Run the app at least once to create the database.');
     exit(1);
   }
-
-  print('📂 Reading from: $libraryPath');
-  print('💾 Database: $dbPath');
-  if (cliOptions.dryRun) {
-    print('🔍 DRY RUN MODE - No changes will be made to database');
-  }
-  print('');
 
   try {
     // Read and parse library.json
     final file = File(libraryPath);
     if (!await file.exists()) {
-      print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
 
@@ -66,41 +52,30 @@ void main(List<String> args) async {
     }
 
     if (midiProfiles.isEmpty) {
-      print('❌ Error: No MIDI profiles found in library.json');
       exit(1);
     }
-
-    print('📊 Found ${midiProfiles.length} MIDI profiles in library.json\n');
 
     // Display profiles to be imported
     for (var i = 0; i < midiProfiles.length; i++) {
       final profile = midiProfiles[i];
       final id = profile['id'] as String? ?? 'Unknown ID';
       final name = profile['name'] as String? ?? _generateProfileName(profile);
-      print('${i + 1}. "$name" (ID: $id)');
     }
 
     if (!cliOptions.dryRun) {
-      print(
-          '\n💾 Would you like to import these MIDI profiles to the database? (y/n)');
       final response = stdin.readLineSync()?.toLowerCase();
 
       if (response != 'y' && response != 'yes') {
-        print('\n❌ Import cancelled.');
         exit(0);
       }
     }
-
-    print('\n📝 Importing MIDI profiles...\n');
 
     // Open database
     final db = sqlite3.open(dbPath);
 
     try {
       // Ensure midi_profiles table exists with correct schema
-      print('🔍 Validating database schema...');
       await _ensureDatabaseSchema(db);
-      print('✅ Database schema validated\n');
 
       final now = DateTime.now().millisecondsSinceEpoch;
       var imported = 0;
@@ -123,7 +98,6 @@ void main(List<String> args) async {
 
         // Skip if profile already exists and not overwriting
         if (!cliOptions.overwriteExisting && existingProfileIds.contains(id)) {
-          print('⏭️  Skipping existing profile: "$name" (ID: $id)');
           skipped++;
           continue;
         }
@@ -131,7 +105,6 @@ void main(List<String> args) async {
         // Convert raw MIDI messages to NextChord format
         final midiData = _convertMidiProfile(midiMessages);
         if (midiData == null) {
-          print('⚠️  Skipping empty profile: "$name" (ID: $id)');
           skipped++;
           continue;
         }
@@ -155,7 +128,6 @@ void main(List<String> args) async {
             now,
             id,
           ]);
-          print('🔄 Updated profile: "$name" (ID: $id)');
           updated++;
         } else {
           // Insert new profile
@@ -174,26 +146,13 @@ void main(List<String> args) async {
             now,
             now,
           ]);
-          print('✅ Imported profile: "$name" (ID: $id)');
           imported++;
         }
-      }
-
-      print('\n🎉 Import completed!');
-      print('📊 Summary:');
-      print('   ✅ Imported: $imported');
-      print('   🔄 Updated: $updated');
-      print('   ⏭️  Skipped: $skipped');
-      print('   📋 Total processed: ${midiProfiles.length}');
-
-      if (cliOptions.dryRun) {
-        print('\n🔍 DRY RUN MODE - No changes were made to database');
       }
     } finally {
       db.dispose();
     }
   } catch (e) {
-    print('\n❌ Error during import: $e');
     exit(1);
   }
 }
@@ -219,13 +178,11 @@ CliOptions _parseCliOptions(List<String> args) {
         if (i + 1 < args.length) {
           libraryPath = args[++i];
         } else {
-          print('❌ Error: --file requires a path argument');
           exit(1);
         }
         break;
       default:
         if (args[i].startsWith('--')) {
-          print('❌ Error: Unknown option ${args[i]}');
           _printUsage();
           exit(1);
         }
@@ -241,23 +198,7 @@ CliOptions _parseCliOptions(List<String> args) {
 }
 
 /// Print usage information
-void _printUsage() {
-  print('Usage: dart import_midi_profiles.dart [options]');
-  print('');
-  print('Options:');
-  print(
-      '  --file <path>     Path to library.json file (default: library.json)');
-  print(
-      '  --dry-run         Show what would be imported without making changes');
-  print(
-      '  --overwrite       Update existing profiles instead of skipping them');
-  print('  --help            Show this help message');
-  print('');
-  print('Examples:');
-  print('  dart import_midi_profiles.dart');
-  print('  dart import_midi_profiles.dart --file ../data/library.json');
-  print('  dart import_midi_profiles.dart --dry-run --overwrite');
-}
+void _printUsage() {}
 
 /// Resolve library.json path
 String _resolveLibraryPath(String libraryPath) {
@@ -290,7 +231,6 @@ Future<String?> _findDatabasePath() async {
   final homeDir = env['HOME'] ?? env['USERPROFILE'];
 
   if (homeDir == null) {
-    print('❗ Unable to determine home directory.');
     return null;
   }
 
@@ -321,38 +261,21 @@ Future<String?> _findDatabasePath() async {
 
   possiblePaths.add('nextchord_db.sqlite'); // Current directory fallback
 
-  print('🔍 Searching for database in:');
-
-  // First check for exact matches
-  for (final path in possiblePaths.where((p) => !p.contains('*'))) {
-    print('   - $path');
-    if (await File(path).exists()) {
-      print('   ✓ Found!\n');
-      return path;
-    }
-  }
-
-  print('   ✗ Not found in standard locations\n');
-
   // If on Windows, search Documents folder for any SQLite file
   if (Platform.isWindows &&
       deepSearchRoot != null &&
       await deepSearchRoot.exists()) {
-    print('🔍 Searching Documents folder for SQLite files...');
     await for (final entity
         in deepSearchRoot.list(recursive: false, followLinks: false)) {
       if (entity is File && entity.path.toLowerCase().endsWith('.sqlite')) {
-        print('   ✓ Found SQLite file: ${entity.path}\n');
         return entity.path;
       }
     }
 
     // Also search subdirectories in Documents
-    print('🔍 Searching Documents subdirectories...');
     await for (final entity
         in deepSearchRoot.list(recursive: true, followLinks: false)) {
       if (entity is File && entity.path.toLowerCase().endsWith('.sqlite')) {
-        print('   ✓ Found SQLite file: ${entity.path}\n');
         return entity.path;
       }
     }
@@ -371,7 +294,6 @@ Future<void> _ensureDatabaseSchema(Database db) async {
     ''');
 
     if (tables.isEmpty) {
-      print('📝 Creating midi_profiles table...');
       db.execute('''
         CREATE TABLE midi_profiles (
           id TEXT NOT NULL PRIMARY KEY,
@@ -384,24 +306,17 @@ Future<void> _ensureDatabaseSchema(Database db) async {
           updated_at INTEGER NOT NULL
         )
       ''');
-      print('✅ midi_profiles table created');
-    } else {
-      print('✅ midi_profiles table already exists');
-    }
+    } else {}
 
     // Check if profile_id column exists in songs table
     try {
       db.select('SELECT profile_id FROM songs LIMIT 1');
-      print('✅ profile_id column exists in songs table');
     } catch (e) {
-      print('📝 Adding profile_id column to songs table...');
       db.execute('ALTER TABLE songs ADD COLUMN profile_id TEXT');
-      print('✅ profile_id column added to songs table');
     }
 
     return;
   } catch (e) {
-    print('❌ Error ensuring database schema: $e');
     rethrow;
   }
 }

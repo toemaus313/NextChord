@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/song_viewer_constants.dart';
-import '../../core/utils/logger.dart';
 import '../providers/song_viewer_provider.dart';
 
 /// Mixin for handling song viewer gestures
@@ -21,33 +20,19 @@ mixin SongViewerGestures<T extends StatefulWidget> on State<T> {
   /// Handle horizontal swipe gestures for setlist navigation
   void handleHorizontalSwipeEnd(
       DragEndDetails details, Function(bool) onNavigate) {
-    Logger.methodEntry('SongViewerGestures', 'handleHorizontalSwipeEnd');
-
     final velocity = details.primaryVelocity ?? 0;
     if (velocity.abs() < SongViewerConstants.swipeVelocityThreshold) {
-      Logger.methodExit(
-          'SongViewerGestures', 'handleHorizontalSwipeEnd', 'Velocity too low');
       return;
     }
 
     final isNext = velocity < 0; // Swipe left -> Next, Swipe right -> Previous
-    Logger.navigation(
-        'Swipe detected - navigating ${isNext ? 'next' : 'previous'}');
 
     onNavigate(isNext);
-    Logger.methodExit('SongViewerGestures', 'handleHorizontalSwipeEnd');
   }
 
   /// Handle keyboard navigation for setlist songs
   void handleKeyboardNavigation(bool isNext, Function(bool) onNavigate) {
-    Logger.methodEntry(
-        'SongViewerGestures', 'handleKeyboardNavigation', {'isNext': isNext});
-
-    Logger.navigation(
-        'Keyboard navigation - navigating ${isNext ? 'next' : 'previous'}');
     onNavigate(isNext);
-
-    Logger.methodExit('SongViewerGestures', 'handleKeyboardNavigation');
   }
 
   /// Handle pinch to zoom gesture

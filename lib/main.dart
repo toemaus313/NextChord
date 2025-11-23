@@ -45,6 +45,8 @@ void main() async {
     onSyncCompleted: () {
       // Refresh data in providers after successful sync
       songProvider.loadSongs();
+      songProvider
+          .loadDeletedSongs(); // Also refresh deleted songs to prevent disappearing
       setlistProvider.loadSetlists();
     },
   );

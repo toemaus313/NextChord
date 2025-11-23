@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -19,12 +18,9 @@ class SetlistService {
   /// Load all setlists from the database
   Future<List<Setlist>> loadSetlists() async {
     try {
-      debugPrint('Loading setlists...');
       final setlists = await _repository.getAllSetlists();
-      debugPrint('Loaded ${setlists.length} setlists');
       return setlists;
     } catch (e) {
-      debugPrint('Failed to load setlists: $e');
       rethrow;
     }
   }
@@ -39,8 +35,6 @@ class SetlistService {
     DateTime? createdAt,
   }) async {
     try {
-      debugPrint('Saving setlist: $name');
-
       // Convert songs to SetlistItem format with order
       final items = songs.asMap().entries.map((entry) {
         return SetlistSongItem(
@@ -69,9 +63,7 @@ class SetlistService {
       } else {
         await _repository.updateSetlist(setlist);
       }
-      debugPrint('Setlist saved successfully');
     } catch (e) {
-      debugPrint('Failed to save setlist: $e');
       rethrow;
     }
   }
@@ -79,11 +71,8 @@ class SetlistService {
   /// Delete a setlist from the database
   Future<void> deleteSetlist(String setlistId) async {
     try {
-      debugPrint('Deleting setlist: $setlistId');
       await _repository.deleteSetlist(setlistId);
-      debugPrint('Setlist deleted successfully');
     } catch (e) {
-      debugPrint('Failed to delete setlist: $e');
       rethrow;
     }
   }
@@ -91,7 +80,6 @@ class SetlistService {
   /// Pick an image file for setlist cover
   Future<String?> pickImage() async {
     try {
-      debugPrint('Opening image picker...');
       final result = await openFile(
         acceptedTypeGroups: [
           const XTypeGroup(
@@ -102,12 +90,10 @@ class SetlistService {
       );
 
       if (result != null) {
-        debugPrint('Image selected: ${result.name}');
         return result.path;
       }
       return null;
     } catch (e) {
-      debugPrint('Failed to pick image: $e');
       return null;
     }
   }
@@ -117,10 +103,8 @@ class SetlistService {
     if (sourcePath == null || sourcePath.isEmpty) return null;
 
     try {
-      debugPrint('Saving image to app directory...');
       final sourceFile = File(sourcePath);
       if (!await sourceFile.exists()) {
-        debugPrint('Source image file does not exist');
         return null;
       }
 
@@ -139,10 +123,8 @@ class SetlistService {
 
       // If it's a large image, we could resize it here
       // For now, just copy as-is
-      debugPrint('Image saved to: ${savedFile.path}');
       return savedFile.path;
     } catch (e) {
-      debugPrint('Failed to save image: $e');
       return null;
     }
   }
@@ -155,11 +137,8 @@ class SetlistService {
       final imageFile = File(imagePath);
       if (await imageFile.exists()) {
         await imageFile.delete();
-        debugPrint('Image file deleted: $imagePath');
       }
-    } catch (e) {
-      debugPrint('Failed to delete image file: $e');
-    }
+    } catch (e) {}
   }
 
   /// Load image file as bytes for display
@@ -169,13 +148,11 @@ class SetlistService {
     try {
       final imageFile = File(imagePath);
       if (!await imageFile.exists()) {
-        debugPrint('Image file does not exist: $imagePath');
         return null;
       }
 
       return await imageFile.readAsBytes();
     } catch (e) {
-      debugPrint('Failed to load image bytes: $e');
       return null;
     }
   }

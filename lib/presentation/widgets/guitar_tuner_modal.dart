@@ -46,9 +46,7 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
 
   Future<void> _initializeTuner() async {
     try {
-      debugPrint('Starting tuner initialization...');
       final success = await _tunerService.initialize();
-      debugPrint('Tuner initialization result: $success');
 
       if (mounted) {
         setState(() {
@@ -56,14 +54,10 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
           if (!success) {
             _initError =
                 _tunerService.errorMessage ?? 'Failed to initialize tuner';
-            debugPrint('Tuner initialization failed: $_initError');
-          } else {
-            debugPrint('Tuner initialized successfully');
           }
         });
       }
     } catch (e) {
-      debugPrint('Tuner initialization exception: $e');
       if (mounted) {
         setState(() {
           _isInitializing = false;

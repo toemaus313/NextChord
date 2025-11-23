@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,30 +8,18 @@ import 'package:uuid/uuid.dart';
 /// Standalone setlist import script that works without Flutter
 /// Directly writes to the SQLite database
 void main(List<String> args) async {
-  print('📋 Setlists - Standalone Importer\n');
-
   final cliOptions = _parseCliOptions(args);
   final libraryPath = _resolveLibraryPath(cliOptions.libraryPath);
   final dbPath = await _findDatabasePath();
 
   if (dbPath == null) {
-    print('❌ Could not find NextChord database.');
-    print('💡 Run the app at least once to create the database.');
     exit(1);
   }
-
-  print('📂 Reading from: $libraryPath');
-  print('💾 Database: $dbPath');
-  if (cliOptions.dryRun) {
-    print('🔍 DRY RUN MODE - No changes will be made to database');
-  }
-  print('');
 
   try {
     // Read and parse library.json
     final file = File(libraryPath);
     if (!await file.exists()) {
-      print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
 
@@ -43,11 +29,8 @@ void main(List<String> args) async {
     // Extract playlists/setlists
     final playlists = data['playlists'] as List<dynamic>?;
     if (playlists == null || playlists.isEmpty) {
-      print('❌ Error: No playlists found in library.json');
       exit(1);
     }
-
-    print('📊 Found ${playlists.length} playlists in library.json\n');
 
     // Display playlists to be imported
     for (var i = 0; i < playlists.length; i++) {
@@ -56,30 +39,22 @@ void main(List<String> args) async {
       final name = playlist['title'] as String? ?? 'Untitled Setlist';
       final songCount =
           (playlist['arrangement'] as List<dynamic>?)?.length ?? 0;
-      print('${i + 1}. "$name" (ID: $id) - $songCount songs');
     }
 
     if (!cliOptions.dryRun) {
-      print(
-          '\n💾 Would you like to import these playlists to the database? (y/n)');
       final response = stdin.readLineSync()?.toLowerCase();
 
       if (response != 'y' && response != 'yes') {
-        print('\n❌ Import cancelled.');
         exit(0);
       }
     }
-
-    print('\n📝 Importing playlists...\n');
 
     // Open database
     final db = sqlite3.open(dbPath);
 
     try {
       // Ensure database schema is up to date
-      print('🔍 Validating database schema...');
       await _ensureDatabaseSchema(db);
-      print('✅ Database schema validated\n');
 
       final now = DateTime.now().millisecondsSinceEpoch;
       var imported = 0;
@@ -127,7 +102,6 @@ void main(List<String> args) async {
       }
 
       if (missingSongIds.isNotEmpty && !cliOptions.dryRun) {
-        print('🎵 Importing ${missingSongIds.length} missing songs first...\n');
         await _importMissingSongs(db, missingSongIds, librarySongMap);
 
         // Refresh song map after imports
@@ -140,10 +114,8 @@ void main(List<String> args) async {
             'artist': row['artist'] as String,
           };
         }
-        print('✅ Missing songs imported\n');
       } else if (missingSongIds.isNotEmpty && cliOptions.dryRun) {
-        print(
-            '🔍 DRY RUN: Would import ${missingSongIds.length} missing songs\n');
+        // DRY RUN: Would import missing songs
       }
 
       for (final playlistJson in playlists.whereType<Map<String, dynamic>>()) {
@@ -153,16 +125,12 @@ void main(List<String> args) async {
 
         // Skip if playlist already exists and not overwriting
         if (!cliOptions.overwriteExisting && existingPlaylistIds.contains(id)) {
-          print('⏭️  Skipping existing playlist: "$name" (ID: $id)');
           skipped++;
           continue;
         }
 
-        // In dry run mode with missing songs, don't show "Song Not Found" warnings
-        // since they would be imported first in actual run
+        // In dry run mode with missing songs, skip processing
         if (cliOptions.dryRun && missingSongIds.isNotEmpty) {
-          print(
-              '🔍 DRY RUN: Would import playlist: "$name" (after importing missing songs)');
           continue;
         }
 
@@ -204,14 +172,11 @@ void main(List<String> args) async {
             songsFound++;
           } else {
             // Song not found in database
-            print('   ⚠️  Song not found: "$title" (ID: $songId)');
             songsMissing++;
           }
         }
 
         if (setlistItems.isEmpty) {
-          print(
-              '⚠️  Skipping empty playlist: "$name" (no songs found in database)');
           skipped++;
           continue;
         }
@@ -232,8 +197,6 @@ void main(List<String> args) async {
             now,
             id,
           ]);
-          print(
-              '🔄 Updated playlist: "$name" ($songsFound songs, $songsMissing missing)');
           updated++;
         } else {
           // Insert new playlist
@@ -252,27 +215,13 @@ void main(List<String> args) async {
             now,
             now,
           ]);
-          print(
-              '✅ Imported playlist: "$name" ($songsFound songs, $songsMissing missing)');
           imported++;
         }
-      }
-
-      print('\n🎉 Import completed!');
-      print('📊 Summary:');
-      print('   ✅ Imported: $imported');
-      print('   🔄 Updated: $updated');
-      print('   ⏭️  Skipped: $skipped');
-      print('   📋 Total processed: ${playlists.length}');
-
-      if (cliOptions.dryRun) {
-        print('\n🔍 DRY RUN MODE - No changes were made to database');
       }
     } finally {
       db.dispose();
     }
   } catch (e) {
-    print('\n❌ Error during import: $e');
     exit(1);
   }
 }
@@ -311,13 +260,11 @@ CliOptions _parseCliOptions(List<String> args) {
         if (i + 1 < args.length) {
           libraryPath = args[++i];
         } else {
-          print('❌ Error: --file requires a path argument');
           exit(1);
         }
         break;
       default:
         if (args[i].startsWith('--')) {
-          print('❌ Error: Unknown option ${args[i]}');
           _printUsage();
           exit(1);
         }
@@ -333,23 +280,7 @@ CliOptions _parseCliOptions(List<String> args) {
 }
 
 /// Print usage information
-void _printUsage() {
-  print('Usage: dart import_setlists.dart [options]');
-  print('');
-  print('Options:');
-  print(
-      '  --file <path>     Path to library.json file (default: library.json)');
-  print(
-      '  --dry-run         Show what would be imported without making changes');
-  print(
-      '  --overwrite       Update existing playlists instead of skipping them');
-  print('  --help            Show this help message');
-  print('');
-  print('Examples:');
-  print('  dart import_setlists.dart');
-  print('  dart import_setlists.dart --file ../data/library.json');
-  print('  dart import_setlists.dart --dry-run --overwrite');
-}
+void _printUsage() {}
 
 /// Resolve library.json path
 String _resolveLibraryPath(String libraryPath) {
@@ -382,7 +313,6 @@ Future<String?> _findDatabasePath() async {
   final homeDir = env['HOME'] ?? env['USERPROFILE'];
 
   if (homeDir == null) {
-    print('❗ Unable to determine home directory.');
     return null;
   }
 
@@ -413,38 +343,21 @@ Future<String?> _findDatabasePath() async {
 
   possiblePaths.add('nextchord_db.sqlite'); // Current directory fallback
 
-  print('🔍 Searching for database in:');
-
-  // First check for exact matches
-  for (final path in possiblePaths.where((p) => !p.contains('*'))) {
-    print('   - $path');
-    if (await File(path).exists()) {
-      print('   ✓ Found!\n');
-      return path;
-    }
-  }
-
-  print('   ✗ Not found in standard locations\n');
-
   // If on Windows, search Documents folder for any SQLite file
   if (Platform.isWindows &&
       deepSearchRoot != null &&
       await deepSearchRoot.exists()) {
-    print('🔍 Searching Documents folder for SQLite files...');
     await for (final entity
         in deepSearchRoot.list(recursive: false, followLinks: false)) {
       if (entity is File && entity.path.toLowerCase().endsWith('.sqlite')) {
-        print('   ✓ Found SQLite file: ${entity.path}\n');
         return entity.path;
       }
     }
 
     // Also search subdirectories in Documents
-    print('🔍 Searching Documents subdirectories...');
     await for (final entity
         in deepSearchRoot.list(recursive: true, followLinks: false)) {
       if (entity is File && entity.path.toLowerCase().endsWith('.sqlite')) {
-        print('   ✓ Found SQLite file: ${entity.path}\n');
         return entity.path;
       }
     }
@@ -463,7 +376,6 @@ Future<void> _ensureDatabaseSchema(Database db) async {
     ''');
 
     if (tables.isEmpty) {
-      print('📝 Creating setlists table...');
       db.execute('''
         CREATE TABLE setlists (
           id TEXT NOT NULL PRIMARY KEY,
@@ -476,35 +388,24 @@ Future<void> _ensureDatabaseSchema(Database db) async {
           updated_at INTEGER NOT NULL
         )
       ''');
-      print('✅ setlists table created');
-    } else {
-      print('✅ setlists table already exists');
-    }
+    } else {}
 
     // Check for and add missing columns if needed
     try {
       db.select('SELECT image_path FROM setlists LIMIT 1');
-      print('✅ image_path column exists in setlists table');
     } catch (e) {
-      print('📝 Adding image_path column to setlists table...');
       db.execute('ALTER TABLE setlists ADD COLUMN image_path TEXT');
-      print('✅ image_path column added to setlists table');
     }
 
     try {
       db.select('SELECT setlist_specific_edits_enabled FROM setlists LIMIT 1');
-      print('✅ setlist_specific_edits_enabled column exists in setlists table');
     } catch (e) {
-      print(
-          '📝 Adding setlist_specific_edits_enabled column to setlists table...');
       db.execute(
           'ALTER TABLE setlists ADD COLUMN setlist_specific_edits_enabled INTEGER NOT NULL DEFAULT 1');
-      print('✅ setlist_specific_edits_enabled column added to setlists table');
     }
 
     return;
   } catch (e) {
-    print('❌ Error ensuring database schema: $e');
     rethrow;
   }
 }
@@ -581,13 +482,9 @@ Future<void> _importMissingSongs(Database db, Set<String> missingSongIds,
         profileId, // profile_id (null if no MIDI profile)
       ]);
 
-      print('   ✅ Imported: "$title" by $artist');
       imported++;
     }
-
-    print('🎉 Song import completed! Imported: $imported');
   } catch (e) {
-    print('❌ Error importing missing songs: $e');
     rethrow;
   }
 }

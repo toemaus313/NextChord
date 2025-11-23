@@ -57,8 +57,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       if (mounted) {
         _originalMidiChannel = midiService.displayMidiChannel;
         _originalSendMidiClock = midiService.sendMidiClockEnabled;
-        print(
-            'DEBUG MIDI: Stored original values - channel: $_originalMidiChannel, clock: $_originalSendMidiClock');
       }
     } catch (e) {
       setState(() {
@@ -642,10 +640,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
 
   /// Cancel changes and restore original values
   void _cancelChanges(BuildContext context, MidiService midiService) {
-    print(
-        'DEBUG MIDI: Cancel called - restoring channel: $_originalMidiChannel, clock: $_originalSendMidiClock');
-    print(
-        'DEBUG MIDI: Current service state - channel: ${midiService.displayMidiChannel}, clock: ${midiService.sendMidiClockEnabled}');
     midiService.setMidiChannel(_originalMidiChannel);
     midiService.setSendMidiClock(_originalSendMidiClock);
     Navigator.of(context).pop();

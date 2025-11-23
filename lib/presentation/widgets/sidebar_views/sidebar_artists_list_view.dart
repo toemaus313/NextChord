@@ -83,19 +83,6 @@ class _SidebarArtistsListViewState extends State<SidebarArtistsListView> {
 
                         return ListTile(
                           dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.2),
-                            child: Text(
-                              artist.isNotEmpty ? artist[0].toUpperCase() : '?',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
                           title: Text(
                             artist,
                             style: const TextStyle(

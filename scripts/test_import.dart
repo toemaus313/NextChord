@@ -1,22 +1,15 @@
-// ignore_for_file: avoid_print
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 /// Simple standalone script to test importing Justchords songs
 void main() async {
-  print('🎵 Justchords Song Importer Test\n');
-
   // Path to the library.json file
   const libraryPath = 'examples/library.json';
-
-  print('📂 Reading from: $libraryPath');
 
   try {
     final file = File(libraryPath);
     if (!await file.exists()) {
-      print('❌ Error: File not found at $libraryPath');
       exit(1);
     }
 
@@ -25,11 +18,8 @@ void main() async {
 
     final songsJson = data['songs'] as List<dynamic>?;
     if (songsJson == null || songsJson.isEmpty) {
-      print('❌ Error: No songs found in library.json');
       exit(1);
     }
-
-    print('📊 Total songs in library: ${songsJson.length}\n');
 
     // Select 5 random songs
     final random = Random();
@@ -49,9 +39,6 @@ void main() async {
         selectedSongs.add(song);
       }
     }
-
-    print('✅ Selected ${selectedSongs.length} random songs:\n');
-    print('=' * 80);
 
     // Display the selected songs
     for (var i = 0; i < selectedSongs.length; i++) {
@@ -76,39 +63,11 @@ void main() async {
         }
       }
 
-      print('\n${i + 1}. "$title" by $artist');
-      print(
-          '   Key: $key | Tempo: $tempo BPM | Time: $timeSignature | Duration: $duration');
-      print('   Raw data length: ${rawData.length} characters');
-
       // Show a preview of the chord chart
       final lines = rawData.split('\n');
       final previewLines = lines.take(10).toList();
-      print('   Preview (first 10 lines):');
-      for (final line in previewLines) {
-        final displayLine =
-            line.length > 70 ? '${line.substring(0, 70)}...' : line;
-        print('   | $displayLine');
-      }
-      if (lines.length > 10) {
-        print('   | ... (${lines.length - 10} more lines)');
-      }
-      print('   ${'-' * 76}');
     }
-
-    print('\n${'=' * 80}');
-    print('\n✅ Import test completed successfully!');
-    print(
-        '\n📝 These songs can be imported into NextChord with the following structure:');
-    print('   - Title and Artist from the JSON');
-    print('   - Key from keyChord.key field');
-    print('   - BPM from tempo field');
-    print('   - Time signature from timeSignature field');
-    print('   - Chord chart from rawData field (needs ChordPro conversion)');
-    print('   - Tags: ["imported", "justchords"]');
   } catch (e, stackTrace) {
-    print('❌ Error: $e');
-    print('Stack trace: $stackTrace');
     exit(1);
   }
 }

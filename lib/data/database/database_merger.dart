@@ -1,5 +1,4 @@
 import 'package:sqflite/sqflite.dart' as sqlite;
-import 'package:flutter/foundation.dart';
 
 class DatabaseMerger {
   final sqlite.Database localDb;
@@ -90,10 +89,7 @@ class DatabaseMerger {
              OR (remote.updated_at IS NULL AND $tableName.updated_at IS NULL)
              OR (remote.updated_at = $tableName.updated_at AND remote.id > $tableName.id))
       ''');
-
-      debugPrint('Successfully merged $tableName table');
     } catch (e) {
-      debugPrint('Error merging $tableName: $e');
       rethrow;
     }
   }

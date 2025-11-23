@@ -19,6 +19,7 @@ class SongProvider extends ChangeNotifier {
 
   // State
   List<Song> _songs = [];
+  List<Song> _deletedSongs = []; // Separate list for deleted songs
   List<Song> _filteredSongs = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -38,16 +39,30 @@ class SongProvider extends ChangeNotifier {
   bool get selectionMode => _selectionMode;
   SongListType get currentListType => _currentListType;
   Set<String> get selectedSongIds => Set.unmodifiable(_selectedSongIds);
-  List<Song> get selectedSongs =>
-      _songs.where((song) => _selectedSongIds.contains(song.id)).toList();
-  bool get isAllSelected =>
-      _filteredSongs.isNotEmpty &&
-      _selectedSongIds.length == _filteredSongs.length;
+  List<Song> get selectedSongs {
+    if (_currentListType == SongListType.deleted) {
+      return _deletedSongs
+          .where((song) => _selectedSongIds.contains(song.id))
+          .toList();
+    } else {
+      return _songs
+          .where((song) => _selectedSongIds.contains(song.id))
+          .toList();
+    }
+  }
+
+  bool get isAllSelected {
+    final currentList = _currentListType == SongListType.deleted
+        ? _deletedSongs
+        : _filteredSongs;
+    return currentList.isNotEmpty &&
+        _selectedSongIds.length == currentList.length;
+  }
+
   bool get hasSelectedSongs => _selectedSongIds.isNotEmpty;
 
   /// Get deleted songs for the sidebar view
-  List<Song> get deletedSongs =>
-      _currentListType == SongListType.deleted ? _songs : [];
+  List<Song> get deletedSongs => _deletedSongs;
 
   /// Clear selection (alias for deselectAll)
   void clearSelection() => deselectAll();
@@ -235,25 +250,12 @@ class SongProvider extends ChangeNotifier {
 
   /// Load deleted songs
   Future<void> loadDeletedSongs() async {
-    _isLoading = true;
-    _errorMessage = null;
-    _currentListType = SongListType.deleted;
-    notifyListeners();
-
     try {
-      _songs = await _repository.getDeletedSongs();
-      _applySearch();
-      _errorMessage = null;
-    } on SongRepositoryException catch (e) {
-      _errorMessage = e.message;
-      _songs = [];
-      _filteredSongs = [];
+      _deletedSongs = await _repository.getDeletedSongs();
+      _currentListType = SongListType.deleted;
+      notifyListeners();
     } catch (e) {
-      _errorMessage = 'An unexpected error occurred: $e';
-      _songs = [];
-      _filteredSongs = [];
-    } finally {
-      _isLoading = false;
+      _errorMessage = 'Failed to load deleted songs: $e';
       notifyListeners();
     }
   }
@@ -263,6 +265,7 @@ class SongProvider extends ChangeNotifier {
     try {
       await _repository.restoreSong(id);
       await loadDeletedSongs(); // Refresh the deleted list
+      await loadSongs(); // Refresh the main songs list so restored song appears
     } catch (e) {
       _errorMessage = 'Failed to restore song: $e';
       notifyListeners();
@@ -313,7 +316,10 @@ class SongProvider extends ChangeNotifier {
   /// Select all songs in the current filtered list
   void selectAll() {
     _selectedSongIds.clear();
-    for (final song in _filteredSongs) {
+    final currentList = _currentListType == SongListType.deleted
+        ? _deletedSongs
+        : _filteredSongs;
+    for (final song in currentList) {
       _selectedSongIds.add(song.id);
     }
     notifyListeners();
