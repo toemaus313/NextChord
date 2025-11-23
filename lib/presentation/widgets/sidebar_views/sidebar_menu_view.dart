@@ -415,7 +415,8 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   }
 
   Future<void> _deleteSetlist(BuildContext context, dynamic setlist) async {
-    // Show confirmation dialog
+    final setlistProvider = context.read<SetlistProvider>();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -436,9 +437,9 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true) {
       try {
-        await context.read<SetlistProvider>().deleteSetlist(setlist.id);
+        await setlistProvider.deleteSetlist(setlist.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

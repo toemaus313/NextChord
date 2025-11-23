@@ -36,8 +36,14 @@ dependencies:
   
   # Google Services
   google_sign_in_all_platforms: ^2.0.1
+  google_sign_in: ^7.2.0  # Updated to match dependency requirements
   googleapis: ^14.0.0
   googleapis_auth: ^2.0.0
+  
+  # OAuth Web Flow
+  url_launcher: ^6.2.5
+  app_links: ^6.3.2
+  shelf: ^1.4.1
   
   # MIDI
   flutter_midi_command: ^0.5.3

@@ -42,7 +42,6 @@ void main() async {
 
   // Initialize SyncProvider with refresh callback to ensure UI updates after sync
   final syncProvider = SyncProvider(
-    database,
     onSyncCompleted: () {
       // Refresh data in providers after successful sync
       songProvider.loadSongs();

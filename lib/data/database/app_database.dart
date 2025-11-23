@@ -194,7 +194,7 @@ class AppDatabase extends _$AppDatabase {
     await update(setlists).replace(setlist);
   }
 
-  /// Delete a setlist
+  /// Delete a setlist (hard delete - Setlists table doesn't have isDeleted field)
   Future<void> deleteSetlist(String id) async {
     await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();
   }
@@ -215,9 +215,13 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  /// Delete a song by ID
+  /// Delete a song by ID (soft delete)
   Future<void> deleteSong(String id) async {
-    await (delete(songs)..where((tbl) => tbl.id.equals(id))).go();
+    await (update(songs)..where((tbl) => tbl.id.equals(id)))
+        .write(SongsCompanion(
+      isDeleted: const Value(true),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+    ));
   }
 
   /// Delete all songs (use with caution!)

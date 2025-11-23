@@ -1,6 +1,6 @@
 import 'dart:convert';
+
 import 'package:uuid/uuid.dart';
-import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
@@ -176,11 +176,9 @@ class SetlistRepository {
   Future<void> deleteSetlist(String id) async {
     try {
       await _db.deleteSetlist(id);
-
-      // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw Exception('Failed to delete setlist: $e');
     }
+    DatabaseChangeService().notifyDatabaseChanged();
   }
 }

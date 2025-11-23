@@ -4,11 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
-import '../data/database/app_database.dart';
 
 class SyncProvider with ChangeNotifier {
   static const String _syncEnabledKey = 'isSyncEnabled';
-  final GoogleDriveSyncService _syncService;
+  late GoogleDriveSyncService _syncService;
   final VoidCallback? _onSyncCompleted;
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
@@ -24,12 +23,24 @@ class SyncProvider with ChangeNotifier {
   bool get isSignedIn => _isSignedIn;
   bool get isSyncEnabled => _isSyncEnabled;
 
-  SyncProvider(AppDatabase database, {VoidCallback? onSyncCompleted})
-      : _syncService = GoogleDriveSyncService(database),
-        _onSyncCompleted = onSyncCompleted {
-    print('=== SyncProvider CONSTRUCTOR CALLED ===');
-    debugPrint('=== SyncProvider CONSTRUCTOR CALLED ===');
+  SyncProvider({VoidCallback? onSyncCompleted})
+      : _onSyncCompleted = onSyncCompleted {
     _writeStartupLog('SyncProvider constructor called');
+
+    try {
+      _syncService = GoogleDriveSyncService(
+        onDatabaseReplaced: () {
+          if (_onSyncCompleted != null) {
+            _onSyncCompleted!();
+          }
+        },
+      );
+      _writeStartupLog('GoogleDriveSyncService created successfully');
+    } catch (e) {
+      _writeStartupLog('ERROR creating GoogleDriveSyncService: $e');
+      rethrow;
+    }
+
     _loadSyncPreference();
     _startPeriodicSync();
   }
@@ -48,41 +59,33 @@ class SyncProvider with ChangeNotifier {
 
   /// Load sync preference from SharedPreferences
   Future<void> _loadSyncPreference() async {
-    debugPrint('=== Loading sync preferences ===');
-    await _writeStartupLog('Loading sync preferences');
     _prefs = await SharedPreferences.getInstance();
     _isSyncEnabled = _prefs?.getBool(_syncEnabledKey) ?? false;
-    debugPrint('=== Sync enabled from preferences: $_isSyncEnabled ===');
-    await _writeStartupLog('Sync enabled from preferences: $_isSyncEnabled');
+    _writeStartupLog('Sync enabled from preferences: $_isSyncEnabled');
 
     // If sync was previously enabled, optimistically set sign-in status
-    // The actual sign-in will be verified/restored when sync operations occur
     if (_isSyncEnabled) {
-      _isSignedIn = true; // Set optimistically - will be verified during sync
-      debugPrint('=== Set optimistic sign-in status: $_isSignedIn ===');
-      await _writeStartupLog('Set optimistic sign-in status: $_isSignedIn');
+      _isSignedIn = true;
     }
     notifyListeners();
 
     // Trigger initial sync after preferences are loaded
     if (_isSyncEnabled) {
-      debugPrint('=== Triggering initial sync on app startup ===');
-      await _writeStartupLog('Triggering initial sync on app startup');
       // Small delay to ensure app is fully initialized
       Future.delayed(const Duration(seconds: 5), () async {
         try {
-          debugPrint('=== Delayed sync trigger executing ===');
-          await _writeStartupLog('Delayed sync trigger executing');
           await autoSync();
           await _writeStartupLog('Startup autoSync completed successfully');
         } catch (e) {
-          debugPrint('=== Startup autoSync failed: $e ===');
           await _writeStartupLog('Startup autoSync failed: $e');
         }
       });
-    } else {
-      debugPrint('=== Sync not enabled, skipping initial sync trigger ===');
-      await _writeStartupLog('Sync not enabled, skipping initial sync trigger');
+    }
+  }
+
+  Future<void> _saveSyncPreference() async {
+    if (_prefs != null) {
+      await _prefs!.setBool(_syncEnabledKey, _isSyncEnabled);
     }
   }
 
@@ -102,82 +105,48 @@ class SyncProvider with ChangeNotifier {
   }
 
   void _startPeriodicSync() {
-    debugPrint('=== Starting Periodic Sync Timer ===');
     _periodicSyncTimer?.cancel();
     _periodicSyncTimer = Timer.periodic(
       const Duration(minutes: 5),
       (timer) {
-        debugPrint('=== Periodic Sync Triggered at ${DateTime.now()} ===');
         _performPeriodicSync();
       },
     );
-    debugPrint('=== Periodic Sync Timer Started (5-minute intervals) ===');
   }
 
   Future<void> _performPeriodicSync() async {
-    debugPrint('=== _performPeriodicSync called ===');
-    debugPrint('Sync enabled: $_isSyncEnabled, Syncing: $_isSyncing');
     if (_isSyncEnabled && !_isSyncing) {
-      debugPrint('=== Conditions met, calling autoSync ===');
       await autoSync();
-    } else {
-      debugPrint('=== Sync conditions not met, skipping ===');
     }
   }
 
   Future<void> autoSync() async {
-    debugPrint('=== autoSync called ===');
-    debugPrint('Sync enabled: $_isSyncEnabled, Syncing: $_isSyncing');
-    if (!_isSyncEnabled || _isSyncing) {
-      debugPrint(
-          '=== autoSync returning early - Sync enabled: $_isSyncEnabled, Syncing: $_isSyncing ===');
-      return;
-    }
+    if (!_isSyncEnabled || _isSyncing) return;
 
     try {
-      debugPrint('=== Starting autoSync with Google Drive service ===');
-
-      // Verify we're signed in before attempting sync
-      debugPrint('=== Checking sign-in status ===');
-      _isSignedIn = await _syncService.isSignedIn();
-      debugPrint('=== Sign-in status: $_isSignedIn ===');
-      if (!_isSignedIn) {
-        debugPrint('=== Not signed in, skipping auto-sync ===');
-        return;
-      }
-
-      debugPrint('=== Calling sync service ===');
-      await _syncService.sync();
-      _lastSyncTime = DateTime.now();
-      debugPrint('=== autoSync completed successfully at $_lastSyncTime ===');
-      debugPrint('=== Resetting periodic sync timer ===');
-
-      // Reset the periodic timer after successful sync
-      _startPeriodicSync();
-
-      debugPrint('=== Notifying listeners ===');
+      _isSyncing = true;
+      _lastError = null;
       notifyListeners();
 
-      // Trigger data refresh in providers after successful sync
-      if (_onSyncCompleted != null) {
-        debugPrint('=== Triggering provider data refresh after sync ===');
-        _onSyncCompleted!();
-      }
+      // Verify we're signed in before attempting sync
+      _isSignedIn = await _syncService.isSignedIn();
+      if (!_isSignedIn) return;
 
-      // Add visible confirmation for startup sync
-      debugPrint('=== AUTO-SYNC COMPLETED ON STARTUP ===');
+      await _syncService.sync();
+      _lastSyncTime = DateTime.now();
+      await _saveSyncPreference();
     } catch (e) {
-      debugPrint('=== Auto-sync failed: $e ===');
-      debugPrint('=== Error type: ${e.runtimeType} ===');
-      // If sync fails due to authentication, update sign-in status
+      _lastError = e.toString();
+
+      // If it's an authentication error, update sign-in status
       if (e.toString().toLowerCase().contains('sign') ||
           e.toString().toLowerCase().contains('auth')) {
-        debugPrint(
-            '=== Authentication failure detected, updating sign-in status ===');
         _isSignedIn = false;
         notifyListeners();
       }
-      // Don't update _lastError for auto-sync failures to avoid annoying users
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
     }
   }
 
