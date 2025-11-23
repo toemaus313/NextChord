@@ -603,15 +603,11 @@ class GoogleDriveSyncService {
 
       // Get local database path
       final localDbPath = await _getLocalDatabasePath();
-      if (localDbPath == null) {
-        debugPrint('✗ Failed to get local database path');
-        return;
-      }
 
-      // Download and merge remote database if newer
-      await _downloadAndMergeDatabase(driveApi, folderId, localDbPath);
+      // Download and merge remote database bidirectionally
+      await _bidirectionalMergeDatabase(driveApi, folderId, localDbPath);
 
-      // Upload local database to Google Drive
+      // Upload the merged database to Google Drive
       await _uploadBackup(driveApi, folderId, localDbPath, {
         'last_sync': DateTime.now().toIso8601String(),
         'platform': defaultTargetPlatform.toString(),
@@ -630,19 +626,59 @@ class GoogleDriveSyncService {
     return '${defaultTargetPlatform.toString()}_${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  Future<void> _downloadAndMergeDatabase(
+  Future<void> _bidirectionalMergeDatabase(
       drive.DriveApi driveApi, String folderId, String localDbPath) async {
     try {
-      debugPrint('=== Checking for remote database ===');
+      debugPrint('=== EMERGENCY: Checking remote database before merge ===');
       debugPrint('Folder ID: $folderId');
       debugPrint('Database filename: $_backupFileName');
       debugPrint('Metadata filename: $_syncMetadataFile');
+
+      // Check if local database exists and get its content
+      final localDbFile = File(localDbPath);
+      bool localDbExists = await localDbFile.exists();
+
+      // EMERGENCY BACKUP: Create backup of local database before any merge
+      String? backupPath;
+      if (localDbExists) {
+        backupPath =
+            '$localDbPath.backup_${DateTime.now().millisecondsSinceEpoch}';
+        debugPrint('🚨 CREATING EMERGENCY BACKUP: $backupPath');
+        await File(localDbPath).copy(backupPath);
+      } else {
+        debugPrint('🚨 No local database to backup (will download from cloud)');
+      }
+
+      int localSongCount = 0;
+      int localSetlistCount = 0;
+
+      if (localDbExists) {
+        try {
+          final localDb = await sqlite.openDatabase(localDbPath);
+          final songResult =
+              await localDb.rawQuery('SELECT COUNT(*) as count FROM songs');
+          final setlistResult =
+              await localDb.rawQuery('SELECT COUNT(*) as count FROM setlists');
+          localSongCount = int.parse(songResult.first['count'].toString());
+          localSetlistCount =
+              int.parse(setlistResult.first['count'].toString());
+          await localDb.close();
+        } catch (e) {
+          debugPrint('⚠️ Error reading local database: $e');
+          localDbExists = false;
+        }
+      }
+
+      debugPrint('🚨 LOCAL DATABASE BEFORE MERGE:');
+      debugPrint('  Exists: $localDbExists');
+      debugPrint('  Songs: $localSongCount');
+      debugPrint('  Setlists: $localSetlistCount');
 
       // Find existing database file
       final existingDbFile =
           await _findExistingFile(driveApi, folderId, _backupFileName);
       if (existingDbFile == null) {
-        debugPrint('✓ No remote database found, using local database');
+        debugPrint('✓ No remote database found, keeping local database');
         return;
       }
       debugPrint('✓ Found remote database file: ${existingDbFile.id}');
@@ -651,7 +687,7 @@ class GoogleDriveSyncService {
       final existingMetadataFile =
           await _findExistingFile(driveApi, folderId, _syncMetadataFile);
       if (existingMetadataFile == null) {
-        debugPrint('✓ No remote metadata found, using local database');
+        debugPrint('✓ No remote metadata found, keeping local database');
         return;
       }
       debugPrint('✓ Found remote metadata file: ${existingMetadataFile.id}');
@@ -673,13 +709,43 @@ class GoogleDriveSyncService {
       debugPrint(
           'Remote is newer: ${remoteLastSync.isAfter(localLastModified)}');
 
-      // If remote is newer, download it
-      if (remoteLastSync.isAfter(localLastModified)) {
-        debugPrint('✓ Remote database is newer, downloading...');
-        await _downloadAndReplaceDatabase(
-            driveApi, existingDbFile, localDbPath);
+      // EMERGENCY: Validate remote database content before merge
+      debugPrint('🚨 VALIDATING REMOTE DATABASE CONTENT...');
+      await _performBidirectionalMerge(driveApi, existingDbFile, localDbPath);
+
+      // Verify merge didn't lose data
+      final postMergeDb = await sqlite.openDatabase(localDbPath);
+      final postMergeSongCount =
+          await postMergeDb.rawQuery('SELECT COUNT(*) as count FROM songs');
+      final postMergeSetlistCount =
+          await postMergeDb.rawQuery('SELECT COUNT(*) as count FROM setlists');
+      await postMergeDb.close();
+
+      debugPrint('🚨 LOCAL DATABASE AFTER MERGE:');
+      debugPrint('  Songs: ${postMergeSongCount.first['count']}');
+      debugPrint('  Setlists: ${postMergeSetlistCount.first['count']}');
+
+      // EMERGENCY: Restore from backup if data was lost
+      final finalSongCount =
+          int.parse(postMergeSongCount.first['count'].toString());
+      final finalSetlistCount =
+          int.parse(postMergeSetlistCount.first['count'].toString());
+
+      if (finalSongCount < localSongCount ||
+          finalSetlistCount < localSetlistCount) {
+        debugPrint('🚨🚨🚨 DATA LOSS DETECTED! RESTORING FROM BACKUP!');
+        if (backupPath != null) {
+          await File(localDbPath).delete();
+          await File(backupPath).copy(localDbPath);
+          debugPrint('✓ Database restored from backup');
+        } else {
+          debugPrint('⚠️ No backup available to restore from');
+        }
       } else {
-        debugPrint('✓ Local database is newer or up-to-date');
+        debugPrint('✓ Merge successful - no data loss detected');
+        if (backupPath != null) {
+          await File(backupPath).delete(); // Clean up backup only if it existed
+        }
       }
     } catch (e) {
       debugPrint('✗ Error checking remote database: $e');
@@ -739,7 +805,7 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<String?> _getLocalDatabasePath() async {
+  Future<String> _getLocalDatabasePath() async {
     try {
       // Use the same path as AppDatabase _openConnection()
       final dbFolder = await getApplicationDocumentsDirectory();
@@ -749,14 +815,15 @@ class GoogleDriveSyncService {
       final dbFile = File(dbPath);
       if (await dbFile.exists()) {
         debugPrint('✓ Found database at: $dbPath');
-        return dbPath;
+      } else {
+        debugPrint(
+            '⚠️ Database file not found at: $dbPath (will download from cloud)');
       }
 
-      debugPrint('✗ Database file not found at: $dbPath');
-      return null;
+      return dbPath; // Always return path, even if file doesn't exist
     } catch (e) {
       debugPrint('Error getting local database path: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -777,9 +844,9 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<void> _downloadAndReplaceDatabase(
+  Future<void> _performBidirectionalMerge(
       drive.DriveApi driveApi, drive.File remoteFile, String localPath) async {
-    debugPrint('=== Downloading and merging database ===');
+    debugPrint('=== Performing bidirectional database merge ===');
 
     final response = await driveApi.files.get(remoteFile.id!,
         downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
@@ -792,15 +859,15 @@ class GoogleDriveSyncService {
 
     // Validate the downloaded file
     if (await _validateDatabase(tempPath)) {
-      debugPrint('✓ Remote database is valid, merging data');
+      debugPrint('✓ Remote database is valid, performing bidirectional merge');
 
-      // Merge data from remote database instead of replacing file
-      await _mergeDatabaseData(tempPath, localPath);
+      // Perform bidirectional merge: merge remote into local AND local into remote
+      await _bidirectionalMergeData(tempPath, localPath);
 
       // Clean up temporary file
       await tempFile.delete();
 
-      debugPrint('✓ Database merge completed successfully');
+      debugPrint('✓ Bidirectional database merge completed successfully');
     } else {
       debugPrint('✗ Downloaded database is invalid, keeping original');
       await tempFile.delete();
@@ -840,90 +907,146 @@ class GoogleDriveSyncService {
     return DateTime.now();
   }
 
-  Future<void> _mergeDatabaseData(
+  Future<void> _bidirectionalMergeData(
       String remoteDbPath, String localDbPath) async {
     try {
+      debugPrint('=== Starting bidirectional merge ===');
+
+      // Check if local database file exists
+      final localDbFile = File(localDbPath);
+      if (!await localDbFile.exists()) {
+        debugPrint(
+            '🚨 Local database does not exist - copying remote database directly');
+        await File(remoteDbPath).copy(localDbPath);
+        debugPrint('✓ Remote database copied to local location');
+        return;
+      }
+
       // Open both databases
       final remoteDb = await sqlite.openDatabase(remoteDbPath);
       final localDb = await sqlite.openDatabase(localDbPath);
 
-      // Check if isDeleted column exists in remote database
-      final remoteTableInfo =
-          await remoteDb.rawQuery("PRAGMA table_info(songs)");
-      final remoteHasIsDeleted =
-          remoteTableInfo.any((column) => column['name'] == 'isDeleted');
+      // Get all data from both databases
+      final remoteSongs = await remoteDb.rawQuery('SELECT * FROM songs');
+      final localSongs = await localDb.rawQuery('SELECT * FROM songs');
+      final remoteSetlists = await remoteDb.rawQuery('SELECT * FROM setlists');
+      final localSetlists = await localDb.rawQuery('SELECT * FROM setlists');
 
-      // Check if isDeleted column exists in local database
-      final localTableInfo = await localDb.rawQuery("PRAGMA table_info(songs)");
-      final localHasIsDeleted =
-          localTableInfo.any((column) => column['name'] == 'isDeleted');
+      debugPrint(
+          'Remote songs: ${remoteSongs.length}, Local songs: ${localSongs.length}');
+      debugPrint(
+          'Remote setlists: ${remoteSetlists.length}, Local setlists: ${localSetlists.length}');
 
-      // Build queries based on available columns
-      final remoteSongQuery = remoteHasIsDeleted
-          ? 'SELECT * FROM songs WHERE isDeleted = false'
-          : 'SELECT * FROM songs';
-      final remoteSetlistQuery = remoteHasIsDeleted
-          ? 'SELECT * FROM setlists WHERE isDeleted = false'
-          : 'SELECT * FROM setlists';
+      // Create a map of all records by ID with their timestamps
+      final allSongs = <String, Map<String, dynamic>>{};
+      final allSetlists = <String, Map<String, dynamic>>{};
 
-      // Get data from databases
-      final remoteSongs = await remoteDb.rawQuery(remoteSongQuery);
-      final remoteSetlists = await remoteDb.rawQuery(remoteSetlistQuery);
-
-      // Merge songs
+      // Add remote records
       for (final song in remoteSongs) {
-        final existingSong = await localDb.rawQuery(
-            'SELECT id, updated_at FROM songs WHERE id = ?', [song['id']]);
-
-        if (existingSong.isEmpty) {
-          final songToInsert = Map<String, dynamic>.from(song);
-          if (!remoteHasIsDeleted && localHasIsDeleted) {
-            songToInsert['isDeleted'] = false;
-          }
-          await localDb.insert('songs', songToInsert);
-        } else {
-          final remoteUpdated = _parseTimestamp(song['updated_at']);
-          final localUpdated =
-              _parseTimestamp(existingSong.first['updated_at']);
-
-          if (remoteUpdated.isAfter(localUpdated)) {
-            final songToUpdate = Map<String, dynamic>.from(song);
-            if (!remoteHasIsDeleted && localHasIsDeleted) {
-              songToUpdate['isDeleted'] = false;
-            }
-            await localDb.update('songs', songToUpdate,
-                where: 'id = ?', whereArgs: [song['id']]);
-          }
-        }
+        allSongs[song['id'] as String] = song;
       }
-
-      // Merge setlists
       for (final setlist in remoteSetlists) {
-        final existingSetlist = await localDb.rawQuery(
-            'SELECT id, updated_at FROM setlists WHERE id = ?',
-            [setlist['id']]);
+        allSetlists[setlist['id'] as String] = setlist;
+      }
 
-        if (existingSetlist.isEmpty) {
-          final setlistToInsert = Map<String, dynamic>.from(setlist);
-          if (!remoteHasIsDeleted && localHasIsDeleted) {
-            setlistToInsert['isDeleted'] = false;
+      // Add/update with local records (keeping newest)
+      for (final song in localSongs) {
+        final songId = song['id'] as String;
+        final localUpdated = _parseTimestamp(song['updated_at']);
+
+        if (allSongs.containsKey(songId)) {
+          final remoteUpdated =
+              _parseTimestamp(allSongs[songId]!['updated_at']);
+          if (localUpdated.isAfter(remoteUpdated)) {
+            allSongs[songId] = song;
           }
-          await localDb.insert('setlists', setlistToInsert);
         } else {
-          final remoteUpdated = _parseTimestamp(setlist['updated_at']);
-          final localUpdated =
-              _parseTimestamp(existingSetlist.first['updated_at']);
-
-          if (remoteUpdated.isAfter(localUpdated)) {
-            final setlistToUpdate = Map<String, dynamic>.from(setlist);
-            if (!remoteHasIsDeleted && localHasIsDeleted) {
-              setlistToUpdate['isDeleted'] = false;
-            }
-            await localDb.update('setlists', setlistToUpdate,
-                where: 'id = ?', whereArgs: [setlist['id']]);
-          }
+          allSongs[songId] = song;
         }
       }
+
+      for (final setlist in localSetlists) {
+        final setlistId = setlist['id'] as String;
+        final localUpdated = _parseTimestamp(setlist['updated_at']);
+
+        if (allSetlists.containsKey(setlistId)) {
+          final remoteUpdated =
+              _parseTimestamp(allSetlists[setlistId]!['updated_at']);
+          if (localUpdated.isAfter(remoteUpdated)) {
+            allSetlists[setlistId] = setlist;
+          }
+        } else {
+          allSetlists[setlistId] = setlist;
+        }
+      }
+
+      // Safety check: don't proceed if we have no data to merge
+      if (allSongs.isEmpty && allSetlists.isEmpty) {
+        debugPrint('⚠️ No data to merge - keeping existing local data');
+        await remoteDb.close();
+        await localDb.close();
+        return;
+      }
+
+      debugPrint(
+          '✓ Merging data: ${allSongs.length} songs, ${allSetlists.length} setlists');
+
+      // Get local schema to check which columns exist
+      final localSongSchema =
+          await localDb.rawQuery("PRAGMA table_info(songs)");
+      final localSetlistSchema =
+          await localDb.rawQuery("PRAGMA table_info(setlists)");
+      final localSongColumns =
+          localSongSchema.map((col) => col['name'] as String).toSet();
+      final localSetlistColumns =
+          localSetlistSchema.map((col) => col['name'] as String).toSet();
+
+      debugPrint('Local song columns: $localSongColumns');
+      debugPrint('Local setlist columns: $localSetlistColumns');
+
+      // Filter records to only include columns that exist in local schema
+      final filteredSongs = allSongs.values.map((song) {
+        final filteredSong = <String, dynamic>{};
+        for (final entry in song.entries) {
+          if (localSongColumns.contains(entry.key)) {
+            filteredSong[entry.key] = entry.value;
+          }
+        }
+        return filteredSong;
+      }).toList();
+
+      final filteredSetlists = allSetlists.values.map((setlist) {
+        final filteredSetlist = <String, dynamic>{};
+        for (final entry in setlist.entries) {
+          if (localSetlistColumns.contains(entry.key)) {
+            filteredSetlist[entry.key] = entry.value;
+          }
+        }
+        return filteredSetlist;
+      }).toList();
+
+      // Use transaction to ensure atomic operation
+      await localDb.transaction((txn) async {
+        try {
+          // Clear local tables and insert merged data
+          await txn.delete('songs');
+          await txn.delete('setlists');
+
+          for (final song in filteredSongs) {
+            await txn.insert('songs', song);
+          }
+
+          for (final setlist in filteredSetlists) {
+            await txn.insert('setlists', setlist);
+          }
+        } catch (e) {
+          debugPrint('🚨 TRANSACTION FAILED - ROLLING BACK: $e');
+          rethrow; // This will rollback the transaction
+        }
+      });
+
+      debugPrint(
+          '✓ Bidirectional merge completed: ${allSongs.length} songs, ${allSetlists.length} setlists');
 
       // Close databases
       await remoteDb.close();
@@ -934,7 +1057,7 @@ class GoogleDriveSyncService {
         _onDatabaseReplaced!();
       }
     } catch (e) {
-      debugPrint('✗ Database merge failed: $e');
+      debugPrint('✗ Bidirectional merge failed: $e');
       rethrow;
     }
   }

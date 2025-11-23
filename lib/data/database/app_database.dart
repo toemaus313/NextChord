@@ -64,17 +64,26 @@ class AppDatabase extends _$AppDatabase {
 
   /// Create or update a song
   Future<void> saveSong(SongModel song) async {
-    into(songs).insertOnConflictUpdate(song);
+    final songWithTimestamp = song.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    into(songs).insertOnConflictUpdate(songWithTimestamp);
   }
 
   /// Insert a new song
   Future<void> insertSong(SongModel song) async {
-    await into(songs).insert(song);
+    final songWithTimestamp = song.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await into(songs).insert(songWithTimestamp);
   }
 
   /// Update an existing song
   Future<void> updateSong(SongModel song) async {
-    await update(songs).replace(song);
+    final songWithTimestamp = song.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await update(songs).replace(songWithTimestamp);
   }
 
   /// Soft delete a song (mark as deleted)
@@ -181,17 +190,26 @@ class AppDatabase extends _$AppDatabase {
 
   /// Create or update a setlist
   Future<void> saveSetlist(SetlistModel setlist) async {
-    into(setlists).insertOnConflictUpdate(setlist);
+    final setlistWithTimestamp = setlist.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    into(setlists).insertOnConflictUpdate(setlistWithTimestamp);
   }
 
   /// Insert a new setlist
   Future<void> insertSetlist(SetlistModel setlist) async {
-    await into(setlists).insert(setlist);
+    final setlistWithTimestamp = setlist.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await into(setlists).insert(setlistWithTimestamp);
   }
 
   /// Update an existing setlist
   Future<void> updateSetlist(SetlistModel setlist) async {
-    await update(setlists).replace(setlist);
+    final setlistWithTimestamp = setlist.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await update(setlists).replace(setlistWithTimestamp);
   }
 
   /// Delete a setlist (hard delete - Setlists table doesn't have isDeleted field)
