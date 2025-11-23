@@ -71,6 +71,8 @@ class Setlists extends Table {
       boolean().withDefault(const Constant(true))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
+  BoolColumn get isDeleted =>
+      boolean().withDefault(const Constant(false))(); // Soft delete flag
 
   @override
   Set<Column> get primaryKey => {id};

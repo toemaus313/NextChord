@@ -8,7 +8,6 @@
 import 'dart:io'; // flutter_ignore: dart_io_import.
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_android/file_selector_android.dart' as file_selector_android;
-import 'package:google_sign_in_all_platforms_mobile/google_sign_in_all_platforms_mobile.dart' as google_sign_in_all_platforms_mobile;
 import 'package:google_sign_in_android/google_sign_in_android.dart' as google_sign_in_android;
 import 'package:path_provider_android/path_provider_android.dart' as path_provider_android;
 import 'package:shared_preferences_android/shared_preferences_android.dart' as shared_preferences_android;
@@ -16,7 +15,6 @@ import 'package:sqflite_android/sqflite_android.dart' as sqflite_android;
 import 'package:url_launcher_android/url_launcher_android.dart' as url_launcher_android;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_ios/file_selector_ios.dart' as file_selector_ios;
-import 'package:google_sign_in_all_platforms_mobile/google_sign_in_all_platforms_mobile.dart' as google_sign_in_all_platforms_mobile;
 import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:shared_preferences_foundation/shared_preferences_foundation.dart' as shared_preferences_foundation;
@@ -26,14 +24,12 @@ import 'package:app_links_linux/app_links_linux.dart' as app_links_linux;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_linux/file_selector_linux.dart' as file_selector_linux;
 import 'package:flutter_midi_command_linux/flutter_midi_command_linux.dart' as flutter_midi_command_linux;
-import 'package:google_sign_in_all_platforms_desktop/google_sign_in_all_platforms_desktop.dart' as google_sign_in_all_platforms_desktop;
 import 'package:path_provider_linux/path_provider_linux.dart' as path_provider_linux;
 import 'package:record_linux/record_linux.dart' as record_linux;
 import 'package:shared_preferences_linux/shared_preferences_linux.dart' as shared_preferences_linux;
 import 'package:url_launcher_linux/url_launcher_linux.dart' as url_launcher_linux;
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_macos/file_selector_macos.dart' as file_selector_macos;
-import 'package:google_sign_in_all_platforms_desktop/google_sign_in_all_platforms_desktop.dart' as google_sign_in_all_platforms_desktop;
 import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:shared_preferences_foundation/shared_preferences_foundation.dart' as shared_preferences_foundation;
@@ -42,7 +38,6 @@ import 'package:url_launcher_macos/url_launcher_macos.dart' as url_launcher_maco
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:file_selector_windows/file_selector_windows.dart' as file_selector_windows;
 import 'package:flutter_midi_command_windows/flutter_midi_command_windows.dart' as flutter_midi_command_windows;
-import 'package:google_sign_in_all_platforms_desktop/google_sign_in_all_platforms_desktop.dart' as google_sign_in_all_platforms_desktop;
 import 'package:path_provider_windows/path_provider_windows.dart' as path_provider_windows;
 import 'package:shared_preferences_windows/shared_preferences_windows.dart' as shared_preferences_windows;
 import 'package:url_launcher_windows/url_launcher_windows.dart' as url_launcher_windows;
@@ -67,15 +62,6 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`file_selector_android` threw an error: $err. '
-          'The app may not function as expected until you remove this plugin from pubspec.yaml'
-        );
-      }
-
-      try {
-        google_sign_in_all_platforms_mobile.GoogleSignInAllPlatformsMobile.registerWith();
-      } catch (err) {
-        print(
-          '`google_sign_in_all_platforms_mobile` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -140,15 +126,6 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`file_selector_ios` threw an error: $err. '
-          'The app may not function as expected until you remove this plugin from pubspec.yaml'
-        );
-      }
-
-      try {
-        google_sign_in_all_platforms_mobile.GoogleSignInAllPlatformsMobile.registerWith();
-      } catch (err) {
-        print(
-          '`google_sign_in_all_platforms_mobile` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -236,15 +213,6 @@ class _PluginRegistrant {
       }
 
       try {
-        google_sign_in_all_platforms_desktop.GoogleSignInAllPlatformsDesktop.registerWith();
-      } catch (err) {
-        print(
-          '`google_sign_in_all_platforms_desktop` threw an error: $err. '
-          'The app may not function as expected until you remove this plugin from pubspec.yaml'
-        );
-      }
-
-      try {
         path_provider_linux.PathProviderLinux.registerWith();
       } catch (err) {
         print(
@@ -295,15 +263,6 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`file_selector_macos` threw an error: $err. '
-          'The app may not function as expected until you remove this plugin from pubspec.yaml'
-        );
-      }
-
-      try {
-        google_sign_in_all_platforms_desktop.GoogleSignInAllPlatformsDesktop.registerWith();
-      } catch (err) {
-        print(
-          '`google_sign_in_all_platforms_desktop` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -377,15 +336,6 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`flutter_midi_command_windows` threw an error: $err. '
-          'The app may not function as expected until you remove this plugin from pubspec.yaml'
-        );
-      }
-
-      try {
-        google_sign_in_all_platforms_desktop.GoogleSignInAllPlatformsDesktop.registerWith();
-      } catch (err) {
-        print(
-          '`google_sign_in_all_platforms_desktop` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }

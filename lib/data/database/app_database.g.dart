@@ -765,6 +765,16 @@ class $SetlistsTable extends Setlists
   late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
       'updated_at', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -774,7 +784,8 @@ class $SetlistsTable extends Setlists
         imagePath,
         setlistSpecificEditsEnabled,
         createdAt,
-        updatedAt
+        updatedAt,
+        isDeleted
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -830,6 +841,10 @@ class $SetlistsTable extends Setlists
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
     return context;
   }
 
@@ -856,6 +871,8 @@ class $SetlistsTable extends Setlists
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
     );
   }
 
@@ -874,6 +891,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
   final bool setlistSpecificEditsEnabled;
   final int createdAt;
   final int updatedAt;
+  final bool isDeleted;
   const SetlistModel(
       {required this.id,
       required this.name,
@@ -882,7 +900,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       this.imagePath,
       required this.setlistSpecificEditsEnabled,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.isDeleted});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -899,6 +918,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
         Variable<bool>(setlistSpecificEditsEnabled);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -915,6 +935,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
       setlistSpecificEditsEnabled: Value(setlistSpecificEditsEnabled),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -931,6 +952,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           serializer.fromJson<bool>(json['setlistSpecificEditsEnabled']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -946,6 +968,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           serializer.toJson<bool>(setlistSpecificEditsEnabled),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -957,7 +980,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           Value<String?> imagePath = const Value.absent(),
           bool? setlistSpecificEditsEnabled,
           int? createdAt,
-          int? updatedAt}) =>
+          int? updatedAt,
+          bool? isDeleted}) =>
       SetlistModel(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -968,6 +992,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
             setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
   SetlistModel copyWithCompanion(SetlistsCompanion data) {
     return SetlistModel(
@@ -981,6 +1006,7 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           : this.setlistSpecificEditsEnabled,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -994,14 +1020,15 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           ..write('imagePath: $imagePath, ')
           ..write('setlistSpecificEditsEnabled: $setlistSpecificEditsEnabled, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, name, items, notes, imagePath,
-      setlistSpecificEditsEnabled, createdAt, updatedAt);
+      setlistSpecificEditsEnabled, createdAt, updatedAt, isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1014,7 +1041,8 @@ class SetlistModel extends DataClass implements Insertable<SetlistModel> {
           other.setlistSpecificEditsEnabled ==
               this.setlistSpecificEditsEnabled &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
 }
 
 class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
@@ -1026,6 +1054,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
   final Value<bool> setlistSpecificEditsEnabled;
   final Value<int> createdAt;
   final Value<int> updatedAt;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const SetlistsCompanion({
     this.id = const Value.absent(),
@@ -1036,6 +1065,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     this.setlistSpecificEditsEnabled = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SetlistsCompanion.insert({
@@ -1047,6 +1077,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     this.setlistSpecificEditsEnabled = const Value.absent(),
     required int createdAt,
     required int updatedAt,
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1062,6 +1093,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     Expression<bool>? setlistSpecificEditsEnabled,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1074,6 +1106,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
         'setlist_specific_edits_enabled': setlistSpecificEditsEnabled,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1087,6 +1120,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
       Value<bool>? setlistSpecificEditsEnabled,
       Value<int>? createdAt,
       Value<int>? updatedAt,
+      Value<bool>? isDeleted,
       Value<int>? rowid}) {
     return SetlistsCompanion(
       id: id ?? this.id,
@@ -1098,6 +1132,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
           setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1130,6 +1165,9 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1147,6 +1185,7 @@ class SetlistsCompanion extends UpdateCompanion<SetlistModel> {
           ..write('setlistSpecificEditsEnabled: $setlistSpecificEditsEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2373,6 +2412,7 @@ typedef $$SetlistsTableCreateCompanionBuilder = SetlistsCompanion Function({
   Value<bool> setlistSpecificEditsEnabled,
   required int createdAt,
   required int updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 typedef $$SetlistsTableUpdateCompanionBuilder = SetlistsCompanion Function({
@@ -2384,6 +2424,7 @@ typedef $$SetlistsTableUpdateCompanionBuilder = SetlistsCompanion Function({
   Value<bool> setlistSpecificEditsEnabled,
   Value<int> createdAt,
   Value<int> updatedAt,
+  Value<bool> isDeleted,
   Value<int> rowid,
 });
 
@@ -2420,6 +2461,9 @@ class $$SetlistsTableFilterComposer
 
   ColumnFilters<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
 }
 
 class $$SetlistsTableOrderingComposer
@@ -2455,6 +2499,9 @@ class $$SetlistsTableOrderingComposer
 
   ColumnOrderings<int> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 }
 
 class $$SetlistsTableAnnotationComposer
@@ -2489,6 +2536,9 @@ class $$SetlistsTableAnnotationComposer
 
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$SetlistsTableTableManager extends RootTableManager<
@@ -2522,6 +2572,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             Value<bool> setlistSpecificEditsEnabled = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SetlistsCompanion(
@@ -2533,6 +2584,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             setlistSpecificEditsEnabled: setlistSpecificEditsEnabled,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2544,6 +2596,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             Value<bool> setlistSpecificEditsEnabled = const Value.absent(),
             required int createdAt,
             required int updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SetlistsCompanion.insert(
@@ -2555,6 +2608,7 @@ class $$SetlistsTableTableManager extends RootTableManager<
             setlistSpecificEditsEnabled: setlistSpecificEditsEnabled,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isDeleted: isDeleted,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -8,7 +8,6 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 # Cross-platform support including Windows, Linux, and mobile platforms
-# Note: Google Drive sync now supports ALL platforms using google_sign_in_all_platforms
 platforms:
   android:
   ios:
@@ -35,8 +34,7 @@ dependencies:
   sqflite: ^2.3.0  # Added for database operations
   
   # Google Services
-  google_sign_in_all_platforms: ^2.0.1
-  google_sign_in: ^7.2.0  # Updated to match dependency requirements
+  google_sign_in: ^7.2.0
   googleapis: ^14.0.0
   googleapis_auth: ^2.0.0
   

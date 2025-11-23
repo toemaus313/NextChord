@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart'
         TargetPlatform,
         debugPrint,
         VoidCallback;
-import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
 import 'package:http/http.dart' as http;
@@ -949,16 +949,40 @@ class GoogleDriveSyncService {
         allSetlists[setlist['id'] as String] = setlist;
       }
 
-      // Add/update with local records (keeping newest)
+      // Add/update with local records (keeping newest, but respecting deletions)
       for (final song in localSongs) {
         final songId = song['id'] as String;
         final localUpdated = _parseTimestamp(song['updated_at']);
+        final localIsDeleted =
+            song['is_deleted'] == 1 || song['is_deleted'] == true;
 
         if (allSongs.containsKey(songId)) {
           final remoteUpdated =
               _parseTimestamp(allSongs[songId]!['updated_at']);
-          if (localUpdated.isAfter(remoteUpdated)) {
-            allSongs[songId] = song;
+          final remoteIsDeleted = allSongs[songId]!['is_deleted'] == 1 ||
+              allSongs[songId]!['is_deleted'] == true;
+
+          // If either version is deleted, the most recent deletion wins
+          if (localIsDeleted && remoteIsDeleted) {
+            // Both deleted - keep the most recently deleted version
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSongs[songId] = song;
+            }
+          } else if (localIsDeleted) {
+            // Local is deleted, remote is not - if local deletion is newer, keep deletion
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSongs[songId] = song;
+            }
+          } else if (remoteIsDeleted) {
+            // Remote is deleted, local is not - if remote deletion is newer, keep deletion
+            if (!localUpdated.isAfter(remoteUpdated)) {
+              allSongs[songId] = allSongs[songId]!;
+            }
+          } else {
+            // Neither deleted - keep newest version
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSongs[songId] = song;
+            }
           }
         } else {
           allSongs[songId] = song;
@@ -968,12 +992,36 @@ class GoogleDriveSyncService {
       for (final setlist in localSetlists) {
         final setlistId = setlist['id'] as String;
         final localUpdated = _parseTimestamp(setlist['updated_at']);
+        final localIsDeleted =
+            setlist['is_deleted'] == 1 || setlist['is_deleted'] == true;
 
         if (allSetlists.containsKey(setlistId)) {
           final remoteUpdated =
               _parseTimestamp(allSetlists[setlistId]!['updated_at']);
-          if (localUpdated.isAfter(remoteUpdated)) {
-            allSetlists[setlistId] = setlist;
+          final remoteIsDeleted = allSetlists[setlistId]!['is_deleted'] == 1 ||
+              allSetlists[setlistId]!['is_deleted'] == true;
+
+          // If either version is deleted, the most recent deletion wins
+          if (localIsDeleted && remoteIsDeleted) {
+            // Both deleted - keep the most recently deleted version
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSetlists[setlistId] = setlist;
+            }
+          } else if (localIsDeleted) {
+            // Local is deleted, remote is not - if local deletion is newer, keep deletion
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSetlists[setlistId] = setlist;
+            }
+          } else if (remoteIsDeleted) {
+            // Remote is deleted, local is not - if remote deletion is newer, keep deletion
+            if (!localUpdated.isAfter(remoteUpdated)) {
+              allSetlists[setlistId] = allSetlists[setlistId]!;
+            }
+          } else {
+            // Neither deleted - keep newest version
+            if (localUpdated.isAfter(remoteUpdated)) {
+              allSetlists[setlistId] = setlist;
+            }
           }
         } else {
           allSetlists[setlistId] = setlist;

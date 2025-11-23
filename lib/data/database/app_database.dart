@@ -15,7 +15,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;
@@ -175,6 +175,7 @@ class AppDatabase extends _$AppDatabase {
   /// Get all setlists ordered by created date (newest first)
   Future<List<SetlistModel>> getAllSetlists() {
     return (select(setlists)
+          ..where((tbl) => tbl.isDeleted.equals(false))
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
@@ -184,7 +185,8 @@ class AppDatabase extends _$AppDatabase {
 
   /// Get setlist by ID
   Future<SetlistModel?> getSetlistById(String id) {
-    return (select(setlists)..where((tbl) => tbl.id.equals(id)))
+    return (select(setlists)
+          ..where((tbl) => tbl.id.equals(id) & tbl.isDeleted.equals(false)))
         .getSingleOrNull();
   }
 
@@ -212,8 +214,24 @@ class AppDatabase extends _$AppDatabase {
     await update(setlists).replace(setlistWithTimestamp);
   }
 
-  /// Delete a setlist (hard delete - Setlists table doesn't have isDeleted field)
+  /// Soft delete a setlist (mark as deleted)
   Future<void> deleteSetlist(String id) async {
+    await (update(setlists)..where((tbl) => tbl.id.equals(id))).write(
+        SetlistsCompanion(
+            isDeleted: const Value(true),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+  }
+
+  /// Restore a soft-deleted setlist
+  Future<void> restoreSetlist(String id) async {
+    await (update(setlists)..where((tbl) => tbl.id.equals(id))).write(
+        SetlistsCompanion(
+            isDeleted: const Value(false),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+  }
+
+  /// Permanently delete a setlist (hard delete)
+  Future<void> permanentlyDeleteSetlist(String id) async {
     await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();
   }
 

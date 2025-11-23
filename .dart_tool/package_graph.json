@@ -16,7 +16,6 @@
         "flutter",
         "flutter_midi_command",
         "google_sign_in",
-        "google_sign_in_all_platforms",
         "googleapis",
         "googleapis_auth",
         "html",
@@ -411,18 +410,6 @@
         "google_sign_in_ios",
         "google_sign_in_platform_interface",
         "google_sign_in_web"
-      ]
-    },
-    {
-      "name": "google_sign_in_all_platforms",
-      "version": "2.0.2",
-      "dependencies": [
-        "flutter",
-        "google_sign_in_all_platforms_desktop",
-        "google_sign_in_all_platforms_interface",
-        "google_sign_in_all_platforms_mobile",
-        "google_sign_in_all_platforms_web",
-        "http"
       ]
     },
     {
@@ -1405,60 +1392,6 @@
       ]
     },
     {
-      "name": "google_sign_in_all_platforms_web",
-      "version": "0.1.0",
-      "dependencies": [
-        "extension_google_sign_in_as_googleapis_auth",
-        "flutter",
-        "flutter_web_plugins",
-        "google_sign_in",
-        "google_sign_in_all_platforms_interface",
-        "google_sign_in_all_platforms_mobile",
-        "google_sign_in_web",
-        "http",
-        "plugin_platform_interface",
-        "web"
-      ]
-    },
-    {
-      "name": "google_sign_in_all_platforms_mobile",
-      "version": "0.2.0",
-      "dependencies": [
-        "extension_google_sign_in_as_googleapis_auth",
-        "flutter",
-        "flutter_web_plugins",
-        "google_sign_in",
-        "google_sign_in_all_platforms_interface",
-        "http"
-      ]
-    },
-    {
-      "name": "google_sign_in_all_platforms_interface",
-      "version": "0.2.1",
-      "dependencies": [
-        "flutter",
-        "googleapis",
-        "googleapis_auth",
-        "http",
-        "plugin_platform_interface",
-        "shared_preferences"
-      ]
-    },
-    {
-      "name": "google_sign_in_all_platforms_desktop",
-      "version": "0.2.0",
-      "dependencies": [
-        "flutter",
-        "google_sign_in_all_platforms_interface",
-        "googleapis_auth",
-        "http",
-        "plugin_platform_interface",
-        "shelf",
-        "shelf_router",
-        "url_launcher"
-      ]
-    },
-    {
       "name": "sqflite_common",
       "version": "2.5.6",
       "dependencies": [
@@ -1660,26 +1593,6 @@
       ]
     },
     {
-      "name": "extension_google_sign_in_as_googleapis_auth",
-      "version": "3.0.0",
-      "dependencies": [
-        "flutter",
-        "google_sign_in",
-        "googleapis_auth",
-        "http",
-        "meta"
-      ]
-    },
-    {
-      "name": "shelf_router",
-      "version": "1.1.4",
-      "dependencies": [
-        "http_methods",
-        "meta",
-        "shelf"
-      ]
-    },
-    {
       "name": "vm_service",
       "version": "15.0.2",
       "dependencies": []
@@ -1699,11 +1612,6 @@
         "logging",
         "meta"
       ]
-    },
-    {
-      "name": "http_methods",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "dbus",

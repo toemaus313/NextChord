@@ -37,6 +37,11 @@ class DatabaseMigrations {
             await m.createTable(db.midiProfiles);
             await m.addColumn(db.songs, db.songs.profileId);
           }
+          if (from <= 6 && to >= 7) {
+            // Add isDeleted column to setlists table
+            final db = m.database as AppDatabase;
+            await m.addColumn(db.setlists, db.setlists.isDeleted);
+          }
         },
       );
 
