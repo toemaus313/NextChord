@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../../services/midi/midi_service.dart';
 
@@ -317,6 +318,8 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
       controlChanges: _controlChanges,
       timing: _timing,
       notes: _notes,
+      createdAt: widget.initialMapping?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     Navigator.pop(context);

@@ -1,6 +1,7 @@
 import '../core/utils/logger.dart';
 import '../data/repositories/song_repository.dart';
 import '../domain/entities/song.dart';
+import '../domain/entities/setlist.dart';
 import '../presentation/providers/setlist_provider.dart';
 import '../presentation/providers/global_sidebar_provider.dart';
 import 'song_adjustment_service.dart';
@@ -166,8 +167,8 @@ class SetlistNavigationService {
     final baseKey = song.key.trim();
     if (baseKey.isEmpty) return '';
 
-    final transposeSteps = songItem.transposeSteps ?? 0;
-    final capoOffset = (songItem.capo ?? song.capo) - song.capo;
+    final transposeSteps = songItem.transposeSteps;
+    final capoOffset = songItem.capo - song.capo;
 
     return SongAdjustmentService.calculateEffectiveKey(
         baseKey, transposeSteps, capoOffset);

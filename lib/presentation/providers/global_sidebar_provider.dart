@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 
 /// Provider for managing global sidebar visibility and navigation state across the app
 class GlobalSidebarProvider extends ChangeNotifier {

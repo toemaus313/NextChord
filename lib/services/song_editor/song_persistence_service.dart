@@ -12,7 +12,7 @@ class SongPersistenceService {
   }) async {
     try {
       // Ensure database schema is up to date before operations
-      await repository.database.ensureMidiProfilesTable();
+      // await repository.database.ensureMidiProfilesTable(); // MIDI profiles removed during refactoring
 
       // Save the song
       final newSongId = await repository.insertSong(song);
@@ -37,7 +37,7 @@ class SongPersistenceService {
   }) async {
     try {
       // Ensure database schema is up to date before operations
-      await repository.database.ensureMidiProfilesTable();
+      // await repository.database.ensureMidiProfilesTable(); // MIDI profiles removed during refactoring
 
       // Update the song
       await repository.updateSong(song);
@@ -83,7 +83,7 @@ class SongPersistenceService {
   }) async {
     try {
       // Ensure database schema is up to date before loading profiles
-      await repository.database.ensureMidiProfilesTable();
+      // await repository.database.ensureMidiProfilesTable(); // MIDI profiles removed during refactoring
 
       return await repository.getAllMidiProfiles();
     } catch (e) {

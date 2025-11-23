@@ -3,29 +3,21 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/metronome_settings_provider.dart';
 import '../../services/midi/midi_service.dart';
+import 'templates/concise_modal_template.dart';
 
-/// Modal-style dialog for metronome settings configuration
+/// **Concise Modal Template Implementation** - Metronome Settings
 ///
-/// **App Modal Design Standard**:
-/// - maxWidth: 480, maxHeight: 650 (constrained dialog)
-/// - Gradient: Color(0xFF0468cc) to Color.fromARGB(150, 3, 73, 153)
-/// - Border radius: 22, Shadow: blurRadius 20, offset (0, 10)
-/// - Text: Primary white, secondary white70, borders white24
-/// - Buttons: Rounded borders (999), padding (21, 11), fontSize 14
-/// - Spacing: 8px between sections, 16px padding
+/// This demonstrates how to use the ConciseModalTemplate for consistent,
+/// compact modal design across the application.
 class MetronomeSettingsModal extends StatefulWidget {
   const MetronomeSettingsModal({Key? key}) : super(key: key);
 
-  /// Show the Metronome Settings modal
+  /// Show the Metronome Settings modal using the concise template
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return ConciseModalTemplate.showConciseModal<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: const MetronomeSettingsModal(),
-      ),
+      child: const MetronomeSettingsModal(),
     );
   }
 
@@ -33,7 +25,8 @@ class MetronomeSettingsModal extends StatefulWidget {
   State<MetronomeSettingsModal> createState() => _MetronomeSettingsModalState();
 }
 
-class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
+class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
+    with ConciseModalContentMixin {
   late final TextEditingController _midiSendController;
   String? _midiSendError;
 
@@ -87,67 +80,166 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
       builder: (context, settingsProvider, child) {
         return Consumer<MidiService>(
           builder: (context, midiService, child) {
-            return Center(
-              child: ConstrainedBox(
-                // App Modal Design Standard: Constrained dialog size
-                constraints: const BoxConstraints(
-                  maxWidth: 480,
-                  minWidth: 320,
-                  maxHeight: 650,
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(context, settingsProvider),
+                buildConciseContent(
+                  children: addConciseSpacing([
+                    _buildCountInSetting(settingsProvider),
+                    _buildTickActionSetting(settingsProvider),
+                    _buildMidiSendSetting(settingsProvider, midiService),
+                    _buildMidiStatusInfo(midiService),
+                  ]),
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    // App Modal Design Standard: Gradient background
-                    gradient: const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF0468cc),
-                        Color.fromARGB(150, 3, 73, 153)
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(100),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  // App Modal Design Standard: Consistent padding
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(context),
-                      const SizedBox(height: 8),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildCountInOnlySetting(settingsProvider),
-                              const SizedBox(height: 12),
-                              _buildTickActionSetting(settingsProvider),
-                              const SizedBox(height: 12),
-                              _buildMidiSendOnTickSetting(
-                                  settingsProvider, midiService),
-                              const SizedBox(height: 12),
-                              _buildMidiStatusInfo(midiService),
-                              const SizedBox(height: 8),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildHeader(
+      BuildContext context, MetronomeSettingsProvider settingsProvider) {
+    return ConciseModalTemplate.buildConciseHeader(
+      context: context,
+      title: 'Metronome Settings',
+      onCancel: () => _cancelChanges(context, settingsProvider),
+      onOk: _midiSendError == null
+          ? () => _saveChanges(context, settingsProvider)
+          : () {},
+      okEnabled: _midiSendError == null,
+    );
+  }
+
+  Widget _buildCountInSetting(MetronomeSettingsProvider settingsProvider) {
+    return ConciseModalTemplate.buildConciseSettingRow(
+      icon: Icons.timer,
+      label: 'Count In',
+      control: ConciseModalTemplate.buildConciseDropdown<int>(
+        value: settingsProvider.countInMeasures,
+        items: const [
+          DropdownMenuItem<int>(
+            value: 0,
+            child: Text('Off',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          DropdownMenuItem<int>(
+            value: 1,
+            child: Text('1 measure',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          DropdownMenuItem<int>(
+            value: 2,
+            child: Text('2 measure',
+                style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+        ],
+        onChanged: (int? newMeasures) {
+          if (newMeasures != null) {
+            settingsProvider.setCountInMeasures(newMeasures);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildTickActionSetting(MetronomeSettingsProvider settingsProvider) {
+    return ConciseModalTemplate.buildConciseSettingRow(
+      icon: Icons.vibration,
+      label: 'Tick Action:',
+      control: Expanded(
+        child: ConciseModalTemplate.buildConciseDropdown<String>(
+          value: settingsProvider.tickAction,
+          isExpanded: true,
+          items: MetronomeSettingsProvider.availableTickActions
+              .map((action) => DropdownMenuItem<String>(
+                    value: action,
+                    child: Text(
+                      action,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ))
+              .toList(),
+          onChanged: (String? newAction) {
+            if (newAction != null) {
+              settingsProvider.setTickAction(newAction);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMidiSendSetting(
+      MetronomeSettingsProvider settingsProvider, MidiService midiService) {
+    return ConciseModalTemplate.buildConciseSettingColumn(
+      icon: Icons.piano,
+      label: 'MIDI Send on Tick:',
+      children: [
+        ConciseModalTemplate.buildConciseTextField(
+          controller: _midiSendController,
+          hintText: 'e.g., PC10, CC7:100, timing',
+          errorText: _midiSendError,
+          onChanged: (value) {
+            final error = _validateMidiSendCommand(value);
+            setState(() {
+              _midiSendError = error;
+            });
+            // Update provider asynchronously but don't wait for it
+            settingsProvider.setMidiSendOnTick(value);
+          },
+          onSubmitted: (value) {
+            // Unfocus the text field to hide keyboard when ENTER is pressed
+            FocusScope.of(context).unfocus();
+          },
+        ),
+        const SizedBox(height: ConciseModalTemplate.smallSpacing),
+        Consumer<MidiService>(
+          builder: (context, midiService, child) {
+            // Check controller text directly for immediate responsiveness
+            final hasText = _midiSendController.text.trim().isNotEmpty;
+            final isConnected = midiService.isConnected;
+            final hasNoError = _midiSendError == null;
+
+            // Re-enabled MIDI device check
+            final canTest = hasText && isConnected && hasNoError;
+
+            return ConciseModalTemplate.buildConciseButton(
+              label: 'Test',
+              icon: Icons.play_arrow,
+              enabled: canTest,
+              onPressed: canTest
+                  ? () => _testMidiCommand(
+                      context.read<MetronomeSettingsProvider>(), midiService)
+                  : () {},
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMidiStatusInfo(MidiService midiService) {
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    if (midiService.isConnected) {
+      statusColor = Colors.green;
+      statusText = 'MIDI device connected - commands will be sent on tick';
+      statusIcon = Icons.check_circle;
+    } else {
+      statusColor = Colors.orange;
+      statusText = 'No MIDI device connected - configure MIDI in Settings';
+      statusIcon = Icons.info_outline;
+    }
+
+    return ConciseModalTemplate.buildConciseInfoBox(
+      icon: statusIcon,
+      text: statusText,
+      color: statusColor,
     );
   }
 
@@ -279,367 +371,5 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
         }
       }
     }
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Consumer<MetronomeSettingsProvider>(
-      builder: (context, settingsProvider, child) {
-        return Consumer<MidiService>(
-          builder: (context, midiService, child) {
-            return Row(
-              children: [
-                // Cancel button (upper left)
-                TextButton(
-                  onPressed: () => _cancelChanges(context, settingsProvider),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 21, vertical: 11),
-                    minimumSize: const Size(0, 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                      side: const BorderSide(color: Colors.white24),
-                    ),
-                  ),
-                  child: const Text('Cancel', style: TextStyle(fontSize: 14)),
-                ),
-                const Spacer(),
-                const Text(
-                  'Metronome Settings',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                // OK button (upper right)
-                TextButton(
-                  onPressed: _midiSendError == null
-                      ? () => _saveChanges(context, settingsProvider)
-                      : null,
-                  style: TextButton.styleFrom(
-                    foregroundColor:
-                        _midiSendError == null ? Colors.white : Colors.white54,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 21, vertical: 11),
-                    minimumSize: const Size(0, 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                      side: BorderSide(
-                          color: _midiSendError == null
-                              ? Colors.white24
-                              : Colors.white12),
-                    ),
-                  ),
-                  child: const Text('OK', style: TextStyle(fontSize: 14)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildCountInOnlySetting(MetronomeSettingsProvider settingsProvider) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.timer,
-            color: Colors.white70,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Count In',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(10),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withAlpha(20)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: settingsProvider.countInMeasures,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                dropdownColor: const Color(0xFF0468cc),
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                items: const [
-                  DropdownMenuItem<int>(
-                    value: 0,
-                    child: Text(
-                      'Off',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                  DropdownMenuItem<int>(
-                    value: 1,
-                    child: Text(
-                      '1 measure',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                  DropdownMenuItem<int>(
-                    value: 2,
-                    child: Text(
-                      '2 measure',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ],
-                onChanged: (int? newMeasures) {
-                  if (newMeasures != null) {
-                    settingsProvider.setCountInMeasures(newMeasures);
-                  }
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTickActionSetting(MetronomeSettingsProvider settingsProvider) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.vibration,
-            color: Colors.white70,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Tick Action:',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withAlpha(20)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: settingsProvider.tickAction,
-                  isExpanded: true,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  dropdownColor: const Color(0xFF0468cc),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  items: MetronomeSettingsProvider.availableTickActions
-                      .map((action) {
-                    return DropdownMenuItem<String>(
-                      value: action,
-                      child: Text(
-                        action,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newAction) {
-                    if (newAction != null) {
-                      settingsProvider.setTickAction(newAction);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMidiSendOnTickSetting(
-      MetronomeSettingsProvider settingsProvider, MidiService midiService) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.piano,
-                color: Colors.white70,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'MIDI Send on Tick:',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _midiSendController,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'e.g., PC10, CC7:100, timing',
-              hintStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 12,
-              ),
-              filled: true,
-              fillColor: Colors.white.withAlpha(10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withAlpha(20)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withAlpha(20)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFF0468cc)),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              errorText: _midiSendError,
-            ),
-            onChanged: (value) {
-              final error = _validateMidiSendCommand(value);
-              setState(() {
-                _midiSendError = error;
-              });
-              // Update provider asynchronously but don't wait for it
-              settingsProvider.setMidiSendOnTick(value);
-            },
-            onSubmitted: (value) {
-              // Unfocus the text field to hide keyboard when ENTER is pressed
-              FocusScope.of(context).unfocus();
-            },
-          ),
-          const SizedBox(height: 8),
-          // Test button
-          Builder(
-            builder: (context) {
-              return Consumer<MidiService>(
-                builder: (context, midiService, child) {
-                  // Check controller text directly for immediate responsiveness
-                  final hasText = _midiSendController.text.trim().isNotEmpty;
-                  final isConnected = midiService.isConnected;
-                  final hasNoError = _midiSendError == null;
-
-                  // Re-enabled MIDI device check
-                  final canTest = hasText && isConnected && hasNoError;
-
-                  return SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: canTest
-                          ? () => _testMidiCommand(
-                              context.read<MetronomeSettingsProvider>(),
-                              midiService)
-                          : null,
-                      icon: const Icon(Icons.play_arrow, size: 14),
-                      label: const Text('Test', style: TextStyle(fontSize: 14)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: canTest
-                            ? Colors.white.withAlpha(20)
-                            : Colors.white.withAlpha(10),
-                        foregroundColor:
-                            canTest ? Colors.white : Colors.white54,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                              color: canTest ? Colors.white24 : Colors.white12),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMidiStatusInfo(MidiService midiService) {
-    Color statusColor;
-    String statusText;
-    IconData statusIcon;
-
-    if (midiService.isConnected) {
-      statusColor = Colors.green;
-      statusText = 'MIDI device connected - commands will be sent on tick';
-      statusIcon = Icons.check_circle;
-    } else {
-      statusColor = Colors.orange;
-      statusText = 'No MIDI device connected - configure MIDI in Settings';
-      statusIcon = Icons.info_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: statusColor.withAlpha(20),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withAlpha(50)),
-      ),
-      child: Row(
-        children: [
-          Icon(statusIcon, color: statusColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

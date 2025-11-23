@@ -4,44 +4,20 @@ import 'package:flutter/foundation.dart'
 import 'package:provider/provider.dart';
 import '../../../providers/sync_provider.dart';
 import '../../../core/config/google_oauth_config.dart';
+import 'templates/concise_modal_template.dart';
 
+/// **Concise Modal Template Implementation** - Storage Settings
+///
+/// This demonstrates how to use the ConciseModalTemplate for consistent,
+/// compact modal design across the application.
 class StorageSettingsModal extends StatefulWidget {
   const StorageSettingsModal({Key? key}) : super(key: key);
 
   static Future<void> show(BuildContext context) async {
-    return showDialog<void>(
+    return ConciseModalTemplate.showConciseModal<void>(
       context: context,
       barrierDismissible: true,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: SingleChildScrollView(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 480, minHeight: 550),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0468cc),
-                    Color.fromARGB(150, 3, 73, 153),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(100),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(24),
-              child: const StorageSettingsModal(),
-            ),
-          ),
-        );
-      },
+      child: const StorageSettingsModal(),
     );
   }
 
@@ -49,7 +25,8 @@ class StorageSettingsModal extends StatefulWidget {
   State<StorageSettingsModal> createState() => _StorageSettingsModalState();
 }
 
-class _StorageSettingsModalState extends State<StorageSettingsModal> {
+class _StorageSettingsModalState extends State<StorageSettingsModal>
+    with ConciseModalContentMixin {
   bool get _isPlatformSupported {
     if (kIsWeb) return true;
 
@@ -74,29 +51,27 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
       builder: (context, syncProvider, _) {
         return Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildSyncStatus(syncProvider),
-            const SizedBox(height: 16),
-            _buildGoogleDriveSection(syncProvider),
-            const SizedBox(height: 16),
-            _buildActionButtons(context, syncProvider),
+            _buildHeader(context),
+            buildConciseContent(
+              children: addConciseSpacing([
+                _buildSyncStatus(syncProvider),
+                _buildGoogleDriveSection(syncProvider),
+                _buildActionButtons(context, syncProvider),
+              ]),
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _buildHeader() {
-    return const Text(
-      'Cloud Storage',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
+  Widget _buildHeader(BuildContext context) {
+    return ConciseModalTemplate.buildConciseHeader(
+      context: context,
+      title: 'Cloud Storage',
+      onCancel: () => Navigator.of(context).pop(),
+      onOk: () => Navigator.of(context).pop(),
     );
   }
 
@@ -122,191 +97,83 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
       statusIcon = Icons.cloud_off;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            statusIcon,
-            color: statusColor,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              statusText,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          if (syncProvider.isSyncing)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-        ],
-      ),
+    return ConciseModalTemplate.buildConciseInfoBox(
+      icon: statusIcon,
+      text: statusText,
+      color: statusColor,
     );
   }
 
   Widget _buildGoogleDriveSection(SyncProvider syncProvider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (!_isPlatformSupported) {
+      return ConciseModalTemplate.buildConciseSettingColumn(
+        icon: Icons.cloud_off,
+        label: 'Google Drive',
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.cloud_outlined,
-                color: Colors.white,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Google Drive',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const Spacer(),
-              if (_isPlatformSupported)
-                Switch(
-                  value: syncProvider.isSyncEnabled,
-                  onChanged: (value) async {
-                    if (value) {
-                      await _handleSignIn(syncProvider);
-                    } else {
-                      await _handleSignOut(syncProvider);
-                    }
-                  },
-                  activeThumbColor: Colors.blue,
-                  inactiveThumbColor: Colors.grey,
-                ),
-            ],
+          ConciseModalTemplate.buildConciseInfoBox(
+            icon: Icons.info_outline,
+            text:
+                'Desktop Setup Required\n\nGoogle Drive sync on Windows/Linux requires OAuth credentials. To enable this feature:\n\n1. Open lib/core/config/google_oauth_config.dart\n2. Follow the setup instructions in the file\n3. Add your Client ID and Client Secret',
+            color: Colors.orange,
           ),
-          const SizedBox(height: 12),
-          if (!_isPlatformSupported)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.orange,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Desktop Setup Required',
-                          style: TextStyle(
-                            color: Colors.orange.shade200,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Google Drive sync on Windows/Linux requires OAuth credentials. To enable this feature:\n\n1. Open lib/core/config/google_oauth_config.dart\n2. Follow the setup instructions in the file\n3. Add your Client ID and Client Secret',
-                    style: TextStyle(
-                      color: Colors.orange.shade100,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (syncProvider.isSyncEnabled) ...[
-            const Text(
-              'Your NextChord data is being synced with Google Drive.',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-          ] else ...[
-            const Text(
-              'Sign in with Google to enable cloud backup and sync across devices.',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-          ],
         ],
-      ),
+      );
+    }
+
+    return ConciseModalTemplate.buildConciseSettingColumn(
+      icon: Icons.cloud_outlined,
+      label: 'Google Drive',
+      children: [
+        if (syncProvider.isSyncEnabled) ...[
+          Text(
+            'Your NextChord data is being synced with Google Drive.',
+            style: ConciseModalTemplate.secondaryTextStyle,
+          ),
+        ] else ...[
+          Text(
+            'Sign in with Google to enable cloud backup and sync across devices.',
+            style: ConciseModalTemplate.secondaryTextStyle,
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildActionButtons(BuildContext context, SyncProvider syncProvider) {
-    return Row(
+    return Column(
       children: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: Colors.white.withOpacity(0.1),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.white24),
-            ),
-          ),
-          child: const Text('Close'),
-        ),
-        const Spacer(),
         if (syncProvider.isSyncEnabled)
-          TextButton.icon(
+          ConciseModalTemplate.buildConciseButton(
+            label: syncProvider.isSyncing ? 'Syncing...' : 'Sync Now',
+            icon: Icons.sync,
+            enabled: !syncProvider.isSyncing,
             onPressed: syncProvider.isSyncing
                 ? null
-                : () async {
-                    try {
-                      await syncProvider.sync();
-                    } catch (e) {
-                      debugPrint('Sync error: $e');
-                    }
+                : () {
+                    syncProvider.sync();
                   },
-            icon: const Icon(Icons.sync, size: 18),
-            label: Text(syncProvider.isSyncing ? 'Syncing...' : 'Sync Now'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: const Color(0xFF1A73E8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
           ),
+        if (_isPlatformSupported && !syncProvider.isSyncEnabled)
+          ConciseModalTemplate.buildConciseButton(
+            label: 'Sign In',
+            icon: Icons.login,
+            onPressed: () {
+              _handleSignIn(syncProvider);
+            },
+          ),
+        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+          ConciseModalTemplate.buildConciseButton(
+            label: 'Sign Out',
+            icon: Icons.logout,
+            onPressed: () {
+              _handleSignOut(syncProvider);
+            },
+          ),
+        ConciseModalTemplate.buildConciseButton(
+          label: 'Close',
+          icon: Icons.close,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ],
     );
   }

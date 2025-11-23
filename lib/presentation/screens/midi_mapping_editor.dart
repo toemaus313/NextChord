@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../widgets/midi_settings_modal.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../../services/midi/midi_service.dart';
 
@@ -29,6 +30,7 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
   final _notesController = TextEditingController();
   int? _programChangeNumber;
   List<MidiCC> _controlChanges = [];
+  bool _timingEnabled = false;
 
   // Form keys for validation
   final _formKey = GlobalKey<FormState>();
@@ -619,7 +621,10 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
       songId: widget.song.id,
       programChangeNumber: _programChangeNumber,
       controlChanges: _controlChanges,
+      timing: _timingEnabled,
       notes: _notesController.text.isEmpty ? null : _notesController.text,
+      createdAt: widget.initialMapping?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     Navigator.of(context).pop(mapping);

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
-import '../database/app_database.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
+import '../database/app_database.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -65,7 +67,7 @@ class SongRepository {
   /// Fetch all songs, ordered by creation date (newest first)
   Future<List<Song>> getAllSongs() async {
     try {
-      final models = await _db.songsDao.getAllSongs();
+      final models = await _db.getAllSongs();
       return models.map(_modelToSong).toList();
     } catch (e) {
       throw SongRepositoryException('Failed to fetch songs: $e');
@@ -75,7 +77,7 @@ class SongRepository {
   /// Fetch a single song by ID
   Future<Song?> getSongById(String id) async {
     try {
-      final model = await _db.songsDao.getSongById(id);
+      final model = await _db.getSongById(id);
       return model != null ? _modelToSong(model) : null;
     } catch (e) {
       throw SongRepositoryException('Failed to fetch song with ID $id: $e');
@@ -89,7 +91,7 @@ class SongRepository {
     }
 
     try {
-      final models = await _db.songsDao.searchSongs(query);
+      final models = await _db.searchSongs(query);
       return models.map(_modelToSong).toList();
     } catch (e) {
       throw SongRepositoryException('Failed to search songs: $e');
@@ -99,7 +101,7 @@ class SongRepository {
   /// Get songs filtered by key
   Future<List<Song>> getSongsByKey(String key) async {
     try {
-      final models = await _db.songsDao.getSongsByKey(key);
+      final models = await _db.getSongsByKey(key);
       return models.map(_modelToSong).toList();
     } catch (e) {
       throw SongRepositoryException('Failed to fetch songs by key: $e');
@@ -109,7 +111,7 @@ class SongRepository {
   /// Get songs filtered by tag
   Future<List<Song>> getSongsByTag(String tag) async {
     try {
-      final models = await _db.songsDao.getSongsByTag(tag);
+      final models = await _db.getSongsByTag(tag);
       return models.map(_modelToSong).toList();
     } catch (e) {
       throw SongRepositoryException('Failed to fetch songs by tag: $e');
@@ -126,12 +128,14 @@ class SongRepository {
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             )
-          : song.copyWith(
-              updatedAt: DateTime.now(),
-            );
+          : song.copyWith(updatedAt: DateTime.now());
 
       final model = _songToModel(songToInsert);
-      await _db.songsDao.insertSong(model);
+      await _db.insertSong(model);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
+
       return songToInsert.id;
     } catch (e) {
       throw SongRepositoryException('Failed to insert song: $e');
@@ -143,11 +147,10 @@ class SongRepository {
     try {
       final updatedSong = song.copyWith(updatedAt: DateTime.now());
       final model = _songToModel(updatedSong);
-      final rowsAffected = await _db.songsDao.updateSong(model);
+      await _db.updateSong(model);
 
-      if (rowsAffected == 0) {
-        throw SongRepositoryException('Song with ID ${song.id} not found');
-      }
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw SongRepositoryException('Failed to update song: $e');
     }
@@ -156,7 +159,10 @@ class SongRepository {
   /// Delete a song by ID
   Future<void> deleteSong(String id) async {
     try {
-      await _db.songsDao.deleteSong(id);
+      await _db.deleteSong(id);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw SongRepositoryException('Failed to delete song: $e');
     }
@@ -165,7 +171,10 @@ class SongRepository {
   /// Delete all songs (use with caution!)
   Future<void> deleteAllSongs() async {
     try {
-      await _db.songsDao.deleteAllSongs();
+      await _db.deleteAllSongs();
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw SongRepositoryException('Failed to delete all songs: $e');
     }
@@ -208,7 +217,7 @@ class SongRepository {
   /// Get all deleted songs
   Future<List<Song>> getDeletedSongs() async {
     try {
-      final models = await _db.songsDao.getDeletedSongs();
+      final models = await _db.getDeletedSongs();
       return models.map(_modelToSong).toList();
     } catch (e) {
       throw SongRepositoryException('Failed to fetch deleted songs: $e');
@@ -218,7 +227,10 @@ class SongRepository {
   /// Restore a deleted song by ID
   Future<void> restoreSong(String id) async {
     try {
-      await _db.songsDao.restoreSong(id);
+      await _db.restoreSong(id);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw SongRepositoryException('Failed to restore song: $e');
     }
@@ -227,7 +239,10 @@ class SongRepository {
   /// Permanently delete a song by ID (hard delete)
   Future<void> permanentlyDeleteSong(String id) async {
     try {
-      await _db.songsDao.permanentlyDeleteSong(id);
+      await _db.permanentlyDeleteSong(id);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw SongRepositoryException('Failed to permanently delete song: $e');
     }
@@ -291,6 +306,8 @@ class SongRepository {
         controlChanges: _decodeControlChanges(model.controlChanges),
         timing: model.timing,
         notes: model.notes,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
       );
     } catch (e) {
       throw SongRepositoryException('Failed to get MIDI mapping: $e');
@@ -433,7 +450,6 @@ class SongRepository {
       await (_db.delete(_db.midiProfiles)
             ..where((tbl) => tbl.id.equals(profileId)))
           .go();
-
     } catch (e) {
       throw SongRepositoryException('Failed to delete MIDI profile: $e');
     }

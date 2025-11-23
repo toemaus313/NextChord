@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
@@ -118,15 +119,13 @@ class _SongEditorScreenRefactoredState
       if (widget.setlistContext != null) {
         // Start with base song key and apply transpose
         _selectedKey = song.key;
-        if (widget.setlistContext!.transposeSteps != null &&
-            widget.setlistContext!.transposeSteps != 0 &&
-            song.key.isNotEmpty) {
+        if (widget.setlistContext!.transposeSteps != 0 && song.key.isNotEmpty) {
           _selectedKey = TranspositionService.transposeChord(
-              song.key, widget.setlistContext!.transposeSteps!);
+              song.key, widget.setlistContext!.transposeSteps);
         }
 
         // Use setlist capo if set, otherwise use song capo
-        _selectedCapo = widget.setlistContext!.capo ?? song.capo;
+        _selectedCapo = widget.setlistContext!.capo;
       } else {
         // No setlist context - use base song values
         _selectedKey = song.key;
@@ -185,8 +184,6 @@ class _SongEditorScreenRefactoredState
 
   /// Handle keyboard toggle to match iOS Hide Keyboard button behavior
   void _handleKeyboardToggle() {
-    final hasHardwareKb =
-        _bodyFocusNode.hasFocus && MediaQuery.viewInsetsOf(context).bottom == 0;
     final isKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     if (isKeyboardVisible) {
@@ -197,107 +194,92 @@ class _SongEditorScreenRefactoredState
             false; // Ensure metadata shows when keyboard is dismissed
       });
     } else {
-      // No keyboard visible - toggle metadata manually
-      setState(() {
-        _isMetadataHidden = !_isMetadataHidden;
+      // iOS behavior: if keyboard is not visible but body has focus, show keyboard
+      if (_bodyFocusNode.hasFocus) {
+        // Toggle metadata visibility when body has focus but no keyboard
+        setState(() {
+          _isMetadataHidden = !_isMetadataHidden;
+        });
+      } else {
+        // Request focus to show keyboard
+        _bodyFocusNode.requestFocus();
+      }
+    }
+  }
 
-        // If hiding metadata and no hardware keyboard, show keyboard
-        if (_isMetadataHidden && !hasHardwareKb) {
-          // Use postFrameCallback to avoid timing issues
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _bodyFocusNode.requestFocus();
-            }
+  void _onBodyTextChanged() {
+    final currentText = _bodyController.text;
+    final cursorPosition = _bodyController.selection.baseOffset;
+
+    // Check if we should trigger auto-completion
+    if (cursorPosition > _lastBodyText.length) {
+      // User added text, check for tab completion trigger
+      if (currentText.endsWith('\t') && !_isAutoCompleting) {
+        _isAutoCompleting = true;
+        _handleTabCompletion();
+      }
+    }
+
+    _lastBodyText = currentText;
+  }
+
+  /// Handle tab completion for chord patterns
+  void _handleTabCompletion() async {
+    final cursorPosition = _bodyController.selection.baseOffset;
+    if (cursorPosition <= 0) return;
+
+    // Get the text before the tab
+    final textBeforeTab = _bodyController.text.substring(0, cursorPosition - 1);
+
+    // Use the tab auto-completion service
+    final result = TabAutoCompletionService.checkForAutoCompletion(
+      textBeforeTab + '\t',
+      textBeforeTab,
+      cursorPosition,
+    );
+
+    if (result != null && mounted) {
+      // Apply the auto-completion result
+      _bodyController.value = TextEditingValue(
+        text: result.updatedText,
+        selection: TextSelection.collapsed(offset: result.newCursorPosition),
+      );
+
+      // Reset auto-completion flag after a short delay
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          setState(() {
+            _isAutoCompleting = false;
           });
         }
+      });
+    } else {
+      // No completion found, just remove the tab
+      _bodyController.value = TextEditingValue(
+        text: textBeforeTab,
+        selection: TextSelection.collapsed(offset: textBeforeTab.length),
+      );
+      setState(() {
+        _isAutoCompleting = false;
       });
     }
   }
 
-  void _handleMidiProfileChanged(MidiProfile? newProfile) {
-    setState(() {
-      _selectedMidiProfile = newProfile;
-    });
+  /// Transpose the entire body by the specified number of steps
+  void _transposeBody(int steps) {
+    final transposedBody =
+        TranspositionService.transposeChordProText(_bodyController.text, steps);
+    _bodyController.text = transposedBody;
   }
 
-  void _transposeBody(int semitones) {
-    if (semitones == 0) return;
-    final currentText = _bodyController.text;
-    if (currentText.trim().isEmpty) return;
-
-    final selection = _bodyController.selection;
-    final updatedText =
-        TranspositionService.transposeChordProText(currentText, semitones);
-    _bodyController.text = updatedText;
-
-    int baseOffset = selection.baseOffset;
-    if (!selection.isValid) {
-      baseOffset = updatedText.length;
-    } else {
-      baseOffset = baseOffset.clamp(0, updatedText.length);
-    }
-    _bodyController.selection = TextSelection.collapsed(offset: baseOffset);
-    _lastBodyText = updatedText;
-  }
-
-  @override
-  void dispose() {
-    _bodyController.removeListener(_onBodyTextChanged);
-    _bodyFocusNode.dispose();
-    _titleController.dispose();
-    _artistController.dispose();
-    _bodyController.dispose();
-    _bpmController.dispose();
-    _durationController.dispose();
-    super.dispose();
-  }
-
-  /// Handle body text changes to auto-complete tab sections
-  void _onBodyTextChanged() {
-    // Avoid recursive calls during auto-completion
-    if (_isAutoCompleting) return;
-
-    final currentText = _bodyController.text;
-    final cursorPos = _bodyController.selection.baseOffset;
-
-    // Check for auto-completion
-    final result = TabAutoCompletionService.checkForAutoCompletion(
-      currentText,
-      _lastBodyText,
-      cursorPos,
-    );
-
-    if (result != null) {
-      _isAutoCompleting = true;
-      _bodyController.text = result.updatedText;
-      _lastBodyText = result.updatedText;
-      _bodyController.selection = TextSelection.fromPosition(
-        TextPosition(offset: result.newCursorPosition),
-      );
-      _isAutoCompleting = false;
-    } else {
-      _lastBodyText = currentText;
-    }
-  }
-
-  /// Validate and save the song
   Future<void> _saveSong() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
       final now = DateTime.now();
-
-      // Update ChordPro body with duration if provided
-      String updatedBody = SongPersistenceService.updateBodyWithDuration(
-        _bodyController.text.trim(),
-        _durationController.text.trim(),
-      );
+      final updatedBody = _bodyController.text.trim();
 
       final song = Song(
         id: widget.song?.id ?? '',
@@ -397,299 +379,137 @@ class _SongEditorScreenRefactoredState
           _selectedCapo = result.capo!;
         }
         if (result.tempo != null) {
-          final tempo = int.tryParse(result.tempo!);
-          if (tempo != null) {
-            _bpmController.text = tempo.toString();
-          }
+          _bpmController.text = result.tempo!;
         }
-        if (result.timeSignature != null &&
-            ['4/4', '3/4', '6/8', '2/4'].contains(result.timeSignature)) {
+        if (result.timeSignature != null) {
           _selectedTimeSignature = result.timeSignature!;
         }
         if (result.duration != null) {
           _durationController.text = result.duration!;
         }
-
-        // Set the body content
-        _bodyController.text = result.body!;
+        if (result.body != null) {
+          _bodyController.text = result.body!;
+        }
       });
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Song imported successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✓ Imported: ${result.fileName ?? 'File'}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (result != null && !result.success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.error ?? 'Import failed'),
+        const SnackBar(
+          content: Text('Failed to import song'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  /// Convert pasted Ultimate Guitar text to ChordPro format
-  Future<void> _convertToChordPro() async {
-    final currentText = _bodyController.text.trim();
-
-    if (currentText.isEmpty) {
+  Future<void> _importFromUltimateGuitar() async {
+    // For now, show a placeholder - this would need a URL input dialog
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Paste some Ultimate Guitar text first'),
+          content:
+              Text('Ultimate Guitar import requires URL - feature coming soon'),
           backgroundColor: Colors.orange,
         ),
       );
-      return;
-    }
-
-    final result = SongImportService.convertToChordPro(currentText);
-
-    if (result.success && mounted) {
-      setState(() {
-        // Populate metadata fields
-        if (result.title != null && _titleController.text.isEmpty) {
-          _titleController.text = result.title!;
-        }
-        if (result.artist != null && _artistController.text.isEmpty) {
-          _artistController.text = result.artist!;
-        }
-        if (result.key != null &&
-            TranspositionService.getAvailableKeys().contains(result.key)) {
-          _selectedKey = result.key!;
-        }
-        if (result.capo != null) {
-          _selectedCapo = result.capo!;
-        }
-        if (result.tempo != null) {
-          final tempo = int.tryParse(result.tempo!);
-          if (tempo != null) {
-            _bpmController.text = tempo.toString();
-          }
-        }
-        if (result.timeSignature != null &&
-            ['4/4', '3/4', '6/8', '2/4'].contains(result.timeSignature)) {
-          _selectedTimeSignature = result.timeSignature!;
-        }
-
-        // Replace the body with converted content
-        _bodyController.text = result.body!;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Converted to ChordPro'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (!result.success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.error ?? 'Conversion failed'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
-  /// Import from Ultimate Guitar URL
-  Future<void> _importFromUltimateGuitar() async {
-    final urlController = TextEditingController();
-
-    // Show dialog to get URL
-    final url = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Import from Ultimate Guitar'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Paste the Ultimate Guitar tab URL:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Example:\nhttps://tabs.ultimate-guitar.com/tab/artist/song-chords-123456',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(
-                hintText: 'Paste URL here',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.link),
-              ),
-              autofocus: true,
-              keyboardType: TextInputType.url,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final url = urlController.text.trim();
-              if (url.isNotEmpty) {
-                Navigator.pop(context, url);
-              }
-            },
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-
-    if (url == null || url.isEmpty) return;
-
-    // Show loading indicator
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Importing from Ultimate Guitar...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final result = await SongImportService.importFromUltimateGuitar(url);
-
-    // Close loading dialog
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
-
-    if (result.success && mounted) {
-      // Populate fields with imported data
-      setState(() {
-        _titleController.text = result.title ?? '';
-        _artistController.text = result.artist ?? '';
-        _bodyController.text = result.body ?? '';
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully imported: ${result.title ?? 'Song'}'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (!result.success && mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Import Failed'),
-          content: Text(result.error ?? 'Unknown error'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
+  void _convertToChordPro() {
+    // This would convert plain text to ChordPro format
+    // Implementation would depend on specific requirements
   }
 
-  /// Delete the current song
   Future<void> _deleteSong() async {
-    // Show confirmation dialog
+    if (widget.song == null) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('Delete Song'),
         content: Text(
-          'Are you sure you want to delete "${_titleController.text}"?\n\nThis action cannot be undone.',
-        ),
+            'Are you sure you want to delete "${widget.song!.title}"? This action cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
       ),
     );
 
-    if (!mounted || confirmed != true) return;
+    if (confirmed == true && mounted) {
+      try {
+        final songProvider = context.read<SongProvider>();
+        await songProvider.deleteSong(widget.song!.id);
 
-    try {
-      final songProvider = context.read<SongProvider>();
-      final result = await SongPersistenceService.deleteSong(
-        songId: widget.song!.id,
-        repository: songProvider.repository,
-      );
-
-      if (result.success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Song deleted successfully'),
-          ),
-        );
-        // Refresh the song list in the provider
-        await songProvider.loadSongs();
-        // Return a special value to indicate deletion occurred
         if (mounted) {
-          Navigator.of(context).pop('deleted');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Song deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
         }
-      } else if (!result.success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? 'Delete failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error deleting song: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete song: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
 
-  /// Open the Edit Tags dialog
-  Future<void> _openTagsDialog() async {
-    await showDialog(
+  void _handleMidiProfileChanged(MidiProfile? profile) {
+    setState(() {
+      _selectedMidiProfile = profile;
+    });
+  }
+
+  void _openTagsDialog() async {
+    final updatedTags = await showDialog<List<String>>(
       context: context,
       builder: (context) => TagEditDialog(
         title: 'Edit Tags',
         initialTags: _tags.toSet(),
-        onTagsUpdated: (updatedTags) {
-          setState(() {
-            _tags = updatedTags;
-          });
-        },
+        onTagsUpdated: (tags) {},
       ),
     );
+
+    if (updatedTags != null && mounted) {
+      setState(() {
+        _tags = updatedTags;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _artistController.dispose();
+    _bodyController.dispose();
+    _bpmController.dispose();
+    _durationController.dispose();
+    _bodyFocusNode.dispose();
+    super.dispose();
   }
 
   @override

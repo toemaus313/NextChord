@@ -3,29 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/audio/guitar_tuner_service.dart';
 import 'semicircle_tuner_display.dart';
+import 'templates/concise_modal_template.dart';
 
-/// Modal-style dialog for guitar tuning with semicircle dot display
+/// **Concise Modal Template Implementation** - Guitar Tuner
 ///
-/// **App Modal Design Standard**:
-/// - maxWidth: 480, maxHeight: 650 (constrained dialog)
-/// - Gradient: Color(0xFF0468cc) to Color.fromARGB(150, 3, 73, 153)
-/// - Border radius: 22, Shadow: blurRadius 20, offset (0, 10)
-/// - Text: Primary white, secondary white70, borders white24
-/// - Buttons: Rounded borders (999), padding (21, 11), fontSize 14
-/// - Spacing: 8px between sections, 16px padding
+/// This demonstrates how to use the ConciseModalTemplate for consistent,
+/// compact modal design across the application.
 class GuitarTunerModal extends StatefulWidget {
   const GuitarTunerModal({Key? key}) : super(key: key);
 
-  /// Show the Guitar Tuner modal
+  /// Show the Guitar Tuner modal using the concise template
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return ConciseModalTemplate.showConciseModal<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: const GuitarTunerModal(),
-      ),
+      child: const GuitarTunerModal(),
     );
   }
 
@@ -33,7 +25,8 @@ class GuitarTunerModal extends StatefulWidget {
   State<GuitarTunerModal> createState() => _GuitarTunerModalState();
 }
 
-class _GuitarTunerModalState extends State<GuitarTunerModal> {
+class _GuitarTunerModalState extends State<GuitarTunerModal>
+    with ConciseModalContentMixin {
   late final GuitarTunerService _tunerService;
   bool _isInitializing = true;
   String? _initError;
@@ -94,60 +87,18 @@ class _GuitarTunerModalState extends State<GuitarTunerModal> {
       value: _tunerService,
       child: Consumer<GuitarTunerService>(
         builder: (context, tunerService, child) {
-          return Center(
-            child: ConstrainedBox(
-              // App Modal Design Standard: Constrained dialog size
-              constraints: const BoxConstraints(
-                maxWidth: 480,
-                minWidth: 320,
-                maxHeight: 650,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHeader(context, tunerService),
+              buildConciseContent(
+                children: addConciseSpacing([
+                  _buildTunerDisplay(tunerService),
+                  _buildStringSelector(tunerService),
+                  _buildControlButtons(tunerService),
+                ]),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  // App Modal Design Standard: Gradient background
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF0468cc),
-                      Color.fromARGB(150, 3, 73, 153)
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(100),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                // App Modal Design Standard: Consistent padding
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeader(context, tunerService),
-                    const SizedBox(height: 8),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTunerDisplay(tunerService),
-                            const SizedBox(height: 16),
-                            _buildStringSelector(tunerService),
-                            const SizedBox(height: 16),
-                            _buildControlButtons(tunerService),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ],
           );
         },
       ),
@@ -240,7 +191,7 @@ class _GuitarTunerModalState extends State<GuitarTunerModal> {
   Widget _buildHeader(BuildContext context, GuitarTunerService tunerService) {
     return Row(
       children: [
-        // Close button (upper left)
+        // Close button (upper left) - using concise template styling
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
@@ -265,7 +216,7 @@ class _GuitarTunerModalState extends State<GuitarTunerModal> {
           ),
         ),
         const Spacer(),
-        // Status indicator
+        // Status indicator - preserve unique functionality
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(

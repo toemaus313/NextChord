@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../providers/setlist_provider.dart';
-import 'setlist_editor_screen.dart';
+import '../widgets/setlist_editor_dialog.dart';
 
 /// Screen that displays all setlists
 class SetlistsScreen extends StatefulWidget {

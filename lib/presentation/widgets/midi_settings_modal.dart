@@ -1,29 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/midi/midi_service.dart';
+import 'templates/concise_modal_template.dart';
 
-/// Modal-style dialog for MIDI device selection and configuration
+/// **Concise Modal Template Implementation** - MIDI Settings
 ///
-/// **App Modal Design Standard**:
-/// - maxWidth: 480, maxHeight: 650 (constrained dialog)
-/// - Gradient: Color(0xFF0468cc) to Color.fromARGB(150, 3, 73, 153)
-/// - Border radius: 22, Shadow: blurRadius 20, offset (0, 10)
-/// - Text: Primary white, secondary white70, borders white24
-/// - Buttons: Rounded borders (999), padding (21, 11), fontSize 14
-/// - Spacing: 8px between sections, 16px padding
+/// This demonstrates how to use the ConciseModalTemplate for consistent,
+/// compact modal design across the application.
 class MidiSettingsModal extends StatefulWidget {
   const MidiSettingsModal({Key? key}) : super(key: key);
 
-  /// Show the MIDI Settings modal
+  /// Show the MIDI Settings modal using the concise template
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return ConciseModalTemplate.showConciseModal<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: const MidiSettingsModal(),
-      ),
+      child: const MidiSettingsModal(),
     );
   }
 
@@ -31,7 +23,8 @@ class MidiSettingsModal extends StatefulWidget {
   State<MidiSettingsModal> createState() => _MidiSettingsModalState();
 }
 
-class _MidiSettingsModalState extends State<MidiSettingsModal> {
+class _MidiSettingsModalState extends State<MidiSettingsModal>
+    with ConciseModalContentMixin {
   bool _isInitializing = true;
   String? _initError;
   bool _isTestStreamActive = false;
@@ -99,112 +92,18 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
 
     return Consumer<MidiService>(
       builder: (context, midiService, child) {
-        return Center(
-          child: ConstrainedBox(
-            // App Modal Design Standard: Constrained dialog size
-            constraints: const BoxConstraints(
-              maxWidth: 480,
-              minWidth: 320,
-              maxHeight: 650,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                // App Modal Design Standard: Gradient background
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(100),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              // App Modal Design Standard: Consistent padding
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildMidiChannelSetting(midiService),
-                          const SizedBox(height: 12),
-                          _buildMidiClockSetting(midiService),
-                          const SizedBox(height: 12),
-                          _buildConnectionStatus(midiService),
-                          const SizedBox(height: 12),
-                          _buildDeviceList(midiService),
-                          const SizedBox(height: 12),
-                          _buildActionButtons(midiService),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Consumer<MidiService>(
-      builder: (context, midiService, child) {
-        return Row(
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Cancel button (upper left)
-            TextButton(
-              onPressed: () => _cancelChanges(context, midiService),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-                minimumSize: const Size(0, 0),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  side: const BorderSide(color: Colors.white24),
-                ),
-              ),
-              child: const Text('Cancel', style: TextStyle(fontSize: 14)),
-            ),
-            const Spacer(),
-            const Text(
-              'MIDI Settings',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Spacer(),
-            // OK button (upper right)
-            TextButton(
-              onPressed: () => _saveChanges(context, midiService),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-                minimumSize: const Size(0, 0),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  side: const BorderSide(color: Colors.white24),
-                ),
-              ),
-              child: const Text('OK', style: TextStyle(fontSize: 14)),
+            _buildHeader(context, midiService),
+            buildConciseContent(
+              children: addConciseSpacing([
+                _buildMidiChannelSetting(midiService),
+                _buildMidiClockSetting(midiService),
+                _buildConnectionStatus(midiService),
+                _buildDeviceList(midiService),
+                _buildActionButtons(midiService),
+              ]),
             ),
           ],
         );
@@ -212,122 +111,53 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     );
   }
 
+  Widget _buildHeader(BuildContext context, MidiService midiService) {
+    return ConciseModalTemplate.buildConciseHeader(
+      context: context,
+      title: 'MIDI Settings',
+      onCancel: () => _cancelChanges(context, midiService),
+      onOk: () => _saveChanges(context, midiService),
+    );
+  }
+
   Widget _buildMidiChannelSetting(MidiService midiService) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.tune,
-            color: Colors.white70,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'MIDI Channel:',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+    return ConciseModalTemplate.buildConciseSettingRow(
+      icon: Icons.tune,
+      label: 'MIDI Channel',
+      control: ConciseModalTemplate.buildConciseDropdown<int>(
+        value: midiService.displayMidiChannel,
+        items: List.generate(16, (index) {
+          final channel = index + 1;
+          return DropdownMenuItem<int>(
+            value: channel,
+            child: Text(
+              'Channel $channel',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withAlpha(20)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: midiService.displayMidiChannel,
-                  isExpanded: true,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  dropdownColor: const Color(0xFF0468cc),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  items: List.generate(16, (index) {
-                    return DropdownMenuItem<int>(
-                      value: index + 1, // Display as 1-16
-                      child: Text(
-                        'Channel ${index + 1}',
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    );
-                  }),
-                  onChanged: (int? newChannel) {
-                    if (newChannel != null) {
-                      midiService.setMidiChannel(newChannel);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
+          );
+        }),
+        onChanged: (int? newChannel) {
+          if (newChannel != null) {
+            midiService.setMidiChannel(newChannel);
+          }
+        },
       ),
     );
   }
 
   Widget _buildMidiClockSetting(MidiService midiService) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.schedule,
-            color: Colors.white70,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Send MIDI Clock:',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Send 2-second clock stream when songs open',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Switch(
-            value: midiService.sendMidiClockEnabled,
-            onChanged: (value) {
-              midiService.setSendMidiClock(value);
-            },
-            activeColor: const Color(0xFF0468cc),
-            activeTrackColor: Colors.white.withAlpha(80),
-            inactiveThumbColor: Colors.white54,
-            inactiveTrackColor: Colors.white.withAlpha(30),
-          ),
-        ],
+    return ConciseModalTemplate.buildConciseSettingRow(
+      icon: Icons.schedule,
+      label: 'Send MIDI Clock',
+      control: Switch(
+        value: midiService.sendMidiClockEnabled,
+        onChanged: (value) {
+          midiService.setSendMidiClock(value);
+        },
+        activeThumbColor: const Color(0xFF0468cc),
+        activeTrackColor: Colors.white.withAlpha(80),
+        inactiveThumbColor: Colors.white54,
+        inactiveTrackColor: Colors.white.withAlpha(30),
       ),
     );
   }
@@ -365,39 +195,10 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         statusIcon = Icons.bluetooth_disabled;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: statusColor.withAlpha(20),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withAlpha(50)),
-      ),
-      child: Row(
-        children: [
-          Icon(statusIcon, color: statusColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              statusText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (midiService.connectionState == MidiConnectionState.scanning ||
-              midiService.connectionState == MidiConnectionState.connecting)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-        ],
-      ),
+    return ConciseModalTemplate.buildConciseInfoBox(
+      icon: statusIcon,
+      text: statusText,
+      color: statusColor,
     );
   }
 

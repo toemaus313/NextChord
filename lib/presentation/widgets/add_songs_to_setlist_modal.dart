@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../providers/setlist_provider.dart';
 
 /// Modal-style dialog for adding songs to multiple setlists
@@ -173,14 +175,15 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
               side: const BorderSide(color: Colors.white24),
             ),
           ),
-          child: const Text('Cancel', style: TextStyle(fontSize: 14)),
+          child: const Text('Cancel',
+              style: TextStyle(fontSize: 10.5)), // Reduced by 25% from 14
         ),
         const Spacer(),
         const Text(
           'Add to Setlist',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 12, // Reduced by 25% from 16
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -205,7 +208,8 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
               ),
             ),
           ),
-          child: const Text('Add', style: TextStyle(fontSize: 14)),
+          child: const Text('Add',
+              style: TextStyle(fontSize: 10.5)), // Reduced by 25% from 14
         ),
       ],
     );
@@ -215,7 +219,7 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
     final isMultiple = widget.songs.length > 1;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(9), // Reduced by 25% from 12
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(10),
         borderRadius: BorderRadius.circular(16),
@@ -226,9 +230,9 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
           Icon(
             isMultiple ? Icons.library_music : Icons.music_note,
             color: Colors.white70,
-            size: 20,
+            size: 15, // Reduced by 25% from 20
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 9), // Reduced by 25% from 12
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,28 +243,28 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
                       : widget.songs.first.title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: 10.5, // Reduced by 25% from 14
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (!isMultiple && widget.songs.first.artist.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1.5), // Reduced by 25% from 2
                   Text(
                     widget.songs.first.artist,
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 12,
+                      fontSize: 9, // Reduced by 25% from 12
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ] else if (isMultiple) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1.5), // Reduced by 25% from 2
                   Text(
                     'Add to setlists',
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 12,
+                      fontSize: 9, // Reduced by 25% from 12
                     ),
                   ),
                 ],
@@ -270,17 +274,18 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
           // Key badge (only for single song)
           if (!isMultiple)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 3), // Reduced by 25% from 8,4
               decoration: BoxDecoration(
                 color: Colors.white.withAlpha(20),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6), // Reduced by 25% from 8
                 border: Border.all(color: Colors.white.withAlpha(30)),
               ),
               child: Text(
                 widget.songs.first.key,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 9, // Reduced by 25% from 12
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -331,7 +336,7 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
-                  fontSize: 12,
+                  fontSize: 9, // Reduced by 25% from 12
                 ),
               ),
             ),
@@ -339,29 +344,29 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
               '${_selectedSetlistIds.length} selected',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 11,
+                fontSize: 8.25, // Reduced by 25% from 11
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        ...setlistProvider.setlists.map((setlist) {
-          final isSelected = _selectedSetlistIds.contains(setlist.id);
-          // Check if ALL songs are already in the setlist
+        const SizedBox(height: 6), // Reduced by 25% from 8
+        // Filter out setlists that already contain ALL the songs
+        ...setlistProvider.setlists.where((setlist) {
           final allSongsInSetlist = widget.songs.every((song) => setlist.items
               .whereType<SetlistSongItem>()
               .any((item) => item.songId == song.id));
-
-          return _buildSetlistTile(setlist, isSelected, allSongsInSetlist);
+          return !allSongsInSetlist; // Only show setlists that don't have all songs
+        }).map((setlist) {
+          final isSelected = _selectedSetlistIds.contains(setlist.id);
+          return _buildSetlistTile(setlist, isSelected);
         }).toList(),
       ],
     );
   }
 
-  Widget _buildSetlistTile(
-      Setlist setlist, bool isSelected, bool allSongsInSetlist) {
+  Widget _buildSetlistTile(Setlist setlist, bool isSelected) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6), // Reduced by 25% from 8
       decoration: BoxDecoration(
         color: isSelected
             ? Colors.white.withAlpha(20)
@@ -373,20 +378,19 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
       ),
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 9, vertical: 3), // Reduced by 25% from 12,4
         leading: Checkbox(
           value: isSelected,
-          onChanged: allSongsInSetlist
-              ? null
-              : (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedSetlistIds.add(setlist.id);
-                    } else {
-                      _selectedSetlistIds.remove(setlist.id);
-                    }
-                  });
-                },
+          onChanged: (bool? value) {
+            setState(() {
+              if (value == true) {
+                _selectedSetlistIds.add(setlist.id);
+              } else {
+                _selectedSetlistIds.remove(setlist.id);
+              }
+            });
+          },
           activeColor: Colors.white,
           checkColor: const Color(0xFF0468cc),
           fillColor: MaterialStateProperty.resolveWith<Color>((states) {
@@ -402,40 +406,25 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
         title: Text(
           setlist.name,
           style: TextStyle(
-            color: allSongsInSetlist ? Colors.white54 : Colors.white,
+            color: Colors.white,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 13,
+            fontSize: 9.75, // Reduced by 25% from 13
           ),
         ),
-        subtitle: allSongsInSetlist
-            ? Text(
-                widget.songs.length > 1
-                    ? 'All songs already in setlist'
-                    : 'Song already in setlist',
-                style: const TextStyle(color: Colors.orange, fontSize: 11),
-              )
-            : Text(
-                '${setlist.items.whereType<SetlistSongItem>().length} songs',
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
-              ),
-        trailing: allSongsInSetlist
-            ? const Icon(
-                Icons.check_circle,
-                color: Colors.orange,
-                size: 16,
-              )
-            : null,
-        onTap: allSongsInSetlist
-            ? null
-            : () {
-                setState(() {
-                  if (isSelected) {
-                    _selectedSetlistIds.remove(setlist.id);
-                  } else {
-                    _selectedSetlistIds.add(setlist.id);
-                  }
-                });
-              },
+        subtitle: Text(
+          '${setlist.items.whereType<SetlistSongItem>().length} songs',
+          style: const TextStyle(
+              color: Colors.white70, fontSize: 8.25), // Reduced by 25% from 11
+        ),
+        onTap: () {
+          setState(() {
+            if (isSelected) {
+              _selectedSetlistIds.remove(setlist.id);
+            } else {
+              _selectedSetlistIds.add(setlist.id);
+            }
+          });
+        },
       ),
     );
   }
@@ -464,6 +453,7 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
 
             if (!songAlreadyExists) {
               newItems.add(SetlistSongItem(
+                id: Uuid().v4(),
                 songId: song.id,
                 order: newItems.length,
               ));

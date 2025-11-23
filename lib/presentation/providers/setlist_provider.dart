@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../../data/repositories/setlist_repository.dart';
-import '../../core/services/sync_service_locator.dart';
 
 /// Provider for managing setlist state and operations
 class SetlistProvider extends ChangeNotifier {
@@ -25,6 +25,7 @@ class SetlistProvider extends ChangeNotifier {
   Setlist? get activeSetlist => _activeSetlist;
   int get currentSongIndex => _currentSongIndex;
   bool get isSetlistActive => _activeSetlist != null && _currentSongIndex >= 0;
+  SetlistRepository get repository => _repository;
 
   /// Load all setlists from the repository
   Future<void> loadSetlists() async {
@@ -61,9 +62,6 @@ class SetlistProvider extends ChangeNotifier {
       final id = await _repository.insertSetlist(setlist);
       await loadSetlists(); // Refresh the list
 
-      // Trigger auto-sync after adding setlist
-      SyncServiceLocator.triggerAutoSync();
-
       return id;
     } catch (e) {
       _errorMessage = 'Failed to add setlist: $e';
@@ -77,9 +75,6 @@ class SetlistProvider extends ChangeNotifier {
     try {
       await _repository.updateSetlist(setlist);
       await loadSetlists(); // Refresh the list
-
-      // Trigger auto-sync after updating setlist
-      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to update setlist: $e';
       notifyListeners();
@@ -92,9 +87,6 @@ class SetlistProvider extends ChangeNotifier {
     try {
       await _repository.deleteSetlist(id);
       await loadSetlists(); // Refresh the list
-
-      // Trigger auto-sync after deleting setlist
-      SyncServiceLocator.triggerAutoSync();
     } catch (e) {
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();

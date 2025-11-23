@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/utils/logger.dart';
 import '../../core/constants/song_viewer_constants.dart';
@@ -326,7 +327,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
       MaterialPageRoute(
         builder: (context) => SongEditorScreenRefactored(
           song: _songViewerProvider.currentSong,
-          setlistContext: widget.setlistContext,
         ),
       ),
     );

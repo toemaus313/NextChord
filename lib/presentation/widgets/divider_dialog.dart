@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../domain/entities/song.dart';
+import 'package:uuid/uuid.dart';
+import '../../domain/entities/setlist.dart';
 
 /// Dialog for creating and editing setlist dividers with color selection
 class DividerDialog extends StatefulWidget {
@@ -55,8 +56,11 @@ class _DividerDialogState extends State<DividerDialog> {
     super.initState();
     if (widget.existingDivider != null) {
       _textController.text = widget.existingDivider!.label;
-      // Ensure we use a plain Color, not MaterialColor
-      _selectedColor = Color(widget.existingDivider!.color.value);
+      // Convert hex string back to Color
+      final colorValue = int.parse(
+          widget.existingDivider!.color.replaceFirst('#', ''),
+          radix: 16);
+      _selectedColor = Color(colorValue);
     } else {
       _textController.text = 'Text';
     }
@@ -243,9 +247,10 @@ class _DividerDialogState extends State<DividerDialog> {
 
     try {
       final divider = SetlistDividerItem(
+        id: const Uuid().v4(),
         label: _textController.text.trim(),
         order: 0, // Will be set by the calling code
-        color: _selectedColor,
+        color: '#${_selectedColor.value.toRadixString(16).padLeft(8, '0')}',
       );
 
       if (mounted) {

@@ -3033,10 +3033,3 @@ class $AppDatabaseManager {
   $$MidiProfilesTableTableManager get midiProfiles =>
       $$MidiProfilesTableTableManager(_db, _db.midiProfiles);
 }
-
-mixin _$SongsDaoMixin on DatabaseAccessor<AppDatabase> {
-  $SongsTable get songs => attachedDatabase.songs;
-}
-mixin _$SetlistsDaoMixin on DatabaseAccessor<AppDatabase> {
-  $SetlistsTable get setlists => attachedDatabase.setlists;
-}

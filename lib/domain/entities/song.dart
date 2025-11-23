@@ -15,6 +15,7 @@ class Song extends Equatable {
   final List<String> tags;
   final String? audioFilePath; // Optional path to backing track
   final String? notes; // User notes about the song
+  final String? profileId; // MIDI profile ID
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted; // Soft delete flag
@@ -31,6 +32,7 @@ class Song extends Equatable {
     this.tags = const [],
     this.audioFilePath,
     this.notes,
+    this.profileId,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -49,6 +51,7 @@ class Song extends Equatable {
     List<String>? tags,
     String? audioFilePath,
     String? notes,
+    String? profileId,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -65,6 +68,7 @@ class Song extends Equatable {
       tags: tags ?? this.tags,
       audioFilePath: audioFilePath ?? this.audioFilePath,
       notes: notes ?? this.notes,
+      profileId: profileId ?? this.profileId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -84,173 +88,9 @@ class Song extends Equatable {
         tags,
         audioFilePath,
         notes,
+        profileId,
         createdAt,
         updatedAt,
         isDeleted,
       ];
-}
-
-/// Domain entity for a Setlist (collection of songs)
-class Setlist extends Equatable {
-  final String id;
-  final String name;
-  final List<SetlistItem> items; // Ordered list of songs/dividers
-  final String? notes;
-  final String? imagePath; // Path to 200x200px setlist image
-  final bool setlistSpecificEditsEnabled;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  const Setlist({
-    required this.id,
-    required this.name,
-    required this.items,
-    this.notes,
-    this.imagePath,
-    this.setlistSpecificEditsEnabled = true,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  Setlist copyWith({
-    String? id,
-    String? name,
-    List<SetlistItem>? items,
-    String? notes,
-    String? imagePath,
-    bool? setlistSpecificEditsEnabled,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return Setlist(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      items: items ?? this.items,
-      notes: notes ?? this.notes,
-      imagePath: imagePath ?? this.imagePath,
-      setlistSpecificEditsEnabled:
-          setlistSpecificEditsEnabled ?? this.setlistSpecificEditsEnabled,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-        id,
-        name,
-        items,
-        notes,
-        imagePath,
-        setlistSpecificEditsEnabled,
-        createdAt,
-        updatedAt
-      ];
-}
-
-/// An item in a setlist - can be a song or a divider
-abstract class SetlistItem extends Equatable {
-  const SetlistItem();
-}
-
-/// A song reference in a setlist
-class SetlistSongItem extends SetlistItem {
-  final String songId;
-  final int order;
-  final int?
-      transposeSteps; // Setlist-specific transpose (null = use song default)
-  final int? capo; // Setlist-specific capo (null = use song default)
-
-  const SetlistSongItem({
-    required this.songId,
-    required this.order,
-    this.transposeSteps,
-    this.capo,
-  });
-
-  SetlistSongItem copyWith({
-    String? songId,
-    int? order,
-    int? transposeSteps,
-    int? capo,
-  }) {
-    return SetlistSongItem(
-      songId: songId ?? this.songId,
-      order: order ?? this.order,
-      transposeSteps: transposeSteps ?? this.transposeSteps,
-      capo: capo ?? this.capo,
-    );
-  }
-
-  @override
-  List<Object?> get props => [songId, order, transposeSteps, capo];
-}
-
-/// A divider/section marker in a setlist
-class SetlistDividerItem extends SetlistItem {
-  final String label;
-  final int order;
-  final Color color;
-
-  const SetlistDividerItem({
-    required this.label,
-    required this.order,
-    this.color = Colors.white,
-  });
-
-  SetlistDividerItem copyWith({
-    String? label,
-    int? order,
-    Color? color,
-  }) {
-    return SetlistDividerItem(
-      label: label ?? this.label,
-      order: order ?? this.order,
-      color: color ?? this.color,
-    );
-  }
-
-  @override
-  List<Object?> get props => [label, order, color];
-}
-
-/// MIDI mapping for a song (what MIDI messages to send)
-class MidiMapping extends Equatable {
-  final String id;
-  final String songId;
-  final int? programChangeNumber; // 0-127
-  final List<MidiCC> controlChanges; // List of CC messages
-  final bool timing; // MIDI clock timing enable/disable
-  final String? notes;
-
-  const MidiMapping({
-    required this.id,
-    required this.songId,
-    this.programChangeNumber,
-    this.controlChanges = const [],
-    this.timing = false,
-    this.notes,
-  });
-
-  MidiMapping copyWith({
-    String? id,
-    String? songId,
-    int? programChangeNumber,
-    List<MidiCC>? controlChanges,
-    bool? timing,
-    String? notes,
-  }) {
-    return MidiMapping(
-      id: id ?? this.id,
-      songId: songId ?? this.songId,
-      programChangeNumber: programChangeNumber ?? this.programChangeNumber,
-      controlChanges: controlChanges ?? this.controlChanges,
-      timing: timing ?? this.timing,
-      notes: notes ?? this.notes,
-    );
-  }
-
-  @override
-  List<Object?> get props =>
-      [id, songId, programChangeNumber, controlChanges, timing, notes];
 }

@@ -36,10 +36,28 @@ void main() async {
   final songRepository = SongRepository(database);
   final setlistRepository = SetlistRepository(database);
 
+  // Initialize providers
+  final songProvider = SongProvider(songRepository);
+  final setlistProvider = SetlistProvider(setlistRepository);
+
+  // Initialize SyncProvider with refresh callback to ensure UI updates after sync
+  final syncProvider = SyncProvider(
+    database,
+    onSyncCompleted: () {
+      // Refresh data in providers after successful sync
+      songProvider.loadSongs();
+      setlistProvider.loadSetlists();
+    },
+  );
+  SyncServiceLocator.initialize(syncProvider);
+
   runApp(NextChordApp(
     database: database,
     songRepository: songRepository,
     setlistRepository: setlistRepository,
+    syncProvider: syncProvider,
+    songProvider: songProvider,
+    setlistProvider: setlistProvider,
   ));
 }
 
@@ -47,12 +65,18 @@ class NextChordApp extends StatelessWidget {
   final AppDatabase database;
   final SongRepository songRepository;
   final SetlistRepository setlistRepository;
+  final SyncProvider syncProvider;
+  final SongProvider songProvider;
+  final SetlistProvider setlistProvider;
 
   const NextChordApp({
     Key? key,
     required this.database,
     required this.songRepository,
     required this.setlistRepository,
+    required this.syncProvider,
+    required this.songProvider,
+    required this.setlistProvider,
   }) : super(key: key);
 
   @override
@@ -62,11 +86,11 @@ class NextChordApp extends StatelessWidget {
         Provider<AppDatabase>.value(value: database),
         Provider<SongRepository>.value(value: songRepository),
         Provider<SetlistRepository>.value(value: setlistRepository),
-        ChangeNotifierProvider(
-          create: (_) => SongProvider(songRepository),
+        ChangeNotifierProvider.value(
+          value: songProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => SetlistProvider(setlistRepository),
+        ChangeNotifierProvider.value(
+          value: setlistProvider,
         ),
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
@@ -86,12 +110,8 @@ class NextChordApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MetadataVisibilityProvider(),
         ),
-        ChangeNotifierProvider(
-          create: (context) {
-            final syncProvider = SyncProvider(database);
-            SyncServiceLocator.initialize(syncProvider);
-            return syncProvider;
-          },
+        ChangeNotifierProvider.value(
+          value: syncProvider,
         ),
         ChangeNotifierProvider(
           create: (_) => MidiService(),

@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Repository for managing Setlists
 class SetlistRepository {
@@ -32,7 +34,7 @@ class SetlistRepository {
       id: model.id,
       name: model.name,
       items: items,
-      notes: model.notes,
+      notes: model.notes ?? '',
       imagePath: model.imagePath,
       setlistSpecificEditsEnabled: model.setlistSpecificEditsEnabled,
       createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
@@ -52,7 +54,7 @@ class SetlistRepository {
           'capo': item.capo,
         };
       } else if (item is SetlistDividerItem) {
-        final colorValue = item.color.value;
+        final colorValue = item.color;
         return {
           'type': 'divider',
           'label': item.label,
@@ -73,15 +75,17 @@ class SetlistRepository {
         final type = item['type'] as String;
         if (type == 'song') {
           return SetlistSongItem(
+            id: item['id'] as String? ?? Uuid().v4(),
             songId: item['songId'] as String,
             order: item['order'] as int,
-            transposeSteps: item['transposeSteps'] as int?,
-            capo: item['capo'] as int?,
+            transposeSteps: item['transposeSteps'] as int? ?? 0,
+            capo: item['capo'] as int? ?? 0,
           );
         } else if (type == 'divider') {
           final colorValue = item['color'] as int? ?? 0xFFFFFFFF;
-          final color = Color(colorValue);
+          final color = '#${colorValue.toRadixString(16).padLeft(8, '0')}';
           return SetlistDividerItem(
+            id: item['id'] as String? ?? Uuid().v4(),
             label: item['label'] as String,
             order: item['order'] as int,
             color: color,
@@ -110,7 +114,7 @@ class SetlistRepository {
   /// Fetch all setlists
   Future<List<Setlist>> getAllSetlists() async {
     try {
-      final models = await _db.setlistsDao.getAllSetlists();
+      final models = await _db.getAllSetlists();
       final setlists = models.map(_modelToSetlist).toList();
       return setlists;
     } catch (e) {
@@ -121,7 +125,7 @@ class SetlistRepository {
   /// Fetch a single setlist by ID
   Future<Setlist?> getSetlistById(String id) async {
     try {
-      final model = await _db.setlistsDao.getSetlistById(id);
+      final model = await _db.getSetlistById(id);
       return model != null ? _modelToSetlist(model) : null;
     } catch (e) {
       throw Exception('Failed to fetch setlist with ID $id: $e');
@@ -142,7 +146,11 @@ class SetlistRepository {
             );
 
       final model = _setlistToModel(setlistToInsert);
-      await _db.setlistsDao.insertSetlist(model);
+      await _db.insertSetlist(model);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
+
       return setlistToInsert.id;
     } catch (e) {
       throw Exception('Failed to insert setlist: $e');
@@ -155,7 +163,10 @@ class SetlistRepository {
       final updatedSetlist = setlist.copyWith(updatedAt: DateTime.now());
       final model = _setlistToModel(updatedSetlist);
 
-      await _db.setlistsDao.updateSetlist(model);
+      await _db.updateSetlist(model);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw Exception('Failed to update setlist: $e');
     }
@@ -164,7 +175,10 @@ class SetlistRepository {
   /// Delete a setlist by ID
   Future<void> deleteSetlist(String id) async {
     try {
-      await _db.setlistsDao.deleteSetlist(id);
+      await _db.deleteSetlist(id);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService().notifyDatabaseChanged();
     } catch (e) {
       throw Exception('Failed to delete setlist: $e');
     }

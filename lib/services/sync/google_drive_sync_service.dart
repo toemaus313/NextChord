@@ -211,14 +211,47 @@ class GoogleDriveSyncService {
       // Get sync metadata
       final metadata = await _getSyncMetadata(driveApi, folderId);
       debugPrint('✓ Sync metadata retrieved');
-      final localDbModified = await File(localDbPath).lastModified();
-      debugPrint('✓ Local DB modified: $localDbModified');
+
+      // Check if local database exists and get modification time
+      final localDbFile = File(localDbPath);
+      DateTime localDbModified;
+      bool localDbExists = await localDbFile.exists();
+
+      if (localDbExists) {
+        localDbModified = await localDbFile.lastModified();
+        debugPrint('✓ Local DB modified: $localDbModified');
+      } else {
+        debugPrint('✗ Local DB file does not exist - will restore from backup');
+        // Treat missing file as very old so sync will trigger restore
+        localDbModified = DateTime.fromMillisecondsSinceEpoch(0);
+      }
 
       // Only sync if local changes or enough time has passed since last sync
-      if (_lastSyncTime == null ||
-          localDbModified.isAfter(_lastSyncTime!) ||
+      debugPrint('=== Checking sync conditions ===');
+      debugPrint('Last sync time: $_lastSyncTime');
+      debugPrint('Local DB modified: $localDbModified');
+      debugPrint(
+          '5 minutes ago: ${DateTime.now().subtract(const Duration(minutes: 5))}');
+
+      final fiveMinutesPassed = _lastSyncTime == null ||
           _lastSyncTime!
-              .isBefore(DateTime.now().subtract(const Duration(minutes: 5)))) {
+              .isBefore(DateTime.now().subtract(const Duration(minutes: 5)));
+      final hasLocalChanges =
+          _lastSyncTime == null || localDbModified.isAfter(_lastSyncTime!);
+
+      if (_lastSyncTime == null) {
+        debugPrint('✓ Sync condition: First time sync');
+      } else if (hasLocalChanges) {
+        debugPrint('✓ Sync condition: Local changes detected');
+      } else if (fiveMinutesPassed) {
+        debugPrint('✓ Sync condition: 5 minutes passed - forcing backup sync');
+      } else {
+        debugPrint('✗ Sync condition not met - skipping sync');
+        debugPrint(
+            'Time since last sync: ${DateTime.now().difference(_lastSyncTime!)}');
+      }
+
+      if (fiveMinutesPassed || hasLocalChanges) {
         debugPrint('✓ Sync condition met, checking for remote backup...');
         final latestBackup = await _getLatestBackup(driveApi, folderId);
         debugPrint('✓ Latest backup: ${latestBackup?.id ?? 'none'}');
@@ -236,12 +269,36 @@ class GoogleDriveSyncService {
         _lastSyncTime = DateTime.now();
         debugPrint('✓ Sync completed successfully');
       } else {
-        debugPrint('✓ Sync not needed - no recent changes');
+        debugPrint(
+            '✓ Sync not needed - no recent changes and not enough time passed');
       }
     } catch (e) {
       debugPrint('✗ Sync failed: $e');
       debugPrint('✗ Error type: ${e.runtimeType}');
       debugPrint('✗ Stack trace: ${StackTrace.current}');
+
+      // Check if this is an invalid token error and trigger re-authentication
+      if (e.toString().contains('invalid_token') ||
+          e.toString().contains('Access was denied')) {
+        debugPrint(
+            '=== Invalid token detected, attempting re-authentication ===');
+        try {
+          // Clear the current session and force fresh sign-in
+          await _googleSignIn.signOut();
+          final reauthResult = await signIn();
+          if (reauthResult) {
+            debugPrint('=== Re-authentication successful, retrying sync ===');
+            // Retry the sync operation once
+            await sync();
+            return;
+          } else {
+            debugPrint('=== Re-authentication failed ===');
+          }
+        } catch (reauthError) {
+          debugPrint('=== Re-authentication error: $reauthError ===');
+        }
+      }
+
       rethrow;
     }
   }

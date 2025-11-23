@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/song_viewer_constants.dart';
 import '../../core/utils/logger.dart';
 import '../../domain/entities/song.dart';
+import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
 
 /// Enum for different flyout types
