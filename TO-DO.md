@@ -31,8 +31,5 @@ SETTINGS
 - Different UI for phones - sidebar whole screen
 - Not refreshing quickly on db changes
 - No back button once in a Tag in Songs
-- Closer to realtime sync? 
-- Better debugging
-    - Timestamp local db change detected, sync started, sync complete/failed. Remote change detected - list deltas, merge started, merge completed (deltas) or merge failed
-- Hide clock/icon bar on android
-- Icons on win/android 
+- Capo reminder when loading song 
+

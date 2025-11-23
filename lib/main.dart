@@ -21,12 +21,15 @@ import 'presentation/widgets/app_wrapper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hide the iOS status bar while the app is open to avoid overlaying UI.
+  // Hide the status bar while the app is open to avoid overlaying UI.
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     await SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: [],
     );
+  } else if (defaultTargetPlatform == TargetPlatform.android) {
+    // Use immersive sticky mode for Android - allows swipe down to temporarily show status bar
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   // Initialize database

@@ -103,9 +103,15 @@ class SetlistNavigationService {
       // Calculate the effective key considering transpose/capo
       final effectiveKey = _calculateEffectiveKey(nextSong, nextSongItem);
 
-      final displayText = effectiveKey.isNotEmpty
-          ? 'Next: ${nextSong.title} ($effectiveKey)'
-          : 'Next: ${nextSong.title}';
+      // Format: "Next: <title> - <artist>      Key of <key> | Capo <capo#>"
+      final artistText =
+          nextSong.artist.isNotEmpty ? ' - ${nextSong.artist}' : '';
+      final keyText = effectiveKey.isNotEmpty ? 'Key of $effectiveKey' : '';
+      final capoText =
+          nextSongItem.capo > 0 ? ' | Capo ${nextSongItem.capo}' : '';
+
+      final displayText =
+          'Next: ${nextSong.title}$artistText      $keyText$capoText';
 
       return displayText;
     } catch (e) {

@@ -2,7 +2,7 @@
 
 This document tracks ALL active debug logs across the entire NextChord codebase for easy maintenance and troubleshooting.
 
-**Total Active Debug Statements**: 63 debugPrint calls across 4 files
+**Total Active Debug Statements**: 67 debugPrint calls across 5 files
 **Last Audit Date**: 2025-11-23
 **Audit Method**: `Grep` search for `debugPrint` pattern across entire codebase
 
@@ -52,6 +52,16 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `🚀 Triggering auto-sync after database change`
 - `🔄 Sync in progress: X`
 - `✅ Sync completed - cancelled pending change notifications`
+
+## Setlist Navigation & Sidebar Controller Logs
+**Location**: `lib/presentation/controllers/global_sidebar_controller.dart`
+- `GlobalSidebarController: Initializing with SetlistProvider`
+- `GlobalSidebarController: navigateToView called with view=X, setlistId=Y`
+- `GlobalSidebarController: Clearing active setlist`
+- `GlobalSidebarController: Activating setlist X`
+- `GlobalSidebarController: Setlist activation completed`
+- `GlobalSidebarController: navigateToMenu called - clearing active setlist`
+- `GlobalSidebarController: navigateToMenuKeepSongsExpanded called - clearing active setlist`
 
 ## Detailed Merge Delta Logs
 **Location**: `lib/services/sync/library_sync_service.dart`
@@ -134,6 +144,7 @@ The following verbose debug logs have been removed for cleaner output:
 - **Google Drive Service**: `lib/services/sync/google_drive_sync_service.dart`
 - **Library Sync Service**: `lib/services/sync/library_sync_service.dart`
 - **Database Change Service**: `lib/core/services/database_change_service.dart`
+- **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart`
 - **Song Repository**: `lib/data/repositories/song_repository.dart`
 - **Setlist Repository**: `lib/data/repositories/setlist_repository.dart`
 

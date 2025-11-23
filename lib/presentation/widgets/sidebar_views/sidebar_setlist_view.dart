@@ -279,6 +279,13 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
 
     return GestureDetector(
       key: ValueKey('song_${item.songId}_$index'),
+      onTap: () {
+        if (song != null) {
+          context
+              .read<GlobalSidebarProvider>()
+              .navigateToSongInSetlist(song, index, item);
+        }
+      },
       onSecondaryTap: () => _showSongContextMenu(context, item, song, index),
       onLongPress: () => _showSongContextMenu(context, item, song, index),
       child: Container(

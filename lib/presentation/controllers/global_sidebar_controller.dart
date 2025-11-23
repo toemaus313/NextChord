@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../providers/setlist_provider.dart';
 
 /// Controller for managing global sidebar navigation state
 class GlobalSidebarController extends ChangeNotifier {
@@ -6,6 +8,7 @@ class GlobalSidebarController extends ChangeNotifier {
   String? _selectedArtist;
   String? _selectedTag;
   String? _selectedSetlistId;
+  SetlistProvider? _setlistProvider;
 
   // Expansion states
   bool _isSongsExpanded = false;
@@ -24,31 +27,62 @@ class GlobalSidebarController extends ChangeNotifier {
   bool get isToolsExpanded => _isToolsExpanded;
   bool get isSettingsExpanded => _isSettingsExpanded;
 
+  /// Initialize with SetlistProvider reference
+  void initialize(SetlistProvider setlistProvider) {
+    debugPrint('GlobalSidebarController: Initializing with SetlistProvider');
+    _setlistProvider = setlistProvider;
+  }
+
   /// Navigate to a specific view
   void navigateToView(String view,
-      {String? artist, String? tag, String? setlistId}) {
+      {String? artist, String? tag, String? setlistId}) async {
+    debugPrint(
+        'GlobalSidebarController: navigateToView called with view=$view, setlistId=$setlistId');
+
+    // Clear active setlist when navigating away from setlist view
+    if (_currentView == 'setlistView' && view != 'setlistView') {
+      debugPrint('GlobalSidebarController: Clearing active setlist');
+      _setlistProvider?.clearActiveSetlist();
+    }
+
     _currentView = view;
     _selectedArtist = artist;
     _selectedTag = tag;
     _selectedSetlistId = setlistId;
+
+    // Activate setlist when navigating to setlist view (without overriding song index)
+    // The song index will be properly set by GlobalSidebarProvider.navigateToSongInSetlist
+    if (view == 'setlistView' && setlistId != null) {
+      debugPrint('GlobalSidebarController: Activating setlist $setlistId');
+      // Set to 0 initially - will be updated when user clicks a song
+      await _setlistProvider?.setActiveSetlist(setlistId, 0);
+      debugPrint('GlobalSidebarController: Setlist activation completed');
+    }
+
     notifyListeners();
   }
 
   /// Navigate back to menu
   void navigateToMenu() {
+    debugPrint(
+        'GlobalSidebarController: navigateToMenu called - clearing active setlist');
     _currentView = 'menu';
     _selectedArtist = null;
     _selectedTag = null;
     _selectedSetlistId = null;
+    _setlistProvider?.clearActiveSetlist();
     notifyListeners();
   }
 
   /// Navigate back to menu while preserving Songs expansion state
   void navigateToMenuKeepSongsExpanded() {
+    debugPrint(
+        'GlobalSidebarController: navigateToMenuKeepSongsExpanded called - clearing active setlist');
     _currentView = 'menu';
     _selectedArtist = null;
     _selectedTag = null;
     _selectedSetlistId = null;
+    _setlistProvider?.clearActiveSetlist();
     // Keep Songs section expanded
     _isSongsExpanded = true;
     notifyListeners();

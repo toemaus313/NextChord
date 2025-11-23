@@ -34,6 +34,7 @@ class _SidebarTagSongsViewState extends State<SidebarTagSongsView> {
             SidebarHeader(
               title: '#${widget.tag}',
               icon: Icons.tag,
+              onClose: widget.onBack,
             ),
             Expanded(
               child: tagSongs.isEmpty

@@ -4,6 +4,7 @@ import 'dart:io';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/setlist_provider.dart';
 import '../controllers/global_sidebar_controller.dart';
 import '../screens/song_editor_screen_refactored.dart';
 import 'midi_settings_modal.dart';
@@ -49,9 +50,13 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<GlobalSidebarProvider>()
-          .initializeAnimation(_animationController);
+      if (mounted) {
+        context
+            .read<GlobalSidebarProvider>()
+            .initializeAnimation(_animationController);
+        // Initialize controller with SetlistProvider for active setlist management
+        _controller.initialize(context.read<SetlistProvider>());
+      }
     });
 
     _controller.addListener(() {
