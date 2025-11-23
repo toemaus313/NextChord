@@ -134,7 +134,8 @@ class SongRepository {
       await _db.insertSong(model);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'insert', table: 'songs');
 
       return songToInsert.id;
     } catch (e) {
@@ -150,7 +151,8 @@ class SongRepository {
       await _db.updateSong(model);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'update', table: 'songs');
     } catch (e) {
       throw SongRepositoryException('Failed to update song: $e');
     }
@@ -162,7 +164,8 @@ class SongRepository {
       await _db.deleteSong(id);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'delete', table: 'songs');
     } catch (e) {
       throw SongRepositoryException('Failed to delete song: $e');
     }
@@ -174,7 +177,8 @@ class SongRepository {
       await _db.deleteAllSongs();
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'delete_all', table: 'songs');
     } catch (e) {
       throw SongRepositoryException('Failed to delete all songs: $e');
     }
@@ -230,7 +234,8 @@ class SongRepository {
       await _db.restoreSong(id);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'restore', table: 'songs');
     } catch (e) {
       throw SongRepositoryException('Failed to restore song: $e');
     }
@@ -242,7 +247,8 @@ class SongRepository {
       await _db.permanentlyDeleteSong(id);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'permanent_delete', table: 'songs');
     } catch (e) {
       throw SongRepositoryException('Failed to permanently delete song: $e');
     }

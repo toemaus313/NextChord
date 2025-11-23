@@ -92,6 +92,17 @@ class SyncState extends Table {
   DateTimeColumn get lastSyncAt =>
       dateTime().nullable()(); // Last successful sync timestamp
 
+  // Google Drive metadata fields for efficient change detection
+  TextColumn get lastRemoteFileId => text().nullable()(); // Last seen file ID
+  TextColumn get lastRemoteModifiedTime =>
+      text().nullable()(); // Last seen modified time
+  TextColumn get lastRemoteMd5Checksum =>
+      text().nullable()(); // Last seen MD5 checksum
+  TextColumn get lastRemoteHeadRevisionId =>
+      text().nullable()(); // Last seen head revision ID
+  TextColumn get lastUploadedLibraryHash =>
+      text().nullable()(); // Hash of last uploaded library content
+
   @override
   Set<Column> get primaryKey => {id};
 }

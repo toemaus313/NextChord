@@ -61,6 +61,18 @@ class DatabaseMigrations {
                   ),
                 );
           }
+          if (from <= 8 && to >= 9) {
+            // Add Google Drive metadata columns to sync_state table
+            final db = m.database as AppDatabase;
+            await m.addColumn(db.syncState, db.syncState.lastRemoteFileId);
+            await m.addColumn(
+                db.syncState, db.syncState.lastRemoteModifiedTime);
+            await m.addColumn(db.syncState, db.syncState.lastRemoteMd5Checksum);
+            await m.addColumn(
+                db.syncState, db.syncState.lastRemoteHeadRevisionId);
+            await m.addColumn(
+                db.syncState, db.syncState.lastUploadedLibraryHash);
+          }
         },
       );
 

@@ -17,19 +17,26 @@ import '../../core/config/google_oauth_config.dart';
 import '../../data/database/app_database.dart';
 import 'library_sync_service.dart';
 
+/// Helper for timestamped debug logging
+String _timestampedLog(String message) {
+  final timestamp = DateTime.now().toIso8601String();
+  return '[$timestamp] $message';
+}
+
 class GoogleDriveSyncService {
   final VoidCallback? _onDatabaseReplaced; // Callback to trigger reconnection
   final LibrarySyncService _librarySyncService;
 
   static GoogleSignIn? _googleSignIn;
-  static String? _windowsAccessToken;
-  static String? _windowsRefreshToken;
-  static const String _windowsAuthRedirectUri = 'http://localhost:8000';
+  static String? _universalAccessToken;
+  static String? _universalRefreshToken;
+  static const String _authRedirectUri =
+      'http://localhost:8000'; // Fixed port for Google OAuth compliance
   static HttpServer? _authServer;
 
-  // SharedPreferences keys for Windows token persistence
-  static const String _accessTokenKey = 'windows_access_token_v2';
-  static const String _refreshTokenKey = 'windows_refresh_token_v2';
+  // SharedPreferences keys for universal token persistence (works on all platforms)
+  static const String _accessTokenKey = 'universal_access_token_v2';
+  static const String _refreshTokenKey = 'universal_refresh_token_v2';
 
   // Backup configuration
   static const String _backupFolderName = 'NextChord';
@@ -37,7 +44,6 @@ class GoogleDriveSyncService {
 
   static GoogleSignIn get _googleSignInInstance {
     _googleSignIn ??= GoogleSignIn(
-      clientId: GoogleOAuthConfig.clientId,
       scopes: [
         drive.DriveApi.driveScope,
         drive.DriveApi.driveFileScope,
@@ -46,111 +52,9 @@ class GoogleDriveSyncService {
     return _googleSignIn!;
   }
 
-  static bool get _isWindows => defaultTargetPlatform == TargetPlatform.windows;
-
-  /// Save Windows tokens to SharedPreferences for persistence
-  static Future<void> _saveWindowsTokens(
-      String accessToken, String? refreshToken) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_accessTokenKey, accessToken);
-      if (refreshToken != null) {
-        await prefs.setString(_refreshTokenKey, refreshToken);
-      }
-    } catch (e) {}
-  }
-
-  /// Load Windows tokens from SharedPreferences on app startup
-  static Future<void> _loadWindowsTokens() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _windowsAccessToken = prefs.getString(_accessTokenKey);
-      _windowsRefreshToken = prefs.getString(_refreshTokenKey);
-    } catch (e) {}
-  }
-
-  /// Clear Windows tokens from SharedPreferences
-  static Future<void> _clearWindowsTokens() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_accessTokenKey);
-      await prefs.remove(_refreshTokenKey);
-      _windowsAccessToken = null;
-      _windowsRefreshToken = null;
-    } catch (e) {}
-  }
-
-  /// Refresh Windows access token using stored refresh token
-  static Future<bool> _refreshWindowsToken() async {
-    try {
-      if (_windowsRefreshToken == null) {
-        return false;
-      }
-
-      final response = await http.post(
-        Uri.https('oauth2.googleapis.com', 'token'),
-        body: {
-          'client_id': GoogleOAuthConfig.webAuthClientId,
-          'client_secret': GoogleOAuthConfig.webAuthClientSecret,
-          'refresh_token': _windowsRefreshToken,
-          'grant_type': 'refresh_token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final tokenData = jsonDecode(response.body);
-        _windowsAccessToken = tokenData['access_token'];
-
-        // Save the new access token (refresh token stays the same)
-        await _saveWindowsTokens(_windowsAccessToken!, _windowsRefreshToken);
-
-        return true;
-      } else {
-        // Check if refresh token is expired/invalid
-        if (response.statusCode == 400 || response.statusCode == 401) {
-          final errorBody = jsonDecode(response.body);
-          if (errorBody['error'] == 'invalid_grant' ||
-              errorBody['error'] == 'invalid_token' ||
-              errorBody['error_description']
-                      ?.toString()
-                      .toLowerCase()
-                      .contains('expired') ==
-                  true) {
-            await _clearWindowsTokens();
-            return false;
-          }
-        }
-
-        // For other errors (network, server issues), don't clear tokens
-        return false;
-      }
-    } catch (e) {
-      // Don't clear tokens on network errors - they might be temporary
-      if (e.toString().toLowerCase().contains('connection') ||
-          e.toString().toLowerCase().contains('network') ||
-          e.toString().toLowerCase().contains('timeout')) {
-        // Network error - preserve tokens
-      } else {
-        await _clearWindowsTokens();
-      }
-
-      return false;
-    }
-  }
-
-  GoogleDriveSyncService({
-    required AppDatabase database,
-    VoidCallback? onDatabaseReplaced,
-  })  : _onDatabaseReplaced = onDatabaseReplaced,
-        _librarySyncService = LibrarySyncService(database) {
-    // Note: Windows tokens will be loaded when needed or explicitly via initialize()
-  }
-
-  /// Explicit async initialization for Windows token loading
-  static Future<void> initialize() async {
-    if (_isWindows) {
-      await _loadWindowsTokens();
-    }
+  static bool _isMobilePlatform() {
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   static bool _isPlatformSupported() {
@@ -170,22 +74,127 @@ class GoogleDriveSyncService {
     return isMobileOrMac || isDesktopWithConfig;
   }
 
-  bool get isPlatformSupported => _isPlatformSupported();
-
-  static Future<void> _clearWebTokens() async {
+  /// Save universal tokens to SharedPreferences for persistence
+  static Future<void> _saveUniversalTokens(
+      String accessToken, String? refreshToken) async {
     try {
-      if (kIsWeb) {
-        await _googleSignInInstance.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_accessTokenKey, accessToken);
+      if (refreshToken != null) {
+        await prefs.setString(_refreshTokenKey, refreshToken);
       }
+      _universalAccessToken = accessToken;
+      _universalRefreshToken = refreshToken;
+    } catch (e) {
+      debugPrint('Error saving universal tokens: $e');
+    }
+  }
+
+  /// Load universal tokens from SharedPreferences on app startup
+  static Future<void> _loadUniversalTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _universalAccessToken = prefs.getString(_accessTokenKey);
+      _universalRefreshToken = prefs.getString(_refreshTokenKey);
     } catch (e) {}
   }
 
+  /// Clear universal tokens from SharedPreferences
+  static Future<void> _clearUniversalTokens() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_accessTokenKey);
+      await prefs.remove(_refreshTokenKey);
+      _universalAccessToken = null;
+      _universalRefreshToken = null;
+    } catch (e) {
+      debugPrint('Error clearing universal tokens: $e');
+    }
+  }
+
+  /// Refresh universal access token using stored refresh token
+  static Future<bool> _refreshUniversalToken() async {
+    try {
+      if (_universalRefreshToken == null) {
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.https('oauth2.googleapis.com', 'token'),
+        body: {
+          'client_id': GoogleOAuthConfig.webAuthClientId,
+          'client_secret': GoogleOAuthConfig.webAuthClientSecret,
+          'refresh_token': _universalRefreshToken,
+          'grant_type': 'refresh_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final tokenData = jsonDecode(response.body);
+        _universalAccessToken = tokenData['access_token'];
+
+        // Save the new access token (refresh token stays the same)
+        await _saveUniversalTokens(
+            _universalAccessToken!, _universalRefreshToken);
+
+        return true;
+      } else {
+        // Check if refresh token is expired/invalid
+        if (response.statusCode == 400 || response.statusCode == 401) {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody['error'] == 'invalid_grant' ||
+              errorBody['error'] == 'invalid_token' ||
+              errorBody['error_description']
+                      ?.toString()
+                      .toLowerCase()
+                      .contains('expired') ==
+                  true) {
+            await _clearUniversalTokens();
+            return false;
+          }
+        }
+
+        // For other errors (network, server issues), don't clear tokens
+        return false;
+      }
+    } catch (e) {
+      // Don't clear tokens on network errors - they might be temporary
+      if (e.toString().toLowerCase().contains('connection') ||
+          e.toString().toLowerCase().contains('network') ||
+          e.toString().toLowerCase().contains('timeout')) {
+        // Network error - preserve tokens
+      } else {
+        await _clearUniversalTokens();
+      }
+
+      return false;
+    }
+  }
+
+  GoogleDriveSyncService({
+    required AppDatabase database,
+    VoidCallback? onDatabaseReplaced,
+  })  : _onDatabaseReplaced = onDatabaseReplaced,
+        _librarySyncService = LibrarySyncService(database) {
+    // Note: Universal tokens will be loaded when needed or explicitly via initialize()
+  }
+
+  /// Explicit async initialization for universal token loading
+  static Future<void> initialize() async {
+    await _loadUniversalTokens();
+  }
+
+  bool get isPlatformSupported => _isPlatformSupported();
+
   Future<bool> isSignedIn() async {
     try {
-      if (_isWindows) {
-        return _windowsAccessToken != null;
-      } else {
+      if (_isMobilePlatform()) {
+        // Use GoogleSignIn for mobile platforms
         return await _googleSignInInstance.isSignedIn();
+      } else {
+        // Use universal web OAuth for desktop platforms
+        await _loadUniversalTokens(); // Ensure tokens are loaded from storage
+        return _universalAccessToken != null;
       }
     } catch (e) {
       return false;
@@ -194,27 +203,34 @@ class GoogleDriveSyncService {
 
   Future<bool> signIn() async {
     try {
-      if (_isWindows) {
-        return await _signInWindows();
-      } else {
+      if (_isMobilePlatform()) {
+        // Use GoogleSignIn for mobile platforms
+        debugPrint(_timestampedLog('Using GoogleSignIn for mobile platform'));
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signIn();
         return account != null;
+      } else {
+        // Use universal web OAuth for desktop platforms
+        debugPrint(_timestampedLog('Using web OAuth for desktop platform'));
+        return await _signInWeb();
       }
     } catch (e) {
+      debugPrint(_timestampedLog('Sign in failed: $e'));
       return false;
     }
   }
 
-  Future<bool> _signInWindows() async {
+  Future<bool> _signInWeb() async {
     try {
-      // Create local server for OAuth callback
+      // Create local server for OAuth callback on fixed port 8000 (Google OAuth compliance)
       _authServer = await HttpServer.bind('localhost', 8000);
 
-      // Generate OAuth URL
+      debugPrint(_timestampedLog('OAuth server started on port 8000'));
+
+      // Generate OAuth URL with fixed redirect URI
       final authUrl = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
         'client_id': GoogleOAuthConfig.webAuthClientId,
-        'redirect_uri': _windowsAuthRedirectUri,
+        'redirect_uri': _authRedirectUri,
         'scope':
             '${drive.DriveApi.driveScope} ${drive.DriveApi.driveFileScope}',
         'response_type': 'code',
@@ -229,8 +245,9 @@ class GoogleDriveSyncService {
         throw Exception('Could not launch authentication URL');
       }
 
-      // Wait for OAuth callback
-      await for (HttpRequest request in _authServer!) {
+      // Wait for OAuth callback with timeout
+      await for (HttpRequest request
+          in _authServer!.timeout(Duration(minutes: 5))) {
         final code = request.uri.queryParameters['code'];
         if (code != null) {
           // Exchange code for access token
@@ -241,18 +258,18 @@ class GoogleDriveSyncService {
               'client_secret': GoogleOAuthConfig.webAuthClientSecret,
               'code': code,
               'grant_type': 'authorization_code',
-              'redirect_uri': _windowsAuthRedirectUri,
+              'redirect_uri': _authRedirectUri,
             },
           );
 
           if (response.statusCode == 200) {
             final tokenData = jsonDecode(response.body);
-            _windowsAccessToken = tokenData['access_token'];
-            _windowsRefreshToken = tokenData['refresh_token'];
+            _universalAccessToken = tokenData['access_token'];
+            _universalRefreshToken = tokenData['refresh_token'];
 
             // Save tokens to persistent storage
-            await _saveWindowsTokens(
-                _windowsAccessToken!, _windowsRefreshToken);
+            await _saveUniversalTokens(
+                _universalAccessToken!, _universalRefreshToken);
 
             // Close server and send success response
             await _authServer!.close();
@@ -261,6 +278,8 @@ class GoogleDriveSyncService {
               ..write('Authentication successful! You can close this window.');
             await request.response.close();
 
+            debugPrint(
+                _timestampedLog('OAuth authentication completed successfully'));
             return true;
           } else {
             throw Exception(
@@ -280,6 +299,7 @@ class GoogleDriveSyncService {
       if (_authServer != null) {
         await _authServer!.close();
       }
+      debugPrint(_timestampedLog('OAuth authentication failed: $e'));
       return false;
     }
 
@@ -289,42 +309,28 @@ class GoogleDriveSyncService {
 
   Future<void> signOut() async {
     try {
-      if (_isWindows) {
-        await _clearWindowsTokens();
-      } else {
+      if (_isMobilePlatform()) {
+        // Use GoogleSignIn for mobile platforms
+        debugPrint(
+            _timestampedLog('Using GoogleSignIn sign out for mobile platform'));
         await _googleSignInInstance.signOut();
+      } else {
+        // Use universal web OAuth for desktop platforms
+        debugPrint(
+            _timestampedLog('Clearing universal tokens for desktop platform'));
+        await _clearUniversalTokens();
       }
-      await _clearWebTokens();
-    } catch (e) {}
+    } catch (e) {
+      debugPrint(_timestampedLog('Sign out error: $e'));
+    }
   }
 
   Future<drive.DriveApi> _createDriveApi() async {
     try {
-      if (_isWindows) {
-        if (_windowsAccessToken == null) {
-          throw Exception('User not authenticated on Windows');
-        }
-
-        final httpClient = GoogleHttpClient();
-
-        // Try to authenticate with current access token
-        try {
-          await httpClient.authenticateWithAccessToken(_windowsAccessToken!);
-        } catch (e) {
-          // If authentication fails, try to refresh the token
-          if (await _refreshWindowsToken()) {
-            if (_windowsAccessToken == null) {
-              throw Exception(
-                  'Token refresh failed - user not authenticated on Windows');
-            }
-            await httpClient.authenticateWithAccessToken(_windowsAccessToken!);
-          } else {
-            throw Exception('Token refresh failed - please sign in again');
-          }
-        }
-
-        return drive.DriveApi(httpClient);
-      } else {
+      if (_isMobilePlatform()) {
+        // Use GoogleSignIn for mobile platforms
+        debugPrint(
+            _timestampedLog('Using GoogleSignIn API for mobile platform'));
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signInSilently();
         if (account == null) {
@@ -341,9 +347,87 @@ class GoogleDriveSyncService {
         final httpClient = GoogleHttpClient();
         await httpClient.authenticateWithAccessToken(accessToken);
         return drive.DriveApi(httpClient);
+      } else {
+        // Use universal web OAuth for desktop platforms
+        debugPrint(
+            _timestampedLog('Using universal tokens for desktop platform'));
+        await _loadUniversalTokens(); // Ensure tokens are loaded from storage
+
+        if (_universalAccessToken == null) {
+          throw Exception('User not authenticated');
+        }
+
+        final httpClient = GoogleHttpClient();
+
+        // Try to authenticate with current access token
+        try {
+          await httpClient.authenticateWithAccessToken(_universalAccessToken!);
+        } catch (e) {
+          // If authentication fails, try to refresh the token
+          debugPrint(
+              _timestampedLog('Access token expired, attempting refresh'));
+          if (await _refreshUniversalToken()) {
+            if (_universalAccessToken == null) {
+              throw Exception('Token refresh failed - please sign in again');
+            }
+            await httpClient
+                .authenticateWithAccessToken(_universalAccessToken!);
+            debugPrint(_timestampedLog('Token refresh successful'));
+          } else {
+            throw Exception('Token refresh failed - please sign in again');
+          }
+        }
+
+        return drive.DriveApi(httpClient);
       }
     } catch (e) {
+      debugPrint(_timestampedLog('Failed to create Drive API: $e'));
       rethrow;
+    }
+  }
+
+  /// Get metadata for library.json file without downloading content
+  /// Returns null if file doesn't exist
+  Future<DriveLibraryMetadata?> getLibraryJsonMetadata() async {
+    try {
+      // Check authentication status
+      final isAuthenticated = await isSignedIn();
+      if (!isAuthenticated) {
+        throw Exception('Not signed in to Google');
+      }
+
+      // Create Drive API client
+      final driveApi = await _createDriveApi();
+
+      // Find or create backup folder
+      final folderId = await _findOrCreateFolder(driveApi);
+      if (folderId == null) {
+        throw Exception('Failed to create/find backup folder');
+      }
+
+      // Find existing library file
+      final existingFile =
+          await _findExistingFile(driveApi, folderId, _libraryFileName);
+
+      if (existingFile == null) {
+        debugPrint(_timestampedLog('Library metadata: No remote file found'));
+        return null;
+      }
+
+      // Fetch only metadata fields (minimal traffic)
+      final response = await driveApi.files.get(
+        existingFile.id!,
+        $fields: 'id,modifiedTime,md5Checksum,headRevisionId',
+      ) as drive.File;
+
+      final metadata = DriveLibraryMetadata.fromDriveFile(response);
+      debugPrint(_timestampedLog(
+          'Library metadata retrieved: modified=${metadata.modifiedTime}, md5=${metadata.md5Checksum.substring(0, 8)}'));
+
+      return metadata;
+    } catch (e) {
+      debugPrint('Error getting library metadata: $e');
+      return null;
     }
   }
 
@@ -365,9 +449,9 @@ class GoogleDriveSyncService {
       }
 
       // Perform JSON-based sync
+      debugPrint(_timestampedLog('Local DB change detected - starting sync'));
       await _performJsonSync(driveApi, folderId);
-
-      debugPrint('JSON-based sync completed successfully');
+      debugPrint(_timestampedLog('Sync completed successfully'));
     } catch (e) {
       debugPrint('Sync failed: $e');
       rethrow;
@@ -377,48 +461,120 @@ class GoogleDriveSyncService {
   Future<void> _performJsonSync(
       drive.DriveApi driveApi, String folderId) async {
     try {
+      debugPrint(_timestampedLog('Remote change detection started'));
+
       // Try to download existing library JSON from Google Drive
       final existingLibraryFile =
           await _findExistingFile(driveApi, folderId, _libraryFileName);
 
       String? remoteJson;
+      DriveLibraryMetadata? remoteMetadata;
       if (existingLibraryFile != null) {
         try {
-          // Download existing remote library
-          final response = await driveApi.files.get(
-            existingLibraryFile.id!,
-            downloadOptions: drive.DownloadOptions.fullMedia,
-          ) as drive.Media;
+          debugPrint(_timestampedLog('Remote library file found, downloading'));
+          final response = await driveApi.files.get(existingLibraryFile.id!,
+              downloadOptions: drive.DownloadOptions.fullMedia);
 
-          final bytes = await response.stream.fold<List<int>>(
-            [],
-            (list, chunk) => list..addAll(chunk),
-          );
-          remoteJson = utf8.decode(bytes);
+          final remoteContent = await (response as drive.Media)
+              .stream
+              .transform(utf8.decoder)
+              .join();
+          remoteJson = remoteContent;
 
           // Validate JSON format
           jsonDecode(remoteJson); // Will throw if invalid
+
+          // Get metadata for the remote file
+          final metadataResponse = await driveApi.files.get(
+            existingLibraryFile.id!,
+            $fields: 'id,modifiedTime,md5Checksum,headRevisionId',
+          ) as drive.File;
+          remoteMetadata = DriveLibraryMetadata.fromDriveFile(metadataResponse);
+
+          debugPrint(_timestampedLog(
+              'Remote change detected - JSON downloaded and validated'));
         } catch (e) {
-          debugPrint('Error reading or parsing remote library JSON: $e');
+          debugPrint(_timestampedLog(
+              'Error reading or parsing remote library JSON: $e'));
           // Treat corrupted remote file as if it doesn't exist
           remoteJson = null;
+          remoteMetadata = null;
         }
+      } else {
+        debugPrint(_timestampedLog('No remote library file found'));
       }
+
+      // Get current sync state to compare versions
+      final syncState = await _librarySyncService.getSyncState();
+      debugPrint(_timestampedLog(
+          'Current sync state - Last remote version: ${syncState?.lastRemoteVersion}, Last sync: ${syncState?.lastSyncAt}'));
 
       // Merge remote library into local database (if remote exists and is valid)
       if (remoteJson != null && remoteJson.isNotEmpty) {
+        debugPrint(
+            _timestampedLog('Merge started - processing remote changes'));
         await _librarySyncService.importAndMergeLibraryFromJson(remoteJson);
+        debugPrint(
+            _timestampedLog('Merge completed - remote changes integrated'));
+      } else {
+        debugPrint(
+            _timestampedLog('No merge needed - no remote changes to apply'));
       }
 
       // Export the merged library (now includes remote changes)
       final mergedJson = await _librarySyncService.exportLibraryToJson();
+      debugPrint(_timestampedLog(
+          'Local library exported - size: ${mergedJson.length} characters'));
 
-      // Upload the merged library back to Google Drive
-      await _uploadLibraryJson(driveApi, folderId, mergedJson);
+      // Determine if upload is needed
+      bool shouldUpload = false;
+      if (remoteJson == null || remoteJson.isEmpty) {
+        // No remote file exists, always upload
+        shouldUpload = true;
+        debugPrint(
+            _timestampedLog('No remote file - will upload local library'));
+      } else {
+        // Check if merged library differs from remote
+        shouldUpload =
+            _librarySyncService.hasMergedLibraryChanged(mergedJson, remoteJson);
+        if (shouldUpload) {
+          debugPrint(_timestampedLog('Library changes detected - will upload'));
+        } else {
+          debugPrint(_timestampedLog('No library changes - skipping upload'));
+        }
+      }
 
-      debugPrint('JSON sync completed successfully');
+      // Upload only if there are changes
+      if (shouldUpload) {
+        debugPrint(_timestampedLog('Uploading merged library to remote'));
+        await _uploadLibraryJson(driveApi, folderId, mergedJson);
+
+        // Store the hash of uploaded content and update metadata
+        await _librarySyncService.storeUploadedLibraryHash(mergedJson);
+
+        // Update sync state with remote metadata (after successful upload)
+        if (remoteMetadata != null) {
+          await _librarySyncService.database.updateSyncState(
+            lastRemoteVersion: syncState?.lastRemoteVersion ?? 0,
+            lastSyncAt: DateTime.now(),
+            remoteMetadata: remoteMetadata,
+          );
+        }
+
+        debugPrint(_timestampedLog('Remote upload completed'));
+      } else {
+        // Still update sync state to record that we checked for changes
+        // This prevents repeated downloads on next metadata poll
+        if (remoteMetadata != null) {
+          await _librarySyncService.database.updateSyncState(
+            lastRemoteVersion: syncState?.lastRemoteVersion ?? 0,
+            lastSyncAt: DateTime.now(),
+            remoteMetadata: remoteMetadata,
+          );
+        }
+      }
     } catch (e) {
-      debugPrint('Error during JSON sync: $e');
+      debugPrint(_timestampedLog('Merge failed: $e'));
       rethrow;
     }
   }

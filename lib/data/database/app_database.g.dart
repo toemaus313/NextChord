@@ -2181,9 +2181,48 @@ class $SyncStateTable extends SyncState
   late final GeneratedColumn<DateTime> lastSyncAt = GeneratedColumn<DateTime>(
       'last_sync_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastRemoteFileIdMeta =
+      const VerificationMeta('lastRemoteFileId');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, deviceId, lastRemoteVersion, lastSyncAt];
+  late final GeneratedColumn<String> lastRemoteFileId = GeneratedColumn<String>(
+      'last_remote_file_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastRemoteModifiedTimeMeta =
+      const VerificationMeta('lastRemoteModifiedTime');
+  @override
+  late final GeneratedColumn<String> lastRemoteModifiedTime =
+      GeneratedColumn<String>('last_remote_modified_time', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastRemoteMd5ChecksumMeta =
+      const VerificationMeta('lastRemoteMd5Checksum');
+  @override
+  late final GeneratedColumn<String> lastRemoteMd5Checksum =
+      GeneratedColumn<String>('last_remote_md5_checksum', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastRemoteHeadRevisionIdMeta =
+      const VerificationMeta('lastRemoteHeadRevisionId');
+  @override
+  late final GeneratedColumn<String> lastRemoteHeadRevisionId =
+      GeneratedColumn<String>('last_remote_head_revision_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _lastUploadedLibraryHashMeta =
+      const VerificationMeta('lastUploadedLibraryHash');
+  @override
+  late final GeneratedColumn<String> lastUploadedLibraryHash =
+      GeneratedColumn<String>('last_uploaded_library_hash', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        deviceId,
+        lastRemoteVersion,
+        lastSyncAt,
+        lastRemoteFileId,
+        lastRemoteModifiedTime,
+        lastRemoteMd5Checksum,
+        lastRemoteHeadRevisionId,
+        lastUploadedLibraryHash
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2215,6 +2254,38 @@ class $SyncStateTable extends SyncState
           lastSyncAt.isAcceptableOrUnknown(
               data['last_sync_at']!, _lastSyncAtMeta));
     }
+    if (data.containsKey('last_remote_file_id')) {
+      context.handle(
+          _lastRemoteFileIdMeta,
+          lastRemoteFileId.isAcceptableOrUnknown(
+              data['last_remote_file_id']!, _lastRemoteFileIdMeta));
+    }
+    if (data.containsKey('last_remote_modified_time')) {
+      context.handle(
+          _lastRemoteModifiedTimeMeta,
+          lastRemoteModifiedTime.isAcceptableOrUnknown(
+              data['last_remote_modified_time']!, _lastRemoteModifiedTimeMeta));
+    }
+    if (data.containsKey('last_remote_md5_checksum')) {
+      context.handle(
+          _lastRemoteMd5ChecksumMeta,
+          lastRemoteMd5Checksum.isAcceptableOrUnknown(
+              data['last_remote_md5_checksum']!, _lastRemoteMd5ChecksumMeta));
+    }
+    if (data.containsKey('last_remote_head_revision_id')) {
+      context.handle(
+          _lastRemoteHeadRevisionIdMeta,
+          lastRemoteHeadRevisionId.isAcceptableOrUnknown(
+              data['last_remote_head_revision_id']!,
+              _lastRemoteHeadRevisionIdMeta));
+    }
+    if (data.containsKey('last_uploaded_library_hash')) {
+      context.handle(
+          _lastUploadedLibraryHashMeta,
+          lastUploadedLibraryHash.isAcceptableOrUnknown(
+              data['last_uploaded_library_hash']!,
+              _lastUploadedLibraryHashMeta));
+    }
     return context;
   }
 
@@ -2232,6 +2303,20 @@ class $SyncStateTable extends SyncState
           DriftSqlType.int, data['${effectivePrefix}last_remote_version'])!,
       lastSyncAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_sync_at']),
+      lastRemoteFileId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}last_remote_file_id']),
+      lastRemoteModifiedTime: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_remote_modified_time']),
+      lastRemoteMd5Checksum: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_remote_md5_checksum']),
+      lastRemoteHeadRevisionId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_remote_head_revision_id']),
+      lastUploadedLibraryHash: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}last_uploaded_library_hash']),
     );
   }
 
@@ -2246,11 +2331,21 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
   final String deviceId;
   final int lastRemoteVersion;
   final DateTime? lastSyncAt;
+  final String? lastRemoteFileId;
+  final String? lastRemoteModifiedTime;
+  final String? lastRemoteMd5Checksum;
+  final String? lastRemoteHeadRevisionId;
+  final String? lastUploadedLibraryHash;
   const SyncStateModel(
       {required this.id,
       required this.deviceId,
       required this.lastRemoteVersion,
-      this.lastSyncAt});
+      this.lastSyncAt,
+      this.lastRemoteFileId,
+      this.lastRemoteModifiedTime,
+      this.lastRemoteMd5Checksum,
+      this.lastRemoteHeadRevisionId,
+      this.lastUploadedLibraryHash});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2259,6 +2354,24 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
     map['last_remote_version'] = Variable<int>(lastRemoteVersion);
     if (!nullToAbsent || lastSyncAt != null) {
       map['last_sync_at'] = Variable<DateTime>(lastSyncAt);
+    }
+    if (!nullToAbsent || lastRemoteFileId != null) {
+      map['last_remote_file_id'] = Variable<String>(lastRemoteFileId);
+    }
+    if (!nullToAbsent || lastRemoteModifiedTime != null) {
+      map['last_remote_modified_time'] =
+          Variable<String>(lastRemoteModifiedTime);
+    }
+    if (!nullToAbsent || lastRemoteMd5Checksum != null) {
+      map['last_remote_md5_checksum'] = Variable<String>(lastRemoteMd5Checksum);
+    }
+    if (!nullToAbsent || lastRemoteHeadRevisionId != null) {
+      map['last_remote_head_revision_id'] =
+          Variable<String>(lastRemoteHeadRevisionId);
+    }
+    if (!nullToAbsent || lastUploadedLibraryHash != null) {
+      map['last_uploaded_library_hash'] =
+          Variable<String>(lastUploadedLibraryHash);
     }
     return map;
   }
@@ -2271,6 +2384,21 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
       lastSyncAt: lastSyncAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSyncAt),
+      lastRemoteFileId: lastRemoteFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRemoteFileId),
+      lastRemoteModifiedTime: lastRemoteModifiedTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRemoteModifiedTime),
+      lastRemoteMd5Checksum: lastRemoteMd5Checksum == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRemoteMd5Checksum),
+      lastRemoteHeadRevisionId: lastRemoteHeadRevisionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastRemoteHeadRevisionId),
+      lastUploadedLibraryHash: lastUploadedLibraryHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastUploadedLibraryHash),
     );
   }
 
@@ -2282,6 +2410,15 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
       deviceId: serializer.fromJson<String>(json['deviceId']),
       lastRemoteVersion: serializer.fromJson<int>(json['lastRemoteVersion']),
       lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
+      lastRemoteFileId: serializer.fromJson<String?>(json['lastRemoteFileId']),
+      lastRemoteModifiedTime:
+          serializer.fromJson<String?>(json['lastRemoteModifiedTime']),
+      lastRemoteMd5Checksum:
+          serializer.fromJson<String?>(json['lastRemoteMd5Checksum']),
+      lastRemoteHeadRevisionId:
+          serializer.fromJson<String?>(json['lastRemoteHeadRevisionId']),
+      lastUploadedLibraryHash:
+          serializer.fromJson<String?>(json['lastUploadedLibraryHash']),
     );
   }
   @override
@@ -2292,6 +2429,15 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
       'deviceId': serializer.toJson<String>(deviceId),
       'lastRemoteVersion': serializer.toJson<int>(lastRemoteVersion),
       'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
+      'lastRemoteFileId': serializer.toJson<String?>(lastRemoteFileId),
+      'lastRemoteModifiedTime':
+          serializer.toJson<String?>(lastRemoteModifiedTime),
+      'lastRemoteMd5Checksum':
+          serializer.toJson<String?>(lastRemoteMd5Checksum),
+      'lastRemoteHeadRevisionId':
+          serializer.toJson<String?>(lastRemoteHeadRevisionId),
+      'lastUploadedLibraryHash':
+          serializer.toJson<String?>(lastUploadedLibraryHash),
     };
   }
 
@@ -2299,12 +2445,32 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
           {int? id,
           String? deviceId,
           int? lastRemoteVersion,
-          Value<DateTime?> lastSyncAt = const Value.absent()}) =>
+          Value<DateTime?> lastSyncAt = const Value.absent(),
+          Value<String?> lastRemoteFileId = const Value.absent(),
+          Value<String?> lastRemoteModifiedTime = const Value.absent(),
+          Value<String?> lastRemoteMd5Checksum = const Value.absent(),
+          Value<String?> lastRemoteHeadRevisionId = const Value.absent(),
+          Value<String?> lastUploadedLibraryHash = const Value.absent()}) =>
       SyncStateModel(
         id: id ?? this.id,
         deviceId: deviceId ?? this.deviceId,
         lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
         lastSyncAt: lastSyncAt.present ? lastSyncAt.value : this.lastSyncAt,
+        lastRemoteFileId: lastRemoteFileId.present
+            ? lastRemoteFileId.value
+            : this.lastRemoteFileId,
+        lastRemoteModifiedTime: lastRemoteModifiedTime.present
+            ? lastRemoteModifiedTime.value
+            : this.lastRemoteModifiedTime,
+        lastRemoteMd5Checksum: lastRemoteMd5Checksum.present
+            ? lastRemoteMd5Checksum.value
+            : this.lastRemoteMd5Checksum,
+        lastRemoteHeadRevisionId: lastRemoteHeadRevisionId.present
+            ? lastRemoteHeadRevisionId.value
+            : this.lastRemoteHeadRevisionId,
+        lastUploadedLibraryHash: lastUploadedLibraryHash.present
+            ? lastUploadedLibraryHash.value
+            : this.lastUploadedLibraryHash,
       );
   SyncStateModel copyWithCompanion(SyncStateCompanion data) {
     return SyncStateModel(
@@ -2315,6 +2481,21 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
           : this.lastRemoteVersion,
       lastSyncAt:
           data.lastSyncAt.present ? data.lastSyncAt.value : this.lastSyncAt,
+      lastRemoteFileId: data.lastRemoteFileId.present
+          ? data.lastRemoteFileId.value
+          : this.lastRemoteFileId,
+      lastRemoteModifiedTime: data.lastRemoteModifiedTime.present
+          ? data.lastRemoteModifiedTime.value
+          : this.lastRemoteModifiedTime,
+      lastRemoteMd5Checksum: data.lastRemoteMd5Checksum.present
+          ? data.lastRemoteMd5Checksum.value
+          : this.lastRemoteMd5Checksum,
+      lastRemoteHeadRevisionId: data.lastRemoteHeadRevisionId.present
+          ? data.lastRemoteHeadRevisionId.value
+          : this.lastRemoteHeadRevisionId,
+      lastUploadedLibraryHash: data.lastUploadedLibraryHash.present
+          ? data.lastUploadedLibraryHash.value
+          : this.lastUploadedLibraryHash,
     );
   }
 
@@ -2324,13 +2505,27 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
           ..write('id: $id, ')
           ..write('deviceId: $deviceId, ')
           ..write('lastRemoteVersion: $lastRemoteVersion, ')
-          ..write('lastSyncAt: $lastSyncAt')
+          ..write('lastSyncAt: $lastSyncAt, ')
+          ..write('lastRemoteFileId: $lastRemoteFileId, ')
+          ..write('lastRemoteModifiedTime: $lastRemoteModifiedTime, ')
+          ..write('lastRemoteMd5Checksum: $lastRemoteMd5Checksum, ')
+          ..write('lastRemoteHeadRevisionId: $lastRemoteHeadRevisionId, ')
+          ..write('lastUploadedLibraryHash: $lastUploadedLibraryHash')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, deviceId, lastRemoteVersion, lastSyncAt);
+  int get hashCode => Object.hash(
+      id,
+      deviceId,
+      lastRemoteVersion,
+      lastSyncAt,
+      lastRemoteFileId,
+      lastRemoteModifiedTime,
+      lastRemoteMd5Checksum,
+      lastRemoteHeadRevisionId,
+      lastUploadedLibraryHash);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2338,7 +2533,12 @@ class SyncStateModel extends DataClass implements Insertable<SyncStateModel> {
           other.id == this.id &&
           other.deviceId == this.deviceId &&
           other.lastRemoteVersion == this.lastRemoteVersion &&
-          other.lastSyncAt == this.lastSyncAt);
+          other.lastSyncAt == this.lastSyncAt &&
+          other.lastRemoteFileId == this.lastRemoteFileId &&
+          other.lastRemoteModifiedTime == this.lastRemoteModifiedTime &&
+          other.lastRemoteMd5Checksum == this.lastRemoteMd5Checksum &&
+          other.lastRemoteHeadRevisionId == this.lastRemoteHeadRevisionId &&
+          other.lastUploadedLibraryHash == this.lastUploadedLibraryHash);
 }
 
 class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
@@ -2346,29 +2546,58 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
   final Value<String> deviceId;
   final Value<int> lastRemoteVersion;
   final Value<DateTime?> lastSyncAt;
+  final Value<String?> lastRemoteFileId;
+  final Value<String?> lastRemoteModifiedTime;
+  final Value<String?> lastRemoteMd5Checksum;
+  final Value<String?> lastRemoteHeadRevisionId;
+  final Value<String?> lastUploadedLibraryHash;
   const SyncStateCompanion({
     this.id = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.lastRemoteVersion = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
+    this.lastRemoteFileId = const Value.absent(),
+    this.lastRemoteModifiedTime = const Value.absent(),
+    this.lastRemoteMd5Checksum = const Value.absent(),
+    this.lastRemoteHeadRevisionId = const Value.absent(),
+    this.lastUploadedLibraryHash = const Value.absent(),
   });
   SyncStateCompanion.insert({
     this.id = const Value.absent(),
     required String deviceId,
     this.lastRemoteVersion = const Value.absent(),
     this.lastSyncAt = const Value.absent(),
+    this.lastRemoteFileId = const Value.absent(),
+    this.lastRemoteModifiedTime = const Value.absent(),
+    this.lastRemoteMd5Checksum = const Value.absent(),
+    this.lastRemoteHeadRevisionId = const Value.absent(),
+    this.lastUploadedLibraryHash = const Value.absent(),
   }) : deviceId = Value(deviceId);
   static Insertable<SyncStateModel> custom({
     Expression<int>? id,
     Expression<String>? deviceId,
     Expression<int>? lastRemoteVersion,
     Expression<DateTime>? lastSyncAt,
+    Expression<String>? lastRemoteFileId,
+    Expression<String>? lastRemoteModifiedTime,
+    Expression<String>? lastRemoteMd5Checksum,
+    Expression<String>? lastRemoteHeadRevisionId,
+    Expression<String>? lastUploadedLibraryHash,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (deviceId != null) 'device_id': deviceId,
       if (lastRemoteVersion != null) 'last_remote_version': lastRemoteVersion,
       if (lastSyncAt != null) 'last_sync_at': lastSyncAt,
+      if (lastRemoteFileId != null) 'last_remote_file_id': lastRemoteFileId,
+      if (lastRemoteModifiedTime != null)
+        'last_remote_modified_time': lastRemoteModifiedTime,
+      if (lastRemoteMd5Checksum != null)
+        'last_remote_md5_checksum': lastRemoteMd5Checksum,
+      if (lastRemoteHeadRevisionId != null)
+        'last_remote_head_revision_id': lastRemoteHeadRevisionId,
+      if (lastUploadedLibraryHash != null)
+        'last_uploaded_library_hash': lastUploadedLibraryHash,
     });
   }
 
@@ -2376,12 +2605,26 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
       {Value<int>? id,
       Value<String>? deviceId,
       Value<int>? lastRemoteVersion,
-      Value<DateTime?>? lastSyncAt}) {
+      Value<DateTime?>? lastSyncAt,
+      Value<String?>? lastRemoteFileId,
+      Value<String?>? lastRemoteModifiedTime,
+      Value<String?>? lastRemoteMd5Checksum,
+      Value<String?>? lastRemoteHeadRevisionId,
+      Value<String?>? lastUploadedLibraryHash}) {
     return SyncStateCompanion(
       id: id ?? this.id,
       deviceId: deviceId ?? this.deviceId,
       lastRemoteVersion: lastRemoteVersion ?? this.lastRemoteVersion,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      lastRemoteFileId: lastRemoteFileId ?? this.lastRemoteFileId,
+      lastRemoteModifiedTime:
+          lastRemoteModifiedTime ?? this.lastRemoteModifiedTime,
+      lastRemoteMd5Checksum:
+          lastRemoteMd5Checksum ?? this.lastRemoteMd5Checksum,
+      lastRemoteHeadRevisionId:
+          lastRemoteHeadRevisionId ?? this.lastRemoteHeadRevisionId,
+      lastUploadedLibraryHash:
+          lastUploadedLibraryHash ?? this.lastUploadedLibraryHash,
     );
   }
 
@@ -2400,6 +2643,25 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
     if (lastSyncAt.present) {
       map['last_sync_at'] = Variable<DateTime>(lastSyncAt.value);
     }
+    if (lastRemoteFileId.present) {
+      map['last_remote_file_id'] = Variable<String>(lastRemoteFileId.value);
+    }
+    if (lastRemoteModifiedTime.present) {
+      map['last_remote_modified_time'] =
+          Variable<String>(lastRemoteModifiedTime.value);
+    }
+    if (lastRemoteMd5Checksum.present) {
+      map['last_remote_md5_checksum'] =
+          Variable<String>(lastRemoteMd5Checksum.value);
+    }
+    if (lastRemoteHeadRevisionId.present) {
+      map['last_remote_head_revision_id'] =
+          Variable<String>(lastRemoteHeadRevisionId.value);
+    }
+    if (lastUploadedLibraryHash.present) {
+      map['last_uploaded_library_hash'] =
+          Variable<String>(lastUploadedLibraryHash.value);
+    }
     return map;
   }
 
@@ -2409,7 +2671,12 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
           ..write('id: $id, ')
           ..write('deviceId: $deviceId, ')
           ..write('lastRemoteVersion: $lastRemoteVersion, ')
-          ..write('lastSyncAt: $lastSyncAt')
+          ..write('lastSyncAt: $lastSyncAt, ')
+          ..write('lastRemoteFileId: $lastRemoteFileId, ')
+          ..write('lastRemoteModifiedTime: $lastRemoteModifiedTime, ')
+          ..write('lastRemoteMd5Checksum: $lastRemoteMd5Checksum, ')
+          ..write('lastRemoteHeadRevisionId: $lastRemoteHeadRevisionId, ')
+          ..write('lastUploadedLibraryHash: $lastUploadedLibraryHash')
           ..write(')'))
         .toString();
   }
@@ -3453,12 +3720,22 @@ typedef $$SyncStateTableCreateCompanionBuilder = SyncStateCompanion Function({
   required String deviceId,
   Value<int> lastRemoteVersion,
   Value<DateTime?> lastSyncAt,
+  Value<String?> lastRemoteFileId,
+  Value<String?> lastRemoteModifiedTime,
+  Value<String?> lastRemoteMd5Checksum,
+  Value<String?> lastRemoteHeadRevisionId,
+  Value<String?> lastUploadedLibraryHash,
 });
 typedef $$SyncStateTableUpdateCompanionBuilder = SyncStateCompanion Function({
   Value<int> id,
   Value<String> deviceId,
   Value<int> lastRemoteVersion,
   Value<DateTime?> lastSyncAt,
+  Value<String?> lastRemoteFileId,
+  Value<String?> lastRemoteModifiedTime,
+  Value<String?> lastRemoteMd5Checksum,
+  Value<String?> lastRemoteHeadRevisionId,
+  Value<String?> lastUploadedLibraryHash,
 });
 
 class $$SyncStateTableFilterComposer
@@ -3482,6 +3759,26 @@ class $$SyncStateTableFilterComposer
 
   ColumnFilters<DateTime> get lastSyncAt => $composableBuilder(
       column: $table.lastSyncAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastRemoteFileId => $composableBuilder(
+      column: $table.lastRemoteFileId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastRemoteModifiedTime => $composableBuilder(
+      column: $table.lastRemoteModifiedTime,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastRemoteMd5Checksum => $composableBuilder(
+      column: $table.lastRemoteMd5Checksum,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastRemoteHeadRevisionId => $composableBuilder(
+      column: $table.lastRemoteHeadRevisionId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastUploadedLibraryHash => $composableBuilder(
+      column: $table.lastUploadedLibraryHash,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$SyncStateTableOrderingComposer
@@ -3505,6 +3802,26 @@ class $$SyncStateTableOrderingComposer
 
   ColumnOrderings<DateTime> get lastSyncAt => $composableBuilder(
       column: $table.lastSyncAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastRemoteFileId => $composableBuilder(
+      column: $table.lastRemoteFileId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastRemoteModifiedTime => $composableBuilder(
+      column: $table.lastRemoteModifiedTime,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastRemoteMd5Checksum => $composableBuilder(
+      column: $table.lastRemoteMd5Checksum,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastRemoteHeadRevisionId => $composableBuilder(
+      column: $table.lastRemoteHeadRevisionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastUploadedLibraryHash => $composableBuilder(
+      column: $table.lastUploadedLibraryHash,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$SyncStateTableAnnotationComposer
@@ -3527,6 +3844,21 @@ class $$SyncStateTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastSyncAt => $composableBuilder(
       column: $table.lastSyncAt, builder: (column) => column);
+
+  GeneratedColumn<String> get lastRemoteFileId => $composableBuilder(
+      column: $table.lastRemoteFileId, builder: (column) => column);
+
+  GeneratedColumn<String> get lastRemoteModifiedTime => $composableBuilder(
+      column: $table.lastRemoteModifiedTime, builder: (column) => column);
+
+  GeneratedColumn<String> get lastRemoteMd5Checksum => $composableBuilder(
+      column: $table.lastRemoteMd5Checksum, builder: (column) => column);
+
+  GeneratedColumn<String> get lastRemoteHeadRevisionId => $composableBuilder(
+      column: $table.lastRemoteHeadRevisionId, builder: (column) => column);
+
+  GeneratedColumn<String> get lastUploadedLibraryHash => $composableBuilder(
+      column: $table.lastUploadedLibraryHash, builder: (column) => column);
 }
 
 class $$SyncStateTableTableManager extends RootTableManager<
@@ -3559,24 +3891,44 @@ class $$SyncStateTableTableManager extends RootTableManager<
             Value<String> deviceId = const Value.absent(),
             Value<int> lastRemoteVersion = const Value.absent(),
             Value<DateTime?> lastSyncAt = const Value.absent(),
+            Value<String?> lastRemoteFileId = const Value.absent(),
+            Value<String?> lastRemoteModifiedTime = const Value.absent(),
+            Value<String?> lastRemoteMd5Checksum = const Value.absent(),
+            Value<String?> lastRemoteHeadRevisionId = const Value.absent(),
+            Value<String?> lastUploadedLibraryHash = const Value.absent(),
           }) =>
               SyncStateCompanion(
             id: id,
             deviceId: deviceId,
             lastRemoteVersion: lastRemoteVersion,
             lastSyncAt: lastSyncAt,
+            lastRemoteFileId: lastRemoteFileId,
+            lastRemoteModifiedTime: lastRemoteModifiedTime,
+            lastRemoteMd5Checksum: lastRemoteMd5Checksum,
+            lastRemoteHeadRevisionId: lastRemoteHeadRevisionId,
+            lastUploadedLibraryHash: lastUploadedLibraryHash,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String deviceId,
             Value<int> lastRemoteVersion = const Value.absent(),
             Value<DateTime?> lastSyncAt = const Value.absent(),
+            Value<String?> lastRemoteFileId = const Value.absent(),
+            Value<String?> lastRemoteModifiedTime = const Value.absent(),
+            Value<String?> lastRemoteMd5Checksum = const Value.absent(),
+            Value<String?> lastRemoteHeadRevisionId = const Value.absent(),
+            Value<String?> lastUploadedLibraryHash = const Value.absent(),
           }) =>
               SyncStateCompanion.insert(
             id: id,
             deviceId: deviceId,
             lastRemoteVersion: lastRemoteVersion,
             lastSyncAt: lastSyncAt,
+            lastRemoteFileId: lastRemoteFileId,
+            lastRemoteModifiedTime: lastRemoteModifiedTime,
+            lastRemoteMd5Checksum: lastRemoteMd5Checksum,
+            lastRemoteHeadRevisionId: lastRemoteHeadRevisionId,
+            lastUploadedLibraryHash: lastUploadedLibraryHash,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

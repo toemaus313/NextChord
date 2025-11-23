@@ -23,12 +23,18 @@ class GoogleOAuthConfig {
   static const String iosClientId =
       '466612959108-fheda65jpk2i2se9pfdloi8a24nm5rki.apps.googleusercontent.com';
 
+  // Android client credentials (from Google Cloud Console)
+  // Android-specific client ID for GoogleSignIn SDK
+  static const String androidClientId =
+      '466612959108-acor920kbln88qab2n65u59mt4okvaoq.apps.googleusercontent.com';
+
   // Get the appropriate client ID for the current platform
   static String get clientId {
-    if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android ||
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return androidClientId; // Android platform uses Android client ID
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS) {
-      return iosClientId; // Mobile and macOS platforms use iOS client ID
+      return iosClientId; // iOS and macOS platforms use iOS client ID
     } else {
       return desktopClientId; // Desktop/Web platforms use desktop client ID
     }

@@ -72,6 +72,7 @@ dependencies:
   intl: ^0.18.0
   uuid: ^3.0.7  # Updated to match required version
   equatable: ^2.0.5
+  crypto: ^3.0.3
   
   # HTTP & Web Scraping
   http: ^1.1.0

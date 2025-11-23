@@ -29,15 +29,10 @@ SETTINGS
   - Fix Metronome delay
   - iCloud for db storage
 - Different UI for phones - sidebar whole screen
-
-
-
-I want to make a tool for sending MIDI commands to any connected devices. This will be a modal formatted like our other ones, lets name it midi_sender_modal. It will be called "MIDI Sender" under the sidebar Tools menu. 
-
-I want this code to be modular and maintainable - it should be structured similarly to the guitar tuner service I just created, with clear separation of concerns and reusable components.
-
-The MIDI sender should have a box for entering the command, and a test button. Lets also make a checkbox for "streaming" which, if enabled, will send the specified command out at an interval of 120 beats per minute. 
-
-
-
-
+- Not refreshing quickly on db changes
+- No back button once in a Tag in Songs
+- Closer to realtime sync? 
+- Better debugging
+    - Timestamp local db change detected, sync started, sync complete/failed. Remote change detected - list deltas, merge started, merge completed (deltas) or merge failed
+- Hide clock/icon bar on android
+- Icons on win/android 

@@ -149,7 +149,8 @@ class SetlistRepository {
       await _db.insertSetlist(model);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'insert', table: 'setlists');
 
       return setlistToInsert.id;
     } catch (e) {
@@ -166,7 +167,8 @@ class SetlistRepository {
       await _db.updateSetlist(model);
 
       // Notify database change for auto-sync
-      DatabaseChangeService().notifyDatabaseChanged();
+      DatabaseChangeService()
+          .notifyDatabaseChanged(operation: 'update', table: 'setlists');
     } catch (e) {
       throw Exception('Failed to update setlist: $e');
     }
@@ -179,6 +181,7 @@ class SetlistRepository {
     } catch (e) {
       throw Exception('Failed to delete setlist: $e');
     }
-    DatabaseChangeService().notifyDatabaseChanged();
+    DatabaseChangeService()
+        .notifyDatabaseChanged(operation: 'delete', table: 'setlists');
   }
 }

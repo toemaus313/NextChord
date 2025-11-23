@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:math';
 import 'tables/tables.dart';
 import 'migrations/migrations.dart';
+import '../../services/sync/library_sync_service.dart';
 
 part 'app_database.g.dart';
 
@@ -16,7 +17,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;
@@ -296,11 +297,18 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateSyncState({
     required int lastRemoteVersion,
     DateTime? lastSyncAt,
+    DriveLibraryMetadata? remoteMetadata,
+    String? lastUploadedLibraryHash,
   }) async {
     await (update(syncState)..where((tbl) => tbl.id.equals(1))).write(
       SyncStateCompanion(
         lastRemoteVersion: Value(lastRemoteVersion),
         lastSyncAt: Value(lastSyncAt),
+        lastRemoteFileId: Value(remoteMetadata?.fileId),
+        lastRemoteModifiedTime: Value(remoteMetadata?.modifiedTime),
+        lastRemoteMd5Checksum: Value(remoteMetadata?.md5Checksum),
+        lastRemoteHeadRevisionId: Value(remoteMetadata?.headRevisionId),
+        lastUploadedLibraryHash: Value(lastUploadedLibraryHash),
       ),
     );
   }

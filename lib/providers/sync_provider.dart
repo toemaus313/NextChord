@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
+import '../services/sync/library_sync_service.dart';
 import '../data/database/app_database.dart';
+import '../core/services/database_change_service.dart';
 
-class SyncProvider with ChangeNotifier {
+class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   static const String _syncEnabledKey = 'isSyncEnabled';
   late GoogleDriveSyncService _syncService;
   final VoidCallback? _onSyncCompleted;
@@ -14,8 +16,10 @@ class SyncProvider with ChangeNotifier {
   bool _isSignedIn = false;
   bool _isSyncEnabled = false;
   Timer? _periodicSyncTimer;
+  Timer? _metadataPollingTimer;
   SharedPreferences? _prefs;
   final AppDatabase _database;
+  bool _isAppInForeground = true;
 
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncTime => _lastSyncTime;
@@ -44,8 +48,11 @@ class SyncProvider with ChangeNotifier {
       rethrow;
     }
 
+    // Register for app lifecycle events
+    WidgetsBinding.instance.addObserver(this);
+
     _loadSyncPreference();
-    _startPeriodicSync();
+    _startMetadataPolling();
   }
 
   /// Load sync preference from SharedPreferences
@@ -91,19 +98,77 @@ class SyncProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _startPeriodicSync() {
-    _periodicSyncTimer?.cancel();
-    _periodicSyncTimer = Timer.periodic(
-      const Duration(minutes: 5),
+  /// Start 10-second metadata polling when app is in foreground
+  void _startMetadataPolling() {
+    _metadataPollingTimer?.cancel();
+    _metadataPollingTimer = Timer.periodic(
+      const Duration(seconds: 10),
       (timer) {
-        _performPeriodicSync();
+        _performMetadataPolling();
       },
     );
   }
 
-  Future<void> _performPeriodicSync() async {
-    if (_isSyncEnabled && !_isSyncing) {
-      await autoSync();
+  /// Stop metadata polling when app goes to background
+  void _stopMetadataPolling() {
+    _metadataPollingTimer?.cancel();
+    _metadataPollingTimer = null;
+  }
+
+  /// Check metadata and trigger full sync only if remote file has changed
+  Future<void> _performMetadataPolling() async {
+    if (!_isSyncEnabled || _isSyncing || !_isAppInForeground) {
+      return;
+    }
+
+    try {
+      // Get current remote metadata
+      final currentMetadata = await _syncService.getLibraryJsonMetadata();
+      if (currentMetadata == null) {
+        // No remote file exists, trigger initial sync to upload local library
+        await autoSync();
+        return;
+      }
+
+      // Get last seen metadata from database
+      final librarySyncService = LibrarySyncService(_database);
+      final lastSeenMetadata = await librarySyncService.getLastSeenMetadata();
+
+      // Check if remote file has changed
+      if (currentMetadata.hasChanged(lastSeenMetadata)) {
+        debugPrint('Remote library change detected, triggering full sync');
+        await autoSync();
+      } else {
+        debugPrint('Remote library unchanged, skipping sync');
+      }
+    } catch (e) {
+      debugPrint('Error during metadata polling: $e');
+      // Don't show errors to user for polling failures, just log
+    }
+  }
+
+  /// App lifecycle management
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _isAppInForeground = true;
+        debugPrint('App resumed, starting metadata polling');
+        _startMetadataPolling();
+        break;
+      case AppLifecycleState.paused:
+        _isAppInForeground = false;
+        debugPrint('App paused, stopping metadata polling');
+        _stopMetadataPolling();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        _isAppInForeground = false;
+        _stopMetadataPolling();
+        break;
     }
   }
 
@@ -114,6 +179,9 @@ class SyncProvider with ChangeNotifier {
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
+
+      // Mark sync as in progress to prevent feedback loops
+      DatabaseChangeService().setSyncInProgress(true);
 
       // Verify we're signed in before attempting sync
       _isSignedIn = await _syncService.isSignedIn();
@@ -133,6 +201,8 @@ class SyncProvider with ChangeNotifier {
       }
     } finally {
       _isSyncing = false;
+      // Mark sync as completed to allow change notifications again
+      DatabaseChangeService().setSyncInProgress(false);
       notifyListeners();
     }
   }
@@ -225,6 +295,8 @@ class SyncProvider with ChangeNotifier {
   @override
   void dispose() {
     _periodicSyncTimer?.cancel();
+    _metadataPollingTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
