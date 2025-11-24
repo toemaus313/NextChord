@@ -1,4 +1,32 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/responsive_config.dart';
+
+/// Mixin for modal content with consistent styling and spacing
+mixin ConciseModalContentMixin<T extends StatefulWidget> on State<T> {
+  /// Build content with consistent padding and styling
+  Widget buildConciseContent({required List<Widget> children}) {
+    return Container(
+      padding: const EdgeInsets.all(12), // Reduced from 16
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+
+  /// Add consistent spacing between widget items
+  List<Widget> addConciseSpacing(List<Widget> items) {
+    final List<Widget> spacedItems = [];
+    for (int i = 0; i < items.length; i++) {
+      spacedItems.add(items[i]);
+      if (i < items.length - 1) {
+        spacedItems.add(const SizedBox(height: 8)); // Reduced from 12
+      }
+    }
+    return spacedItems;
+  }
+}
 
 /// **Concise Modal Template** - Standard for all compact, efficient modals
 ///
@@ -19,47 +47,70 @@ import 'package:flutter/material.dart';
 abstract class ConciseModalTemplate extends StatefulWidget {
   const ConciseModalTemplate({Key? key}) : super(key: key);
 
-  /// Show the modal with consistent styling
+  /// Show the modal with responsive behavior
+  /// - Phone: Full-screen dialog with back navigation
+  /// - Desktop/Tablet: Compact modal dialog
   static Future<T?> showConciseModal<T>({
     required BuildContext context,
     required Widget child,
     bool barrierDismissible = false,
   }) {
-    return showDialog<T>(
-      context: context,
-      barrierDismissible: barrierDismissible,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 420, // Reduced from 480
-            minWidth: 280, // Reduced from 320
-            maxHeight: 500, // Reduced from 650
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
-              ),
-              borderRadius: BorderRadius.circular(18), // Reduced from 22
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(80), // Reduced opacity
-                  blurRadius: 15, // Reduced from 20
-                  offset: const Offset(0, 8), // Reduced from (0, 10)
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.fromLTRB(
-                12, 10, 12, 10), // Reduced from 18,16,18,14
+    final isPhone = ResponsiveConfig.isPhone(context);
+
+    if (isPhone) {
+      // Phone: Show as full-screen dialog
+      return Navigator.push<T>(
+        context,
+        MaterialPageRoute<T>(
+          builder: (context) => _PhoneModalWrapper(
+            title: 'Settings',
             child: child,
           ),
+          fullscreenDialog: true,
         ),
-      ),
-    );
+      );
+    } else {
+      // Desktop/Tablet: Show as compact modal dialog
+      return showDialog<T>(
+        context: context,
+        barrierDismissible: barrierDismissible,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420, // Reduced from 480
+              minWidth: 280, // Reduced from 320
+              maxHeight: 500, // Reduced from 650
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
+                ),
+                borderRadius: BorderRadius.circular(18), // Reduced from 22
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(80), // Reduced opacity
+                    blurRadius: 15, // Reduced from 20
+                    offset: const Offset(0, 8), // Reduced from (0, 10)
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(
+                12,
+                10,
+                12,
+                10,
+              ), // Reduced from 18,16,18,14
+              child: child,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   /// Build the modal header with consistent styling
@@ -78,24 +129,22 @@ abstract class ConciseModalTemplate extends StatefulWidget {
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(
-                horizontal: 15, vertical: 14), // Changed from 21,11
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: const BorderSide(color: Colors.white24),
-            ),
+              horizontal: 15,
+              vertical: 14,
+            ), // Changed from 21,11
+            minimumSize: const Size(56, 48), // 30% narrower, 20% taller
+            textStyle: const TextStyle(fontSize: 12), // Reduced from 14
           ),
-          child: const Text('Cancel',
-              style: TextStyle(fontSize: 12)), // Reduced from 14
+          child: const Text('Cancel'),
         ),
         const Spacer(),
+        // Title - smaller font
         Text(
           title,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 14, // Reduced from 16
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const Spacer(),
@@ -103,100 +152,76 @@ abstract class ConciseModalTemplate extends StatefulWidget {
         TextButton(
           onPressed: okEnabled ? onOk : null,
           style: TextButton.styleFrom(
-            foregroundColor: okEnabled ? Colors.white : Colors.white54,
+            foregroundColor: okEnabled ? Colors.white : Colors.white24,
+            backgroundColor: okEnabled ? Colors.white24 : Colors.transparent,
             padding: const EdgeInsets.symmetric(
-                horizontal: 15, vertical: 14), // Changed from 21,11
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(
-                color: okEnabled ? Colors.white24 : Colors.white12,
-              ),
-            ),
+              horizontal: 15,
+              vertical: 14,
+            ), // Changed from 21,11
+            minimumSize: const Size(56, 48), // 30% narrower, 20% taller
+            textStyle: const TextStyle(fontSize: 12), // Reduced from 14
           ),
-          child: const Text('OK',
-              style: TextStyle(fontSize: 12)), // Reduced from 14
+          child: const Text('OK'),
         ),
       ],
     );
   }
 
-  /// Build a concise setting row with consistent styling
+  /// Build a concise setting row with label and control
   static Widget buildConciseSettingRow({
-    required IconData icon,
+    IconData? icon,
     required String label,
     required Widget control,
-    CrossAxisAlignment alignment = CrossAxisAlignment.center,
+    String? description,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(8), // Reduced from 12
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(12), // Reduced from 16
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4), // Reduced from 6
       child: Row(
-        crossAxisAlignment: alignment,
         children: [
-          Icon(
-            icon,
-            color: Colors.white70,
-            size: 16, // Reduced from 20
-          ),
-          const SizedBox(width: 8), // Reduced from 12
+          // Icon section (if provided)
+          if (icon != null) ...[
+            Icon(
+              icon,
+              color: Colors.white70,
+              size: 16, // Reduced from 20
+            ),
+            const SizedBox(width: 8), // Reduced from 12
+          ],
+          // Label section - takes remaining space
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12, // Reduced from 14
-                fontWeight: FontWeight.w500,
-              ),
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12, // Reduced from 14
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 2), // Reduced from 4
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(153), // white60
+                      fontSize: 10, // Reduced from 12
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
             ),
           ),
-          control,
-        ],
-      ),
-    );
-  }
-
-  /// Build a concise setting column for multi-line content
-  static Widget buildConciseSettingColumn({
-    required IconData icon,
-    required String label,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(8), // Reduced from 12
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(12), // Reduced from 16
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                icon,
-                color: Colors.white70,
-                size: 16, // Reduced from 20
-              ),
-              const SizedBox(width: 8), // Reduced from 12
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12, // Reduced from 14
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          const SizedBox(width: 12), // Reduced from 16
+          // Control section - fixed width
+          SizedBox(
+            width: 120, // Reduced from 160
+            child: control,
           ),
-          const SizedBox(height: 4), // Reduced from 8
-          ...children,
         ],
       ),
     );
@@ -207,51 +232,94 @@ abstract class ConciseModalTemplate extends StatefulWidget {
     required T value,
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
-    bool isExpanded = false,
+    String? hint,
+    bool isExpanded = true,
   }) {
     return Container(
-      // Reduce container height to make dropdown appear smaller
-      height: 32, // Fixed height to make dropdown more compact
+      height: 36, // Fixed height for consistency
+      padding: const EdgeInsets.symmetric(horizontal: 8), // Reduced padding
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: BorderRadius.circular(4), // Further reduced from 6
-        border: Border.all(color: Colors.white.withAlpha(20)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: isExpanded,
-          // Further reduced padding: from (4, 1) to (2, 0)
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
-          dropdownColor: const Color(0xFF0468cc),
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12), // Increased from 10 for better readability
-          items: items,
-          onChanged: onChanged,
-          // Keep itemHeight at null to use default (48px) to meet kMinInteractiveDimension
-          // but reduce visual density through tighter container styling
-          menuMaxHeight: 180, // Further reduced from 200
-          // Further reduce dropdown icon
-          iconSize: 14, // Further reduced from 16
-          // Reduce dropdown menu item styling
-          selectedItemBuilder: (BuildContext context) {
-            return items.map((DropdownMenuItem<T> item) {
-              return Container(
-                // Custom selected item styling to appear smaller
-                alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(minHeight: 32),
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12, // Increased from 10 for better readability
-                  ),
-                  child: item.child,
-                ),
-              );
-            }).toList();
-          },
+        color: Colors.white.withAlpha(20), // white12
+        borderRadius: BorderRadius.circular(6), // Reduced from 8
+        border: Border.all(
+          color: Colors.white.withAlpha(51), // white20
+          width: 1,
         ),
+      ),
+      child: DropdownButton<T>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        hint: hint != null
+            ? Text(
+                hint,
+                style: TextStyle(
+                  color: Colors.white.withAlpha(153), // white60
+                  fontSize: 12, // Reduced from 14
+                ),
+              )
+            : null,
+        isExpanded: true,
+        dropdownColor: const Color(0xFF0468cc),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12, // Reduced from 14
+        ),
+        icon: const Icon(
+          Icons.arrow_drop_down,
+          color: Colors.white70,
+          size: 16,
+        ),
+        underline: const SizedBox(), // Remove underline
+      ),
+    );
+  }
+
+  /// Build a concise setting column (vertical layout)
+  static Widget buildConciseSettingColumn({
+    IconData? icon,
+    required String label,
+    required List<Widget> children,
+    String? description,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4), // Reduced from 6
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  color: Colors.white70,
+                  size: 16, // Reduced from 20
+                ),
+                const SizedBox(width: 8), // Reduced from 12
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12, // Reduced from 14
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          if (description != null) ...[
+            const SizedBox(height: 2), // Reduced from 4
+            Text(
+              description,
+              style: TextStyle(
+                color: Colors.white.withAlpha(153), // white60
+                fontSize: 10, // Reduced from 12
+              ),
+            ),
+          ],
+          const SizedBox(height: 6), // Reduced from 8
+          ...children,
+        ],
       ),
     );
   }
@@ -259,108 +327,138 @@ abstract class ConciseModalTemplate extends StatefulWidget {
   /// Build a concise text field with consistent styling
   static Widget buildConciseTextField({
     required TextEditingController controller,
+    String? labelText,
     String? hintText,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    Function(String)? onChanged,
+    Function(String)? onSubmitted,
     String? errorText,
-    ValueChanged<String>? onChanged,
-    void Function(String)? onSubmitted,
-    TextInputType? keyboardType,
   }) {
-    return TextField(
-      controller: controller,
-      style:
-          const TextStyle(color: Colors.white, fontSize: 12), // Reduced from 14
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.5), // Reduced from 0.6
-          fontSize: 10, // Reduced from 12
+    return Container(
+      height: 36, // Fixed height for consistency
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(20), // white12
+        borderRadius: BorderRadius.circular(6), // Reduced from 8
+        border: Border.all(
+          color: Colors.white.withAlpha(51), // white20
+          width: 1,
         ),
-        filled: true,
-        fillColor: Colors.white.withAlpha(10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6), // Reduced from 8
-          borderSide: BorderSide(color: Colors.white.withAlpha(20)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6), // Reduced from 8
-          borderSide: BorderSide(color: Colors.white.withAlpha(20)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6), // Reduced from 8
-          borderSide: const BorderSide(color: Color(0xFF0468cc)),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: 8, vertical: 6), // Reduced from 12,8
-        errorText: errorText,
       ),
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      onSubmitted: onSubmitted,
-    );
-  }
-
-  /// Build a concise button with consistent styling
-  static Widget buildConciseButton({
-    required String label,
-    required Function()? onPressed,
-    IconData? icon,
-    bool enabled = true,
-    Color? backgroundColor,
-    Color? foregroundColor,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: enabled ? onPressed : null,
-        icon: icon != null
-            ? Icon(icon, size: 12)
-            : const SizedBox.shrink(), // Reduced from 14
-        label: Text(
-          label,
-          style: TextStyle(fontSize: 12), // Reduced from 14
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12, // Reduced from 14
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: enabled
-              ? (backgroundColor ?? Colors.white.withAlpha(20))
-              : Colors.white.withAlpha(10),
-          foregroundColor:
-              enabled ? (foregroundColor ?? Colors.white) : Colors.white54,
-          padding: const EdgeInsets.symmetric(vertical: 6), // Reduced from 8
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6), // Reduced from 8
-            side: BorderSide(
-              color: enabled ? Colors.white24 : Colors.white12,
-            ),
+        decoration: InputDecoration(
+          labelText: labelText,
+          hintText: hintText,
+          errorText: errorText,
+          labelStyle: TextStyle(
+            color: Colors.white.withAlpha(153), // white60
+            fontSize: 10, // Reduced from 12
+          ),
+          hintStyle: TextStyle(
+            color: Colors.white.withAlpha(102), // white40
+            fontSize: 10, // Reduced from 12
+          ),
+          errorStyle: const TextStyle(
+            color: Colors.red,
+            fontSize: 10,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8, // Reduced from 12
           ),
         ),
       ),
     );
   }
 
-  /// Build a concise info/status box
+  /// Build a concise button with consistent styling
+  static Widget buildConciseButton({
+    required String label,
+    VoidCallback? onPressed,
+    IconData? icon,
+    bool enabled = true,
+    Color? backgroundColor,
+    Color? foregroundColor,
+    bool isDestructive = false,
+  }) {
+    return SizedBox(
+      height: 36, // Fixed height for consistency
+      child: ElevatedButton(
+        onPressed: enabled ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: (enabled ? backgroundColor : Colors.transparent) ??
+              (isDestructive
+                  ? Colors.red.withAlpha(51) // red12
+                  : Colors.white.withAlpha(20)), // white12
+          foregroundColor: foregroundColor ??
+              (isDestructive ? Colors.red.shade300 : Colors.white),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: const TextStyle(fontSize: 12), // Reduced from 14
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6), // Reduced from 8
+            side: isDestructive
+                ? BorderSide(color: Colors.red.withAlpha(102)) // red40
+                : BorderSide(color: Colors.white.withAlpha(51)), // white20
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16),
+              const SizedBox(width: 6),
+            ],
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build a concise info box with consistent styling
   static Widget buildConciseInfoBox({
-    required IconData icon,
     required String text,
-    required Color color,
+    IconData? icon,
+    Color? color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(8), // Reduced from 12
+      padding: const EdgeInsets.all(10), // Reduced from 12
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12), // Reduced from 16
-        border: Border.all(color: color.withAlpha(50)),
+        color: Colors.white.withAlpha(10), // white8
+        borderRadius: BorderRadius.circular(6), // Reduced from 8
+        border: Border.all(
+          color: Colors.white.withAlpha(26), // white10
+          width: 1,
+        ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 16), // Reduced from 20
-          const SizedBox(width: 8), // Reduced from 12
+          if (icon != null) ...[
+            Icon(
+              icon,
+              color: color ?? Colors.white70,
+              size: 16, // Reduced from 20
+            ),
+            const SizedBox(width: 8), // Reduced from 12
+          ],
           Expanded(
             child: Text(
               text,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 10, // Reduced from 12
-                fontWeight: FontWeight.w500,
+                fontSize: 12, // Reduced from 14
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -369,12 +467,12 @@ abstract class ConciseModalTemplate extends StatefulWidget {
     );
   }
 
-  /// Standard spacing constants for concise modals
-  static const double smallSpacing = 4.0; // Reduced from 8
-  static const double mediumSpacing = 6.0; // Reduced from 12
-  static const double largeSpacing = 10.0; // Reduced from 16
+  // Spacing constants for consistent layout
+  static const double smallSpacing = 4.0;
+  static const double mediumSpacing = 8.0;
+  static const double largeSpacing = 12.0;
 
-  /// Standard text styles for concise modals
+  // Text styles for consistent typography
   static const TextStyle primaryTextStyle = TextStyle(
     color: Colors.white,
     fontSize: 12, // Reduced from 14
@@ -382,65 +480,59 @@ abstract class ConciseModalTemplate extends StatefulWidget {
   );
 
   static const TextStyle secondaryTextStyle = TextStyle(
-    color: Colors.white70,
-    fontSize: 10, // Reduced from 12
-    fontWeight: FontWeight.w400,
-  );
-
-  static const TextStyle hintTextStyle = TextStyle(
-    color: Colors.white38,
+    color: Colors.white70, // white70
     fontSize: 10, // Reduced from 12
   );
 
-  /// Standard icon size for concise modals
-  static const double iconSize = 16.0; // Reduced from 20
-
-  /// Standard container decoration for concise modals
-  static BoxDecoration containerDecoration = BoxDecoration(
-    color: Colors.white.withAlpha(10),
-    borderRadius: BorderRadius.circular(12), // Reduced from 16
-    border: Border.all(color: Colors.white.withAlpha(30)),
-  );
+  @override
+  State<ConciseModalTemplate> createState() => _ConciseModalTemplateState();
 }
 
-/// Mixin for concise modal content widgets
-mixin ConciseModalContentMixin {
-  /// Build the main content area with consistent spacing
-  Widget buildConciseContent({
-    required List<Widget> children,
-    bool scrollable = true,
-  }) {
-    Widget content = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
-    );
+/// Phone modal wrapper for full-screen modal display
+class _PhoneModalWrapper extends StatelessWidget {
+  final Widget child;
+  final String title;
 
-    if (scrollable) {
-      content = SingleChildScrollView(child: content);
-    }
+  const _PhoneModalWrapper({
+    Key? key,
+    required this.child,
+    required this.title,
+  }) : super(key: key);
 
-    return Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: ConciseModalTemplate.smallSpacing),
-          content,
-          const SizedBox(height: ConciseModalTemplate.smallSpacing),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: const Color(0xFF0468cc),
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      backgroundColor: const Color(0xFF0468cc),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
+          ),
+        ),
+        child: child,
       ),
     );
   }
+}
 
-  /// Add consistent spacing between sections
-  List<Widget> addConciseSpacing(List<Widget> children) {
-    final spacedChildren = <Widget>[];
-    for (int i = 0; i < children.length; i++) {
-      spacedChildren.add(children[i]);
-      if (i < children.length - 1) {
-        spacedChildren
-            .add(const SizedBox(height: ConciseModalTemplate.mediumSpacing));
-      }
-    }
-    return spacedChildren;
+class _ConciseModalTemplateState extends State<ConciseModalTemplate> {
+  @override
+  Widget build(BuildContext context) {
+    // This is an abstract template class - actual implementation
+    // should be provided by concrete subclasses
+    throw UnimplementedError(
+      'ConciseModalTemplate is abstract and should not be instantiated directly',
+    );
   }
 }

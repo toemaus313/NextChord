@@ -20,6 +20,14 @@ import 'sidebar_views/sidebar_artists_list_view.dart';
 import 'sidebar_views/sidebar_artist_songs_view.dart';
 import 'sidebar_views/sidebar_tags_list_view.dart';
 import 'sidebar_views/sidebar_tag_songs_view.dart';
+import '../../core/widgets/responsive_config.dart';
+
+/// Helper method to detect if we're actually on a phone (not just small screen)
+bool _isActualPhone(BuildContext context) {
+  final isPhoneSized = MediaQuery.of(context).size.width < 600;
+  final isMobilePlatform = Platform.isIOS || Platform.isAndroid;
+  return isPhoneSized && isMobilePlatform;
+}
 
 /// Global sidebar widget that can overlay any screen
 class GlobalSidebar extends StatefulWidget {
@@ -78,25 +86,47 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.white;
-    final sidebarWidth = Platform.isIOS ? 320.0 : 256.0;
+    final isPhone = ResponsiveConfig.isPhone(context);
 
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        final width = sidebarWidth * _animation.value;
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          width: width,
+    if (isPhone) {
+      // Phone mode: full-screen sidebar
+      return Scaffold(
+        body: Container(
           decoration: BoxDecoration(
-            color: backgroundColor,
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF0468cc),
+                Color.fromARGB(99, 3, 73, 153),
+              ],
+            ),
           ),
-          clipBehavior: Clip.hardEdge,
-          child: width > 0 ? _buildSidebar(context, sidebarWidth) : null,
-        );
-      },
-    );
+          child: _buildSidebar(context, MediaQuery.of(context).size.width),
+        ),
+      );
+    } else {
+      // Desktop/Tablet mode: animated sidebar
+      final sidebarWidth = Platform.isIOS ? 320.0 : 256.0;
+
+      return AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          final width = sidebarWidth * _animation.value;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: width,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: width > 0 ? _buildSidebar(context, sidebarWidth) : null,
+          );
+        },
+      );
+    }
   }
 
   Widget _buildSidebar(BuildContext context, double sidebarWidth) {
@@ -205,6 +235,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToMetronomeSettings: () => _showMetronomeSettings(),
           onNavigateToGuitarTuner: () => _showGuitarTuner(),
           onNavigateToStorageSettings: () => _showStorageSettings(),
+          isPhoneMode: _isActualPhone(context),
         );
     }
   }

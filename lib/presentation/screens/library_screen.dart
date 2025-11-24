@@ -9,6 +9,7 @@ import '../widgets/sidebar_select_all_bar.dart';
 import '../widgets/add_songs_to_setlist_modal.dart';
 import 'song_editor_screen_refactored.dart';
 import 'song_viewer_screen.dart';
+import '../../core/widgets/responsive_config.dart';
 
 /// Main library screen that displays all songs
 /// Features search/filter, pull-to-refresh, and FAB for adding songs
@@ -334,8 +335,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onTap: () {
                 if (provider.selectionMode) {
                   provider.toggleSongSelection(song.id);
-                } else if (widget.onSongSelected != null) {
-                  widget.onSongSelected!(song);
+                } else {
+                  final isPhone = ResponsiveConfig.isPhone(context);
+                  if (isPhone) {
+                    // Phone: Navigate to full-screen song viewer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SongViewerScreen(song: song),
+                      ),
+                    );
+                  } else if (widget.onSongSelected != null) {
+                    // Desktop/Tablet: Use existing callback
+                    widget.onSongSelected!(song);
+                  }
                 }
               },
               onLongPress: () {

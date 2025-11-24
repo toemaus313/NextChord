@@ -58,7 +58,10 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
   @override
   void initState() {
     super.initState();
-    _loadSetlists();
+    // Defer setlist loading to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSetlists();
+    });
   }
 
   Future<void> _loadSetlists() async {
@@ -192,7 +195,12 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
         TextButton(
           onPressed: _selectedSetlistIds.isEmpty
               ? null
-              : () => _addToSetlists(context),
+              : () {
+                  // Defer the entire operation to avoid setState during build
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _addToSetlists(context);
+                  });
+                },
           style: TextButton.styleFrom(
             foregroundColor:
                 _selectedSetlistIds.isEmpty ? Colors.white54 : Colors.white,

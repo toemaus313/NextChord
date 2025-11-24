@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
 import '../../data/database/app_database.dart';
+import '../../core/services/sync_service_locator.dart';
 import 'library_sync_service.dart';
 
 /// Helper for timestamped debug logging
@@ -26,6 +27,11 @@ String _timestampedLog(String message) {
 class GoogleDriveSyncService {
   final VoidCallback? _onDatabaseReplaced; // Callback to trigger reconnection
   final LibrarySyncService _librarySyncService;
+
+  // Metadata polling infrastructure
+  Timer? _metadataPollingTimer;
+  static const Duration _pollingInterval = Duration(seconds: 10);
+  bool _isPollingActive = false;
 
   static GoogleSignIn? _googleSignIn;
   static String? _universalAccessToken;
@@ -666,6 +672,64 @@ class GoogleDriveSyncService {
       }
     } catch (e) {}
   }
+
+  /// Start metadata polling for automatic sync when app is active
+  void startMetadataPolling() {
+    if (_isPollingActive) {
+      debugPrint(_timestampedLog('Metadata polling already active'));
+      return;
+    }
+
+    debugPrint(_timestampedLog('Starting metadata polling (10s interval)'));
+    _isPollingActive = true;
+
+    _metadataPollingTimer = Timer.periodic(_pollingInterval, (timer) async {
+      if (!_isPollingActive) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        debugPrint(
+            _timestampedLog('🔍 Metadata poll: checking remote file changes'));
+
+        // Get remote metadata without downloading content
+        final remoteMetadata = await getLibraryJsonMetadata();
+
+        if (remoteMetadata != null) {
+          // Check if remote file has changed since last sync
+          final hasRemoteChanges =
+              await _librarySyncService.hasRemoteChanges(remoteMetadata);
+
+          if (hasRemoteChanges) {
+            debugPrint(_timestampedLog(
+                '🔄 Remote changes detected, triggering full sync'));
+            // Trigger full sync through the sync provider
+            await SyncServiceLocator.triggerAutoSync();
+          } else {
+            debugPrint(_timestampedLog('✅ No remote changes detected'));
+          }
+        }
+      } catch (e) {
+        debugPrint(_timestampedLog('⚠️ Error during metadata poll: $e'));
+      }
+    });
+  }
+
+  /// Stop metadata polling when app is paused/backgrounded
+  void stopMetadataPolling() {
+    if (!_isPollingActive) {
+      return;
+    }
+
+    debugPrint(_timestampedLog('Stopping metadata polling'));
+    _isPollingActive = false;
+    _metadataPollingTimer?.cancel();
+    _metadataPollingTimer = null;
+  }
+
+  /// Check if metadata polling is currently active
+  bool get isPollingActive => _isPollingActive;
 }
 
 /// Custom HTTP client for authenticated Google API requests

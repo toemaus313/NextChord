@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
-import '../services/sync/library_sync_service.dart';
 import '../data/database/app_database.dart';
 import '../core/services/database_change_service.dart';
 
@@ -15,8 +14,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   String? _lastError;
   bool _isSignedIn = false;
   bool _isSyncEnabled = false;
-  Timer? _periodicSyncTimer;
-  Timer? _metadataPollingTimer;
   SharedPreferences? _prefs;
   final AppDatabase _database;
   bool _isAppInForeground = true;
@@ -52,7 +49,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _loadSyncPreference();
-    _startMetadataPolling();
+    // Start metadata polling through the sync service
+    if (_isSyncEnabled) {
+      _syncService.startMetadataPolling();
+    }
   }
 
   /// Load sync preference from SharedPreferences
@@ -98,55 +98,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     notifyListeners();
   }
 
-  /// Start 10-second metadata polling when app is in foreground
-  void _startMetadataPolling() {
-    _metadataPollingTimer?.cancel();
-    _metadataPollingTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (timer) {
-        _performMetadataPolling();
-      },
-    );
-  }
-
-  /// Stop metadata polling when app goes to background
-  void _stopMetadataPolling() {
-    _metadataPollingTimer?.cancel();
-    _metadataPollingTimer = null;
-  }
-
-  /// Check metadata and trigger full sync only if remote file has changed
-  Future<void> _performMetadataPolling() async {
-    if (!_isSyncEnabled || _isSyncing || !_isAppInForeground) {
-      return;
-    }
-
-    try {
-      // Get current remote metadata
-      final currentMetadata = await _syncService.getLibraryJsonMetadata();
-      if (currentMetadata == null) {
-        // No remote file exists, trigger initial sync to upload local library
-        await autoSync();
-        return;
-      }
-
-      // Get last seen metadata from database
-      final librarySyncService = LibrarySyncService(_database);
-      final lastSeenMetadata = await librarySyncService.getLastSeenMetadata();
-
-      // Check if remote file has changed
-      if (currentMetadata.hasChanged(lastSeenMetadata)) {
-        debugPrint('Remote library change detected, triggering full sync');
-        await autoSync();
-      } else {
-        debugPrint('Remote library unchanged, skipping sync');
-      }
-    } catch (e) {
-      debugPrint('Error during metadata polling: $e');
-      // Don't show errors to user for polling failures, just log
-    }
-  }
-
   /// App lifecycle management
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -156,18 +107,20 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         _isAppInForeground = true;
         debugPrint('App resumed, starting metadata polling');
-        _startMetadataPolling();
+        if (_isSyncEnabled) {
+          _syncService.startMetadataPolling();
+        }
         break;
       case AppLifecycleState.paused:
         _isAppInForeground = false;
         debugPrint('App paused, stopping metadata polling');
-        _stopMetadataPolling();
+        _syncService.stopMetadataPolling();
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
         _isAppInForeground = false;
-        _stopMetadataPolling();
+        _syncService.stopMetadataPolling();
         break;
     }
   }
@@ -294,8 +247,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _periodicSyncTimer?.cancel();
-    _metadataPollingTimer?.cancel();
+    _syncService.stopMetadataPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

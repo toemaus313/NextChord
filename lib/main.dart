@@ -16,6 +16,7 @@ import 'presentation/providers/setlist_provider.dart';
 import 'providers/sync_provider.dart';
 import 'services/midi/midi_service.dart';
 import 'core/services/sync_service_locator.dart';
+import 'core/services/database_change_service.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
 void main() async {
@@ -34,6 +35,9 @@ void main() async {
 
   // Initialize database
   final database = AppDatabase();
+
+  // Initialize database change monitoring service
+  DatabaseChangeService().initialize(database);
 
   // Initialize repository
   final songRepository = SongRepository(database);

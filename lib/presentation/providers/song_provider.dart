@@ -1,18 +1,26 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'dart:async';
 import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Enum to track what type of song list is currently loaded
 enum SongListType { all, deleted, filtered }
 
 /// Provider for managing song state and operations
 /// Uses ChangeNotifier for reactive state management with Provider package
+/// Now includes reactive database change monitoring for automatic UI updates
 class SongProvider extends ChangeNotifier {
   final SongRepository _repository;
+  final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
-  SongProvider(this._repository);
+  SongProvider(this._repository) {
+    // Listen to database change events for automatic updates
+    _dbChangeSubscription =
+        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+  }
 
   // Public getter for repository access
   SongRepository get repository => _repository;
@@ -28,6 +36,10 @@ class SongProvider extends ChangeNotifier {
   final Set<String> _selectedSongIds = {};
   Timer? _searchTimer;
   SongListType _currentListType = SongListType.all;
+
+  // Database change monitoring
+  StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
+  bool _isUpdatingFromDatabase = false;
 
   // Getters
   List<Song> get songs => _filteredSongs;
@@ -130,6 +142,77 @@ class SongProvider extends ChangeNotifier {
     }
   }
 
+  /// Handle database change events for automatic updates
+  void _handleDatabaseChange(DbChangeEvent event) {
+    if (_isUpdatingFromDatabase) {
+      // Skip events that we triggered ourselves
+      return;
+    }
+
+    debugPrint('🎵 SongProvider received DB change: ${event.table}');
+
+    // Only refresh if we're currently showing songs or deleted songs
+    if (event.table == 'songs' ||
+        event.table == 'songs_count' ||
+        event.table == 'deleted_songs_count') {
+      // Defer refresh to avoid calling notifyListeners() during build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshFromDatabaseChange();
+      });
+    }
+  }
+
+  /// Refresh data from database change event without disrupting UI state
+  Future<void> _refreshFromDatabaseChange() async {
+    if (_isLoading) return; // Don't refresh if already loading
+
+    debugPrint('🎵 SongProvider refreshing from database change');
+
+    try {
+      _isUpdatingFromDatabase = true;
+
+      // Preserve current list type and refresh accordingly
+      switch (_currentListType) {
+        case SongListType.all:
+          await _refreshSongsList();
+          break;
+        case SongListType.deleted:
+          await _refreshDeletedSongsList();
+          break;
+        case SongListType.filtered:
+          await _refreshSongsList();
+          break;
+      }
+    } catch (e) {
+      debugPrint('🎵 Error refreshing from database change: $e');
+    } finally {
+      _isUpdatingFromDatabase = false;
+    }
+  }
+
+  /// Refresh songs list without changing loading state
+  Future<void> _refreshSongsList() async {
+    try {
+      final newSongs = await _repository.getAllSongs();
+      _songs = newSongs;
+      _applySearch(); // Reapply current search/filter
+      notifyListeners();
+    } catch (e) {
+      debugPrint('🎵 Error refreshing songs list: $e');
+    }
+  }
+
+  /// Refresh deleted songs list without changing loading state
+  Future<void> _refreshDeletedSongsList() async {
+    try {
+      final newDeletedSongs = await _repository.getDeletedSongs();
+      _deletedSongs = newDeletedSongs;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('🎵 Error refreshing deleted songs list: $e');
+    }
+  }
+
   /// Search songs by title or artist with debouncing
   /// If query is empty, shows all songs
   void searchSongs(String query) {
@@ -191,6 +274,7 @@ class SongProvider extends ChangeNotifier {
   /// Add a new song and refresh the list
   Future<String> addSong(Song song) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       final id = await _repository.insertSong(song);
       await loadSongs(); // Refresh the list
 
@@ -199,24 +283,30 @@ class SongProvider extends ChangeNotifier {
       _errorMessage = 'Failed to add song: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Update an existing song and refresh the list
   Future<void> updateSong(Song song) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.updateSong(song);
       await loadSongs(); // Refresh the list
     } catch (e) {
       _errorMessage = 'Failed to update song: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Delete a song and refresh the list
   Future<void> deleteSong(String id, {VoidCallback? onDeleted}) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.deleteSong(id);
       await loadSongs(); // Refresh the list
       onDeleted?.call(); // Notify that song was deleted
@@ -224,6 +314,8 @@ class SongProvider extends ChangeNotifier {
       _errorMessage = 'Failed to delete song: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
@@ -263,6 +355,7 @@ class SongProvider extends ChangeNotifier {
   /// Restore a deleted song
   Future<void> restoreSong(String id) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.restoreSong(id);
       await loadDeletedSongs(); // Refresh the deleted list
       await loadSongs(); // Refresh the main songs list so restored song appears
@@ -270,18 +363,23 @@ class SongProvider extends ChangeNotifier {
       _errorMessage = 'Failed to restore song: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Permanently delete a song
   Future<void> permanentlyDeleteSong(String id) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.permanentlyDeleteSong(id);
       await loadDeletedSongs(); // Refresh the deleted list
     } catch (e) {
       _errorMessage = 'Failed to permanently delete song: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
@@ -343,17 +441,21 @@ class SongProvider extends ChangeNotifier {
   /// Delete all selected songs
   Future<void> deleteSelectedSongs() async {
     final songsToDelete = selectedSongs;
-    for (final song in songsToDelete) {
-      try {
+    try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
+      for (final song in songsToDelete) {
         await _repository.deleteSong(song.id);
-      } catch (e) {
-        _errorMessage = 'Failed to delete song "${song.title}": $e';
-        notifyListeners();
-        rethrow;
       }
+      _selectedSongIds.clear();
+      await loadSongs();
+    } catch (e) {
+      _errorMessage =
+          'Failed to delete song "${songsToDelete.first.title}": $e';
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
-    _selectedSongIds.clear();
-    await loadSongs();
   }
 
   /// Get all unique tags from all songs plus default tags
@@ -391,25 +493,30 @@ class SongProvider extends ChangeNotifier {
   /// Add tags to all selected songs
   Future<void> addTagsToSelectedSongs(List<String> tags) async {
     final songsToUpdate = selectedSongs;
-    for (final song in songsToUpdate) {
-      try {
+    try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
+      for (final song in songsToUpdate) {
         final updatedTags = Set<String>.from(song.tags)..addAll(tags);
         final updatedSong = song.copyWith(
           tags: updatedTags.toList(),
         );
         await _repository.updateSong(updatedSong);
-      } catch (e) {
-        _errorMessage = 'Failed to update song "${song.title}": $e';
-        notifyListeners();
-        rethrow;
       }
+      await loadSongs();
+    } catch (e) {
+      _errorMessage =
+          'Failed to update song "${songsToUpdate.first.title}": $e';
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
-    await loadSongs();
   }
 
   /// Update tags for a specific song
   Future<void> updateSongTags(String songId, List<String> newTags) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       final song = _songs.firstWhere((s) => s.id == songId);
       final updatedSong = song.copyWith(tags: newTags);
       await _repository.updateSong(updatedSong);
@@ -418,41 +525,51 @@ class SongProvider extends ChangeNotifier {
       _errorMessage = 'Failed to update song tags: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Update/replace tags for all selected songs
   Future<void> updateTagsForSelectedSongs(List<String> newTags) async {
     final songsToUpdate = selectedSongs;
-    for (final song in songsToUpdate) {
-      try {
+    try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
+      for (final song in songsToUpdate) {
         final updatedSong = song.copyWith(tags: newTags);
         await _repository.updateSong(updatedSong);
-      } catch (e) {
-        _errorMessage = 'Failed to update song "${song.title}": $e';
-        notifyListeners();
-        rethrow;
       }
+      await loadSongs();
+    } catch (e) {
+      _errorMessage =
+          'Failed to update song "${songsToUpdate.first.title}": $e';
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
-    await loadSongs();
   }
 
   /// Remove tags from all selected songs
   Future<void> removeTagsFromSelectedSongs(List<String> tags) async {
     final songsToUpdate = selectedSongs;
-    for (final song in songsToUpdate) {
-      try {
+    try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
+      for (final song in songsToUpdate) {
         final updatedSong = song.copyWith(
           tags: song.tags.where((tag) => !tags.contains(tag)).toList(),
         );
         await _repository.updateSong(updatedSong);
-      } catch (e) {
-        _errorMessage = 'Failed to update song "${song.title}": $e';
-        notifyListeners();
-        rethrow;
       }
+      await loadSongs();
+    } catch (e) {
+      _errorMessage =
+          'Failed to update song "${songsToUpdate.first.title}": $e';
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
-    await loadSongs();
   }
 
   /// Save or update a MIDI mapping for a song
@@ -470,6 +587,7 @@ class SongProvider extends ChangeNotifier {
   @override
   void dispose() {
     _searchTimer?.cancel();
+    _dbChangeSubscription?.cancel();
     super.dispose();
   }
 }

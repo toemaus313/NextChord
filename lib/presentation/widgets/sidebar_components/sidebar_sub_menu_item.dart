@@ -6,6 +6,7 @@ class SidebarSubMenuItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final int? count;
+  final bool isPhoneMode;
 
   const SidebarSubMenuItem({
     Key? key,
@@ -13,13 +14,21 @@ class SidebarSubMenuItem extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.count,
+    this.isPhoneMode = false,
   }) : super(key: key);
+
+  /// Helper method for responsive text sizing (1.8x scaling on phones)
+  double _getResponsiveTextSize(double baseSize) {
+    return isPhoneMode ? baseSize * 1.8 : baseSize;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
     final verticalPadding = isIOS ? 12.0 : 8.0;
-    final fontSize = isIOS ? 13.0 : 12.0;
+    final baseFontSize = isIOS ? 13.0 : 12.0;
+    final responsiveFontSize = _getResponsiveTextSize(baseFontSize);
+    final responsiveCountSize = _getResponsiveTextSize(10.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -43,9 +52,11 @@ class SidebarSubMenuItem extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: fontSize,
+                  fontSize: responsiveFontSize,
                   fontWeight: FontWeight.w400,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
             if (count != null)
@@ -53,7 +64,7 @@ class SidebarSubMenuItem extends StatelessWidget {
                 count.toString(),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 10,
+                  fontSize: responsiveCountSize,
                   fontWeight: FontWeight.w400,
                 ),
               ),

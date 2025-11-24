@@ -468,6 +468,40 @@ class LibrarySyncService {
     }
   }
 
+  /// Check if remote metadata represents changes since last sync
+  Future<bool> hasRemoteChanges(DriveLibraryMetadata remoteMetadata) async {
+    try {
+      final syncState = await _database.getSyncState();
+
+      // If we have no sync state, any remote file is considered a change
+      if (syncState?.lastRemoteFileId == null) {
+        debugPrint('No previous sync state - remote file considered as change');
+        return true;
+      }
+
+      // Check if the remote file is different from what we synced last
+      final hasChanged = remoteMetadata.hasChanged(
+        DriveLibraryMetadata(
+          fileId: syncState!.lastRemoteFileId!,
+          modifiedTime: syncState.lastRemoteModifiedTime ?? '',
+          md5Checksum: syncState.lastRemoteMd5Checksum ?? '',
+          headRevisionId: syncState.lastRemoteHeadRevisionId ?? '',
+        ),
+      );
+
+      if (hasChanged) {
+        debugPrint('Remote file has changed - new MD5 or timestamp detected');
+      } else {
+        debugPrint('Remote file unchanged - same MD5 and timestamp');
+      }
+
+      return hasChanged;
+    } catch (e) {
+      debugPrint('Error checking remote changes: $e');
+      return true; // Assume changed on error to be safe
+    }
+  }
+
   /// Check if merged JSON differs from remote JSON (for conditional upload)
   bool hasMergedLibraryChanged(String mergedJson, String? remoteJson) {
     try {

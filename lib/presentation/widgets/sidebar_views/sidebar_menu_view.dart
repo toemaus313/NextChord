@@ -6,6 +6,7 @@ import '../sidebar_components/sidebar_menu_item.dart';
 import '../sidebar_components/sidebar_sub_menu_item.dart';
 import '../sidebar_components/sidebar_header.dart';
 import '../setlist_editor_dialog.dart';
+import '../../../domain/entities/setlist.dart';
 
 /// Menu view for the sidebar
 class SidebarMenuView extends StatefulWidget {
@@ -20,6 +21,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToMetronomeSettings;
   final VoidCallback onNavigateToGuitarTuner;
   final VoidCallback onNavigateToStorageSettings;
+  final bool isPhoneMode;
 
   const SidebarMenuView({
     Key? key,
@@ -34,6 +36,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToMetronomeSettings,
     required this.onNavigateToGuitarTuner,
     required this.onNavigateToStorageSettings,
+    this.isPhoneMode = false,
   }) : super(key: key);
 
   @override
@@ -41,11 +44,77 @@ class SidebarMenuView extends StatefulWidget {
 }
 
 class _SidebarMenuViewState extends State<SidebarMenuView> {
-  bool _isSongsExpanded = false;
-  bool _isSetlistsExpanded = false;
-  bool _isToolsExpanded = false;
-  bool _isSettingsExpanded = false;
+  // Accordion state - only one section can be expanded at a time
+  String? _expandedSection;
+
+  // Song counts state
+  int _totalSongsCount = 0;
+  int _artistsCount = 0;
+  int _tagsCount = 0;
   int _deletedSongsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSongCounts();
+  }
+
+  void _expandSection(String sectionName) {
+    setState(() {
+      if (_expandedSection == sectionName) {
+        _expandedSection =
+            null; // Collapse if clicking the already expanded section
+      } else {
+        _expandedSection =
+            sectionName; // Expand new section, auto-collapsing others
+      }
+    });
+  }
+
+  /// Check if a specific section is expanded
+  bool _isSectionExpanded(String sectionName) {
+    return _expandedSection == sectionName;
+  }
+
+  /// Load all song counts
+  Future<void> _loadSongCounts() async {
+    try {
+      final provider = context.read<SongProvider>();
+
+      // Load all songs to get counts
+      await provider.loadSongs();
+      final allSongs = provider.songs;
+
+      // Calculate counts
+      final totalSongsCount = allSongs.length;
+      final artistsCount = allSongs.map((song) => song.artist).toSet().length;
+      final tagsCount = allSongs
+          .where((song) => song.tags.isNotEmpty)
+          .expand((song) => song.tags)
+          .toSet()
+          .length;
+      final deletedSongsCount = await provider.getDeletedSongsCount();
+
+      if (mounted) {
+        setState(() {
+          _totalSongsCount = totalSongsCount;
+          _artistsCount = artistsCount;
+          _tagsCount = tagsCount;
+          _deletedSongsCount = deletedSongsCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading song counts: $e');
+      if (mounted) {
+        setState(() {
+          _totalSongsCount = 0;
+          _artistsCount = 0;
+          _tagsCount = 0;
+          _deletedSongsCount = 0;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,128 +147,74 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       title: 'Songs',
       isSelected: false,
       onTap: () async {
-        final wasExpanded = _isSongsExpanded;
-        setState(() {
-          _isSongsExpanded = !_isSongsExpanded;
-        });
-        // Fetch deleted songs count when expanding
-        if (!wasExpanded && _isSongsExpanded) {
-          try {
-            final provider = context.read<SongProvider>();
-            final deletedSongs = await provider.getDeletedSongsCount();
-            if (mounted) {
-              setState(() {
-                _deletedSongsCount = deletedSongs;
-              });
-            }
-          } catch (e) {
-            if (mounted) {
-              setState(() {
-                _deletedSongsCount = 0;
-              });
-            }
-          }
+        final wasExpanded = _isSectionExpanded('songs');
+        _expandSection('songs');
+        // Load song counts when expanding
+        if (!wasExpanded && _isSectionExpanded('songs')) {
+          await _loadSongCounts();
         }
       },
-      isExpanded: _isSongsExpanded,
-      children: _isSongsExpanded
+      isExpanded: _isSectionExpanded('songs'),
+      isPhoneMode: widget.isPhoneMode,
+      children: _isSectionExpanded('songs')
           ? [
-              Consumer<SongProvider>(
-                builder: (context, provider, child) {
-                  final songsCount = provider.songs.length;
-                  final artists = <String>{};
-                  for (final song in provider.songs) {
-                    if (song.artist.isNotEmpty) {
-                      artists.add(song.artist);
-                    }
-                  }
-                  final artistsCount = artists.length;
-                  final tags = <String>{};
-                  for (final song in provider.songs) {
-                    tags.addAll(song.tags);
-                  }
-                  final tagsCount = tags.length;
-
-                  return Column(
-                    children: [
-                      SidebarSubMenuItem(
-                        title: 'All Songs',
-                        isSelected: false,
-                        count: songsCount,
-                        onTap: () {
-                          context.read<SongProvider>().resetSelectionMode();
-                          setState(() {
-                            _isSongsExpanded = false;
-                          });
-                          widget.onNavigateToAllSongs();
-                        },
-                      ),
-                      SidebarSubMenuItem(
-                        title: 'Artists',
-                        isSelected: false,
-                        count: artistsCount,
-                        onTap: () {
-                          context.read<SongProvider>().resetSelectionMode();
-                          setState(() {
-                            _isSongsExpanded = false;
-                          });
-                          widget.onNavigateToArtistsList();
-                        },
-                      ),
-                      SidebarSubMenuItem(
-                        title: 'Tags',
-                        isSelected: false,
-                        count: tagsCount,
-                        onTap: () {
-                          context.read<SongProvider>().resetSelectionMode();
-                          setState(() {
-                            _isSongsExpanded = false;
-                          });
-                          widget.onNavigateToTagsList();
-                        },
-                      ),
-                    ],
-                  );
-                },
+              SidebarSubMenuItem(
+                title: 'All Songs',
+                isSelected: false,
+                onTap: widget.onNavigateToAllSongs,
+                count: _totalSongsCount,
+                isPhoneMode: widget.isPhoneMode,
               ),
               SidebarSubMenuItem(
-                title: 'Deleted Songs',
+                title: 'Artists',
                 isSelected: false,
-                count: _deletedSongsCount,
-                onTap: () async {
-                  context.read<SongProvider>().resetSelectionMode();
-                  setState(() {
-                    _isSongsExpanded = false;
-                  });
-                  await context.read<SongProvider>().loadDeletedSongs();
-                  widget.onNavigateToDeletedSongs();
-                },
+                onTap: widget.onNavigateToArtistsList,
+                count: _artistsCount,
+                isPhoneMode: widget.isPhoneMode,
               ),
+              SidebarSubMenuItem(
+                title: 'Tags',
+                isSelected: false,
+                onTap: widget.onNavigateToTagsList,
+                count: _tagsCount,
+                isPhoneMode: widget.isPhoneMode,
+              ),
+              if (_deletedSongsCount > 0)
+                SidebarSubMenuItem(
+                  title: 'Deleted',
+                  isSelected: false,
+                  onTap: widget.onNavigateToDeletedSongs,
+                  count: _deletedSongsCount,
+                  isPhoneMode: widget.isPhoneMode,
+                ),
             ]
           : null,
     );
   }
 
   Widget _buildSetlistsSection(BuildContext context) {
+    debugPrint('Building setlists section...');
     return SidebarMenuItem(
       icon: Icons.playlist_play,
       title: 'Setlists',
       isSelected: false,
       onTap: () async {
-        final wasExpanded = _isSetlistsExpanded;
-        setState(() {
-          _isSetlistsExpanded = !_isSetlistsExpanded;
-        });
-        if (!wasExpanded && _isSetlistsExpanded) {
+        debugPrint('Setlists section tapped');
+        final wasExpanded = _isSectionExpanded('setlists');
+        _expandSection('setlists');
+        if (!wasExpanded && _isSectionExpanded('setlists')) {
+          debugPrint('Loading setlists...');
           try {
             await context.read<SetlistProvider>().loadSetlists();
+            debugPrint('Setlists loaded successfully');
           } catch (e) {
-            // Error handled by provider
+            debugPrint('Error loading setlists: $e');
           }
         }
       },
-      isExpanded: _isSetlistsExpanded,
-      children: _isSetlistsExpanded
+      isExpanded: _isSectionExpanded('setlists'),
+      isPhoneMode: widget.isPhoneMode,
+      children: _isSectionExpanded('setlists')
           ? [
               Consumer<SetlistProvider>(
                 builder: (context, provider, child) {
@@ -261,6 +276,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
                           await context.read<SetlistProvider>().loadSetlists();
                         }
                       },
+                      isPhoneMode: widget.isPhoneMode,
                     ),
                   );
 
@@ -278,17 +294,17 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       title: 'Tools',
       isSelected: false,
       onTap: () {
-        setState(() {
-          _isToolsExpanded = !_isToolsExpanded;
-        });
+        _expandSection('tools');
       },
-      isExpanded: _isToolsExpanded,
-      children: _isToolsExpanded
+      isExpanded: _isSectionExpanded('tools'),
+      isPhoneMode: widget.isPhoneMode,
+      children: _isSectionExpanded('tools')
           ? [
               SidebarSubMenuItem(
                 title: 'Guitar Tuner',
                 isSelected: false,
                 onTap: widget.onNavigateToGuitarTuner,
+                isPhoneMode: widget.isPhoneMode,
               ),
             ]
           : null,
@@ -301,32 +317,35 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       title: 'Settings',
       isSelected: false,
       onTap: () {
-        setState(() {
-          _isSettingsExpanded = !_isSettingsExpanded;
-        });
+        _expandSection('settings');
       },
-      isExpanded: _isSettingsExpanded,
-      children: _isSettingsExpanded
+      isExpanded: _isSectionExpanded('settings'),
+      isPhoneMode: widget.isPhoneMode,
+      children: _isSectionExpanded('settings')
           ? [
               SidebarSubMenuItem(
                 title: 'MIDI Settings',
                 isSelected: false,
                 onTap: widget.onNavigateToMidiSettings,
+                isPhoneMode: widget.isPhoneMode,
               ),
               SidebarSubMenuItem(
                 title: 'MIDI Profiles',
                 isSelected: false,
                 onTap: widget.onNavigateToMidiProfiles,
+                isPhoneMode: widget.isPhoneMode,
               ),
               SidebarSubMenuItem(
                 title: 'Metronome',
                 isSelected: false,
                 onTap: widget.onNavigateToMetronomeSettings,
+                isPhoneMode: widget.isPhoneMode,
               ),
               SidebarSubMenuItem(
                 title: 'Storage',
                 isSelected: false,
                 onTap: widget.onNavigateToStorageSettings,
+                isPhoneMode: widget.isPhoneMode,
               ),
             ]
           : null,
@@ -334,6 +353,18 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   }
 
   Widget _buildSetlistMenuItem(BuildContext context, dynamic setlist) {
+    // Helper method for responsive text sizing (1.8x scaling on phones)
+    double _getResponsiveTextSize(double baseSize) {
+      return widget.isPhoneMode ? baseSize * 1.8 : baseSize;
+    }
+
+    // Calculate song count by filtering for song items (not dividers)
+    final songCount = setlist.items?.whereType<SetlistSongItem>().length ?? 0;
+
+    // Debug logging to verify values
+    debugPrint(
+        'Setlist: ${setlist.name}, items: ${setlist.items?.length ?? 0}, songCount: $songCount, isPhoneMode: ${widget.isPhoneMode}');
+
     return GestureDetector(
       onTap: () {
         // Need to navigate with the specific setlist ID
@@ -353,18 +384,22 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
             Expanded(
               child: Text(
                 setlist.name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: _getResponsiveTextSize(12.0),
                   fontWeight: FontWeight.w400,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
+            const SizedBox(width: 8),
+            // Always show count for debugging (remove condition)
             Text(
-              '${setlist.items.length} songs',
+              '$songCount',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 10,
+                fontSize: _getResponsiveTextSize(10.0),
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -462,9 +497,6 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   }
 
   void _navigateToSpecificSetlist(String setlistId) {
-    setState(() {
-      _isSetlistsExpanded = false;
-    });
     widget.onNavigateToSetlistViewWithId(setlistId);
   }
 }

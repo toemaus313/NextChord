@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:math';
 import '../app_database.dart';
 
@@ -14,64 +15,144 @@ class DatabaseMigrations {
           if (from <= 1 && to >= 2) {
             // Add isDeleted column to songs table
             final db = m.database as AppDatabase;
-            await m.addColumn(db.songs, db.songs.isDeleted);
+            try {
+              await m.addColumn(db.songs, db.songs.isDeleted);
+            } catch (e) {
+              debugPrint(
+                  'Migration 1->2: songs.isDeleted column already exists: $e');
+            }
           }
           if (from <= 2 && to >= 3) {
             // Add imagePath column to setlists table
             final db = m.database as AppDatabase;
-            await m.addColumn(db.setlists, db.setlists.imagePath);
+            try {
+              await m.addColumn(db.setlists, db.setlists.imagePath);
+            } catch (e) {
+              debugPrint(
+                  'Migration 2->3: setlists.imagePath column already exists: $e');
+            }
           }
           if (from <= 3 && to >= 4) {
             // Add setlistSpecificEditsEnabled column with default true
             final db = m.database as AppDatabase;
-            await m.addColumn(
-                db.setlists, db.setlists.setlistSpecificEditsEnabled);
+            try {
+              await m.addColumn(
+                  db.setlists, db.setlists.setlistSpecificEditsEnabled);
+            } catch (e) {
+              debugPrint(
+                  'Migration 3->4: setlists.setlistSpecificEditsEnabled column already exists: $e');
+            }
           }
           if (from <= 4 && to >= 5) {
             // Create midi_mappings table
             final db = m.database as AppDatabase;
-            await m.createTable(db.midiMappings);
+            try {
+              await m.createTable(db.midiMappings);
+            } catch (e) {
+              debugPrint(
+                  'Migration 4->5: midi_mappings table already exists: $e');
+            }
           }
           if (from <= 5 && to >= 6) {
             // Create midi_profiles table and add profile_id to songs
             final db = m.database as AppDatabase;
-            await m.createTable(db.midiProfiles);
-            await m.addColumn(db.songs, db.songs.profileId);
+            try {
+              await m.createTable(db.midiProfiles);
+            } catch (e) {
+              debugPrint(
+                  'Migration 5->6: midi_profiles table already exists: $e');
+            }
+            try {
+              await m.addColumn(db.songs, db.songs.profileId);
+            } catch (e) {
+              debugPrint(
+                  'Migration 5->6: songs.profileId column already exists: $e');
+            }
           }
           if (from <= 6 && to >= 7) {
             // Add isDeleted column to setlists table
             final db = m.database as AppDatabase;
-            await m.addColumn(db.setlists, db.setlists.isDeleted);
+            try {
+              await m.addColumn(db.setlists, db.setlists.isDeleted);
+            } catch (e) {
+              debugPrint(
+                  'Migration 6->7: setlists.isDeleted column already exists: $e');
+            }
           }
           if (from <= 7 && to >= 8) {
             // Add isDeleted columns to midi_mappings and midi_profiles tables
             final db = m.database as AppDatabase;
-            await m.addColumn(db.midiMappings, db.midiMappings.isDeleted);
-            await m.addColumn(db.midiProfiles, db.midiProfiles.isDeleted);
-            await m.createTable(db.syncState);
+            try {
+              await m.addColumn(db.midiMappings, db.midiMappings.isDeleted);
+            } catch (e) {
+              debugPrint(
+                  'Migration 7->8: midi_mappings.isDeleted column already exists: $e');
+            }
+            try {
+              await m.addColumn(db.midiProfiles, db.midiProfiles.isDeleted);
+            } catch (e) {
+              debugPrint(
+                  'Migration 7->8: midi_profiles.isDeleted column already exists: $e');
+            }
+            try {
+              await m.createTable(db.syncState);
+            } catch (e) {
+              debugPrint('Migration 7->8: sync_state table already exists: $e');
+            }
 
             // Initialize sync state with generated device ID
-            final deviceId = DatabaseMigrations._generateDeviceId();
-            await db.into(db.syncState).insert(
-                  SyncStateCompanion(
-                    id: const Value(1),
-                    deviceId: Value(deviceId),
-                    lastRemoteVersion: const Value(0),
-                    lastSyncAt: const Value(null),
-                  ),
-                );
+            try {
+              final deviceId = DatabaseMigrations._generateDeviceId();
+              await db.into(db.syncState).insert(
+                    SyncStateCompanion(
+                      id: const Value(1),
+                      deviceId: Value(deviceId),
+                      lastRemoteVersion: const Value(0),
+                      lastSyncAt: const Value(null),
+                    ),
+                  );
+            } catch (e) {
+              debugPrint(
+                  'Migration 7->8: sync state initialization already done: $e');
+            }
           }
           if (from <= 8 && to >= 9) {
             // Add Google Drive metadata columns to sync_state table
             final db = m.database as AppDatabase;
-            await m.addColumn(db.syncState, db.syncState.lastRemoteFileId);
-            await m.addColumn(
-                db.syncState, db.syncState.lastRemoteModifiedTime);
-            await m.addColumn(db.syncState, db.syncState.lastRemoteMd5Checksum);
-            await m.addColumn(
-                db.syncState, db.syncState.lastRemoteHeadRevisionId);
-            await m.addColumn(
-                db.syncState, db.syncState.lastUploadedLibraryHash);
+            try {
+              await m.addColumn(db.syncState, db.syncState.lastRemoteFileId);
+            } catch (e) {
+              debugPrint(
+                  'Migration 8->9: sync_state.lastRemoteFileId column already exists: $e');
+            }
+            try {
+              await m.addColumn(
+                  db.syncState, db.syncState.lastRemoteModifiedTime);
+            } catch (e) {
+              debugPrint(
+                  'Migration 8->9: sync_state.lastRemoteModifiedTime column already exists: $e');
+            }
+            try {
+              await m.addColumn(
+                  db.syncState, db.syncState.lastRemoteMd5Checksum);
+            } catch (e) {
+              debugPrint(
+                  'Migration 8->9: sync_state.lastRemoteMd5Checksum column already exists: $e');
+            }
+            try {
+              await m.addColumn(
+                  db.syncState, db.syncState.lastRemoteHeadRevisionId);
+            } catch (e) {
+              debugPrint(
+                  'Migration 8->9: sync_state.lastRemoteHeadRevisionId column already exists: $e');
+            }
+            try {
+              await m.addColumn(
+                  db.syncState, db.syncState.lastUploadedLibraryHash);
+            } catch (e) {
+              debugPrint(
+                  'Migration 8->9: sync_state.lastUploadedLibraryHash column already exists: $e');
+            }
           }
         },
       );

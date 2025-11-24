@@ -1,13 +1,21 @@
 import 'package:flutter/foundation.dart';
-import '../../domain/entities/song.dart';
+import 'package:flutter/widgets.dart';
+import 'dart:async';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/setlist_repository.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Provider for managing setlist state and operations
+/// Now includes reactive database change monitoring for automatic UI updates
 class SetlistProvider extends ChangeNotifier {
   final SetlistRepository _repository;
+  final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
-  SetlistProvider(this._repository);
+  SetlistProvider(this._repository) {
+    // Listen to database change events for automatic updates
+    _dbChangeSubscription =
+        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+  }
 
   // State
   List<Setlist> _setlists = [];
@@ -15,6 +23,10 @@ class SetlistProvider extends ChangeNotifier {
   String? _errorMessage;
   Setlist? _activeSetlist;
   int _currentSongIndex = -1;
+
+  // Database change monitoring
+  StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
+  bool _isUpdatingFromDatabase = false;
 
   // Getters
   List<Setlist> get setlists => _setlists;
@@ -45,6 +57,78 @@ class SetlistProvider extends ChangeNotifier {
     }
   }
 
+  /// Handle database change events for automatic updates
+  void _handleDatabaseChange(DbChangeEvent event) {
+    if (_isUpdatingFromDatabase) {
+      // Skip events that we triggered ourselves
+      return;
+    }
+
+    debugPrint('📋 SetlistProvider received DB change: ${event.table}');
+
+    // Only refresh if we're currently showing setlists or active setlist is affected
+    if (event.table == 'setlists' || event.table == 'setlists_count') {
+      // Defer refresh to avoid calling notifyListeners() during build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshFromDatabaseChange();
+      });
+    }
+  }
+
+  /// Refresh data from database change event without disrupting UI state
+  Future<void> _refreshFromDatabaseChange() async {
+    if (_isLoading) return; // Don't refresh if already loading
+
+    debugPrint('📋 SetlistProvider refreshing from database change');
+
+    try {
+      _isUpdatingFromDatabase = true;
+      await _refreshSetlistsList();
+
+      // Also refresh active setlist if one is set
+      if (_activeSetlist != null) {
+        await _refreshActiveSetlist();
+      }
+    } catch (e) {
+      debugPrint('📋 Error refreshing from database change: $e');
+    } finally {
+      _isUpdatingFromDatabase = false;
+    }
+  }
+
+  /// Refresh setlists list without changing loading state
+  Future<void> _refreshSetlistsList() async {
+    try {
+      final newSetlists = await _repository.getAllSetlists();
+      _setlists = newSetlists;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('📋 Error refreshing setlists list: $e');
+    }
+  }
+
+  /// Refresh active setlist if it exists
+  Future<void> _refreshActiveSetlist() async {
+    if (_activeSetlist == null) return;
+
+    try {
+      final updatedSetlist =
+          await _repository.getSetlistById(_activeSetlist!.id);
+      if (updatedSetlist != null) {
+        _activeSetlist = updatedSetlist;
+        debugPrint('📋 Active setlist refreshed: ${updatedSetlist.name}');
+      } else {
+        // Setlist was deleted, clear active state
+        debugPrint('📋 Active setlist was deleted, clearing state');
+        _activeSetlist = null;
+        _currentSongIndex = -1;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('📋 Error refreshing active setlist: $e');
+    }
+  }
+
   /// Get a single setlist by ID
   Future<Setlist?> getSetlistById(String id) async {
     try {
@@ -59,6 +143,7 @@ class SetlistProvider extends ChangeNotifier {
   /// Add a new setlist
   Future<String> addSetlist(Setlist setlist) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       final id = await _repository.insertSetlist(setlist);
       await loadSetlists(); // Refresh the list
 
@@ -67,30 +152,38 @@ class SetlistProvider extends ChangeNotifier {
       _errorMessage = 'Failed to add setlist: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Update an existing setlist
   Future<void> updateSetlist(Setlist setlist) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.updateSetlist(setlist);
       await loadSetlists(); // Refresh the list
     } catch (e) {
       _errorMessage = 'Failed to update setlist: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
   /// Delete a setlist
   Future<void> deleteSetlist(String id) async {
     try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
       await _repository.deleteSetlist(id);
       await loadSetlists(); // Refresh the list
     } catch (e) {
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _isUpdatingFromDatabase = false;
     }
   }
 
@@ -209,6 +302,7 @@ class SetlistProvider extends ChangeNotifier {
           _activeSetlist!.copyWith(items: updatedActiveItems);
 
       try {
+        _isUpdatingFromDatabase = true; // Prevent feedback loop
         await _repository.updateSetlist(updatedActiveSetlist);
         _activeSetlist = updatedActiveSetlist;
 
@@ -237,6 +331,8 @@ class SetlistProvider extends ChangeNotifier {
       } catch (e) {
         _errorMessage = 'Failed to update song adjustments: $e';
         notifyListeners();
+      } finally {
+        _isUpdatingFromDatabase = false;
       }
     }
   }
@@ -246,5 +342,12 @@ class SetlistProvider extends ChangeNotifier {
     if (_activeSetlist == null) return [];
 
     return _activeSetlist!.items.whereType<SetlistSongItem>().toList();
+  }
+
+  /// Dispose of the provider and clean up resources
+  @override
+  void dispose() {
+    _dbChangeSubscription?.cancel();
+    super.dispose();
   }
 }

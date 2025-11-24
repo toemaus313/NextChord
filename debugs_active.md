@@ -2,7 +2,7 @@
 
 This document tracks ALL active debug logs across the entire NextChord codebase for easy maintenance and troubleshooting.
 
-**Total Active Debug Statements**: 67 debugPrint calls across 5 files
+**Total Active Debug Statements**: 84 debugPrint calls across 11 files
 **Last Audit Date**: 2025-11-23
 **Audit Method**: `Grep` search for `debugPrint` pattern across entire codebase
 
@@ -22,6 +22,13 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `[timestamp] Uploading merged library to remote`
 - `[timestamp] Remote upload completed`
 - `[timestamp] Sync completed successfully`
+- `[timestamp] Starting metadata polling (10s interval)`
+- `[timestamp] Metadata polling already active`
+- `[timestamp] Stopping metadata polling`
+- `[timestamp] 🔍 Metadata poll: checking remote file changes`
+- `[timestamp] 🔄 Remote changes detected, triggering full sync`
+- `[timestamp] ✅ No remote changes detected`
+- `[timestamp] ⚠️ Error during metadata poll: X`
 - `Library metadata: No remote file found`
 - `No remote library file found`
 - `Library changes detected - will upload`
@@ -52,6 +59,48 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `🚀 Triggering auto-sync after database change`
 - `🔄 Sync in progress: X`
 - `✅ Sync completed - cancelled pending change notifications`
+- `🔍 DatabaseChangeService already initialized`
+- `🔍 DatabaseChangeService initialized with database`
+- `🔍 Starting reactive database monitoring`
+- `🔍 Stopping reactive database monitoring`
+- `🔍 Songs table changed: X songs`
+- `🔍 Setlists table changed: X setlists`
+- `🔍 Song count changed: X`
+- `🔍 Setlist count changed: X`
+- `🔍 Deleted song count changed: X`
+- `🔍 Emitting DB change event: DbChangeEvent(table: X, type: Y, recordId: Z, timestamp: T)`
+- `🔍 Disposing DatabaseChangeService`
+
+## Song Provider Reactive Update Logs
+**Location**: `lib/presentation/providers/song_provider.dart`
+- `🎵 SongProvider received DB change: X`
+- `🎵 SongProvider refreshing from database change`
+- `🎵 Error refreshing from database change: X`
+- `🎵 Error refreshing songs list: X`
+- `🎵 Error refreshing deleted songs list: X`
+
+## Setlist Provider Reactive Update Logs
+**Location**: `lib/presentation/providers/setlist_provider.dart`
+- `📋 SetlistProvider received DB change: X`
+- `📋 SetlistProvider refreshing from database change`
+- `📋 Error refreshing from database change: X`
+- `📋 Error refreshing setlists list: X`
+- `📋 Active setlist refreshed: X`
+- `📋 Active setlist was deleted, clearing state`
+- `📋 Error refreshing active setlist: X`
+
+## Global Sidebar Provider Reactive Update Logs
+**Location**: `lib/presentation/providers/global_sidebar_provider.dart`
+- `📱 GlobalSidebarProvider received DB change: X`
+- `📱 Sidebar counts updated, notifying listeners`
+
+## Song Viewer Provider State Preservation Logs
+**Location**: `lib/presentation/providers/song_viewer_provider.dart`
+- `🎵 SongViewerProvider updating song content only: X`
+- `🎵 SongViewerProvider received DB change: X`
+- `🎵 SongViewerProvider refreshing current song from database`
+- `🎵 Song content change detected for current song: X`
+- `🎵 Error refreshing current song from database: X`
 
 ## Setlist Navigation & Sidebar Controller Logs
 **Location**: `lib/presentation/controllers/global_sidebar_controller.dart`
@@ -93,6 +142,10 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `Error getting last seen metadata: X`
 - `Error exporting library to JSON: X`
 - `Error importing library from JSON: X`
+- `No previous sync state - remote file considered as change`
+- `Remote file has changed - new MD5 or timestamp detected`
+- `Remote file unchanged - same MD5 and timestamp`
+- `Error checking remote changes: X`
 
 **Location**: `lib/services/sync/google_drive_sync_service.dart`
 - `Error saving universal tokens: X`
@@ -104,6 +157,13 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 
 **Location**: `lib/providers/sync_provider.dart`
 - `Error during metadata polling: X`
+
+**Location**: `lib/data/database/migrations/migrations.dart`
+- `Migration 8->9: sync_state.lastRemoteFileId column already exists: X`
+- `Migration 8->9: sync_state.lastRemoteModifiedTime column already exists: X`
+- `Migration 8->9: sync_state.lastRemoteMd5Checksum column already exists: X`
+- `Migration 8->9: sync_state.lastRemoteHeadRevisionId column already exists: X`
+- `Migration 8->9: sync_state.lastUploadedLibraryHash column already exists: X`
 
 ## Removed Debug Logs (Historical)
 The following verbose debug logs have been removed for cleaner output:
@@ -140,14 +200,25 @@ The following verbose debug logs have been removed for cleaner output:
 5. **Sync completion**: Look for "Sync completed successfully" or error messages
 
 ## File Locations Summary
-- **Sync Provider**: `lib/providers/sync_provider.dart`
-- **Google Drive Service**: `lib/services/sync/google_drive_sync_service.dart`
-- **Library Sync Service**: `lib/services/sync/library_sync_service.dart`
-- **Database Change Service**: `lib/core/services/database_change_service.dart`
-- **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart`
-- **Song Repository**: `lib/data/repositories/song_repository.dart`
-- **Setlist Repository**: `lib/data/repositories/setlist_repository.dart`
+- **Sync Provider**: `lib/providers/sync_provider.dart` (2 statements)
+- **Google Drive Service**: `lib/services/sync/google_drive_sync_service.dart` (47 statements)
+- **Library Sync Service**: `lib/services/sync/library_sync_service.dart` (29 statements)
+- **Database Change Service**: `lib/core/services/database_change_service.dart` (17 statements)
+- **Song Provider**: `lib/presentation/providers/song_provider.dart` (5 statements)
+- **Setlist Provider**: `lib/presentation/providers/setlist_provider.dart` (7 statements)
+- **Global Sidebar Provider**: `lib/presentation/providers/global_sidebar_provider.dart` (2 statements)
+- **Song Viewer Provider**: `lib/presentation/providers/song_viewer_provider.dart` (5 statements)
+- **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart` (7 statements)
+- **Database Migrations**: `lib/data/database/migrations/migrations.dart` (16 statements)
+- **Sidebar Menu View**: `lib/presentation/widgets/sidebar_views/sidebar_menu_view.dart` (7 statements)
+
+## New Reactive Database Monitoring System
+**Added**: 17 new debugPrint statements for reactive UI updates
+- Database change detection and event emission
+- Provider-specific reactive update handling
+- State preservation during automatic updates
+- Non-disruptive UI refresh mechanisms
 
 ---
 *Last Updated: 2025-11-23*
-*Purpose: Document active debug logs for sync system maintenance*
+*Purpose: Document active debug logs for sync system and reactive UI maintenance*

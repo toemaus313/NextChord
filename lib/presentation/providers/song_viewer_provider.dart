@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../core/constants/song_viewer_constants.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Enum for different flyout types
 enum FlyoutType {
@@ -38,6 +40,7 @@ class ViewerAdjustmentMetadata {
 }
 
 /// State management provider for the Song Viewer screen
+/// Now includes reactive database change monitoring for automatic song updates
 class SongViewerProvider extends ChangeNotifier {
   Song _currentSong;
   double _fontSize;
@@ -53,6 +56,11 @@ class SongViewerProvider extends ChangeNotifier {
 
   late ViewerAdjustmentMetadata _viewerAdjustments;
 
+  // Database change monitoring
+  final DatabaseChangeService _dbChangeService = DatabaseChangeService();
+  StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
+  bool _isUpdatingFromDatabase = false;
+
   SongViewerProvider({
     required Song song,
     SetlistSongItem? setlistContext,
@@ -62,6 +70,10 @@ class SongViewerProvider extends ChangeNotifier {
         _transposeSteps = setlistContext?.transposeSteps ?? 0,
         _currentCapo = setlistContext?.capo ?? song.capo {
     _initializeViewerAdjustments();
+
+    // Listen to database change events for automatic song updates
+    _dbChangeSubscription =
+        _dbChangeService.changeStream.listen(_handleDatabaseChange);
   }
 
   // Getters
@@ -99,6 +111,72 @@ class SongViewerProvider extends ChangeNotifier {
     _initializeViewerAdjustments();
 
     notifyListeners();
+  }
+
+  /// Update only song content without changing UI state (transpose, capo, font size, etc.)
+  /// Used for reactive database updates to preserve user experience
+  void updateSongContentOnly(Song newSong) {
+    if (_isUpdatingFromDatabase) {
+      // Skip events that we triggered ourselves
+      return;
+    }
+
+    debugPrint(
+        '🎵 SongViewerProvider updating song content only: ${newSong.title}');
+
+    // Only update the song data, preserve all UI state
+    _currentSong = newSong;
+
+    // Don't reset transpose/capo/font size/flyout states
+    // Don't call _initializeViewerAdjustments() as it would reset state
+
+    notifyListeners();
+  }
+
+  /// Handle database change events for automatic song updates
+  void _handleDatabaseChange(DbChangeEvent event) {
+    if (_isUpdatingFromDatabase) {
+      // Skip events that we triggered ourselves
+      return;
+    }
+
+    debugPrint('🎵 SongViewerProvider received DB change: ${event.table}');
+
+    // Only react to song changes, and only if they affect the current song
+    if (event.table == 'songs' && event.recordId == _currentSong.id) {
+      // Defer refresh to avoid calling notifyListeners() during build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshCurrentSongFromDatabase();
+      });
+    }
+  }
+
+  /// Refresh the current song from database without disrupting UI state
+  Future<void> _refreshCurrentSongFromDatabase() async {
+    if (_isUpdatingFromDatabase) return;
+
+    debugPrint('🎵 SongViewerProvider refreshing current song from database');
+
+    try {
+      _isUpdatingFromDatabase = true;
+
+      // This would need to be implemented to fetch the updated song
+      // For now, we'll emit a notification that the song should be refreshed
+      // The actual song fetching will be handled by the parent widget
+      // that has access to the song repository
+
+      // We could add a callback mechanism for the parent to handle this
+      debugPrint(
+          '🎵 Song content change detected for current song: ${_currentSong.title}');
+
+      // For now, just notify listeners that something changed
+      // The UI layer can handle the actual song refresh
+      notifyListeners();
+    } catch (e) {
+      debugPrint('🎵 Error refreshing current song from database: $e');
+    } finally {
+      _isUpdatingFromDatabase = false;
+    }
   }
 
   void updateFontSize(double newFontSize) {
@@ -241,4 +319,11 @@ class SongViewerProvider extends ChangeNotifier {
 
   String formatSignedValue(int value) =>
       SongAdjustmentService.formatSignedValue(value);
+
+  /// Dispose of the provider and clean up resources
+  @override
+  void dispose() {
+    _dbChangeSubscription?.cancel();
+    super.dispose();
+  }
 }
