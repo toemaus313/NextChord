@@ -36,6 +36,7 @@ class GoogleDriveSyncService {
   static GoogleSignIn? _googleSignIn;
   static String? _universalAccessToken;
   static String? _universalRefreshToken;
+  static DateTime? _tokenExpiryTime;
   static const String _authRedirectUri =
       'http://localhost:8000'; // Fixed port for Google OAuth compliance
   static HttpServer? _authServer;
@@ -43,6 +44,7 @@ class GoogleDriveSyncService {
   // SharedPreferences keys for universal token persistence (works on all platforms)
   static const String _accessTokenKey = 'universal_access_token_v2';
   static const String _refreshTokenKey = 'universal_refresh_token_v2';
+  static const String _tokenExpiryKey = 'universal_token_expiry_v2';
 
   // Backup configuration
   static const String _backupFolderName = 'NextChord';
@@ -82,15 +84,25 @@ class GoogleDriveSyncService {
 
   /// Save universal tokens to SharedPreferences for persistence
   static Future<void> _saveUniversalTokens(
-      String accessToken, String? refreshToken) async {
+      String accessToken, String? refreshToken,
+      {int? expiresIn}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_accessTokenKey, accessToken);
       if (refreshToken != null) {
         await prefs.setString(_refreshTokenKey, refreshToken);
       }
+
+      // Calculate and save token expiry time (default 1 hour if not provided)
+      final expirySeconds = expiresIn ?? 3600;
+      _tokenExpiryTime = DateTime.now().add(Duration(seconds: expirySeconds));
+      await prefs.setInt(
+          _tokenExpiryKey, _tokenExpiryTime!.millisecondsSinceEpoch);
+
       _universalAccessToken = accessToken;
       _universalRefreshToken = refreshToken;
+
+      debugPrint('Tokens saved, expiry: $_tokenExpiryTime');
     } catch (e) {
       debugPrint('Error saving universal tokens: $e');
     }
@@ -102,6 +114,11 @@ class GoogleDriveSyncService {
       final prefs = await SharedPreferences.getInstance();
       _universalAccessToken = prefs.getString(_accessTokenKey);
       _universalRefreshToken = prefs.getString(_refreshTokenKey);
+
+      final expiryMillis = prefs.getInt(_tokenExpiryKey);
+      if (expiryMillis != null) {
+        _tokenExpiryTime = DateTime.fromMillisecondsSinceEpoch(expiryMillis);
+      }
     } catch (e) {}
   }
 
@@ -111,20 +128,35 @@ class GoogleDriveSyncService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_accessTokenKey);
       await prefs.remove(_refreshTokenKey);
+      await prefs.remove(_tokenExpiryKey);
       _universalAccessToken = null;
       _universalRefreshToken = null;
+      _tokenExpiryTime = null;
     } catch (e) {
       debugPrint('Error clearing universal tokens: $e');
     }
+  }
+
+  /// Check if the access token is expired or about to expire (within 5 minutes)
+  static bool _isTokenExpired() {
+    if (_tokenExpiryTime == null) {
+      return true; // Assume expired if we don't have expiry info
+    }
+
+    // Consider token expired if it expires within 5 minutes
+    final bufferTime = DateTime.now().add(Duration(minutes: 5));
+    return _tokenExpiryTime!.isBefore(bufferTime);
   }
 
   /// Refresh universal access token using stored refresh token
   static Future<bool> _refreshUniversalToken() async {
     try {
       if (_universalRefreshToken == null) {
+        debugPrint('No refresh token available');
         return false;
       }
 
+      debugPrint('Refreshing access token...');
       final response = await http.post(
         Uri.https('oauth2.googleapis.com', 'token'),
         body: {
@@ -138,11 +170,14 @@ class GoogleDriveSyncService {
       if (response.statusCode == 200) {
         final tokenData = jsonDecode(response.body);
         _universalAccessToken = tokenData['access_token'];
+        final expiresIn = tokenData['expires_in'] as int?;
 
-        // Save the new access token (refresh token stays the same)
+        // Save the new access token with expiry time
         await _saveUniversalTokens(
-            _universalAccessToken!, _universalRefreshToken);
+            _universalAccessToken!, _universalRefreshToken,
+            expiresIn: expiresIn);
 
+        debugPrint('Token refresh successful');
         return true;
       } else {
         // Check if refresh token is expired/invalid
@@ -155,15 +190,19 @@ class GoogleDriveSyncService {
                       .toLowerCase()
                       .contains('expired') ==
                   true) {
+            debugPrint('Refresh token invalid or expired, clearing tokens');
             await _clearUniversalTokens();
             return false;
           }
         }
 
+        debugPrint(
+            'Token refresh failed: ${response.statusCode} - ${response.body}');
         // For other errors (network, server issues), don't clear tokens
         return false;
       }
     } catch (e) {
+      debugPrint('Token refresh error: $e');
       // Don't clear tokens on network errors - they might be temporary
       if (e.toString().toLowerCase().contains('connection') ||
           e.toString().toLowerCase().contains('network') ||
@@ -241,7 +280,8 @@ class GoogleDriveSyncService {
             '${drive.DriveApi.driveScope} ${drive.DriveApi.driveFileScope}',
         'response_type': 'code',
         'access_type': 'offline',
-        'prompt': 'consent',
+        'prompt':
+            'select_account', // Changed from 'consent' to avoid forcing re-authentication
       });
 
       // Launch browser for authentication
@@ -272,10 +312,12 @@ class GoogleDriveSyncService {
             final tokenData = jsonDecode(response.body);
             _universalAccessToken = tokenData['access_token'];
             _universalRefreshToken = tokenData['refresh_token'];
+            final expiresIn = tokenData['expires_in'] as int?;
 
-            // Save tokens to persistent storage
+            // Save tokens to persistent storage with expiry time
             await _saveUniversalTokens(
-                _universalAccessToken!, _universalRefreshToken);
+                _universalAccessToken!, _universalRefreshToken,
+                expiresIn: expiresIn);
 
             // Close server and send success response
             await _authServer!.close();
@@ -363,26 +405,26 @@ class GoogleDriveSyncService {
           throw Exception('User not authenticated');
         }
 
-        final httpClient = GoogleHttpClient();
-
-        // Try to authenticate with current access token
-        try {
-          await httpClient.authenticateWithAccessToken(_universalAccessToken!);
-        } catch (e) {
-          // If authentication fails, try to refresh the token
-          debugPrint(
-              _timestampedLog('Access token expired, attempting refresh'));
-          if (await _refreshUniversalToken()) {
-            if (_universalAccessToken == null) {
-              throw Exception('Token refresh failed - please sign in again');
-            }
-            await httpClient
-                .authenticateWithAccessToken(_universalAccessToken!);
-            debugPrint(_timestampedLog('Token refresh successful'));
-          } else {
+        // Proactively refresh token if it's expired or about to expire
+        if (_isTokenExpired()) {
+          debugPrint(_timestampedLog(
+              'Access token expired or expiring soon, refreshing'));
+          if (!await _refreshUniversalToken()) {
             throw Exception('Token refresh failed - please sign in again');
           }
         }
+
+        final httpClient = GoogleHttpClient(
+          onUnauthorized: () async {
+            // Handle 401 errors by refreshing the token
+            debugPrint(_timestampedLog('Received 401 error, refreshing token'));
+            if (await _refreshUniversalToken()) {
+              return _universalAccessToken;
+            }
+            return null;
+          },
+        );
+        await httpClient.authenticateWithAccessToken(_universalAccessToken!);
 
         return drive.DriveApi(httpClient);
       }
@@ -736,6 +778,9 @@ class GoogleDriveSyncService {
 class GoogleHttpClient extends http.BaseClient {
   http.Client _client = http.Client();
   String? _accessToken;
+  final Future<String?> Function()? onUnauthorized;
+
+  GoogleHttpClient({this.onUnauthorized});
 
   Future<void> authenticateWithAccessToken(String accessToken) async {
     _accessToken = accessToken;
@@ -746,7 +791,47 @@ class GoogleHttpClient extends http.BaseClient {
     if (_accessToken != null) {
       request.headers['Authorization'] = 'Bearer $_accessToken';
     }
-    return _client.send(request);
+
+    // Send the request
+    var response = await _client.send(request);
+
+    // If we get a 401 and have an onUnauthorized callback, try to refresh
+    if (response.statusCode == 401 && onUnauthorized != null) {
+      // Try to get a new token
+      final newToken = await onUnauthorized!();
+      if (newToken != null) {
+        // Update our token and retry the request
+        _accessToken = newToken;
+
+        // Clone the request with the new token
+        final newRequest = _cloneRequest(request);
+        newRequest.headers['Authorization'] = 'Bearer $newToken';
+        response = await _client.send(newRequest);
+      }
+    }
+
+    return response;
+  }
+
+  /// Clone a request for retry with new token
+  http.BaseRequest _cloneRequest(http.BaseRequest request) {
+    http.BaseRequest newRequest;
+
+    if (request is http.Request) {
+      newRequest = http.Request(request.method, request.url)
+        ..bodyBytes = request.bodyBytes;
+    } else if (request is http.MultipartRequest) {
+      newRequest = http.MultipartRequest(request.method, request.url)
+        ..fields.addAll(request.fields)
+        ..files.addAll(request.files);
+    } else if (request is http.StreamedRequest) {
+      throw Exception('Cannot clone StreamedRequest');
+    } else {
+      throw Exception('Unknown request type');
+    }
+
+    newRequest.headers.addAll(request.headers);
+    return newRequest;
   }
 
   @override

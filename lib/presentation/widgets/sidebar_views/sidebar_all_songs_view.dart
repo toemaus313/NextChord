@@ -68,10 +68,9 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
                 Expanded(
                   child: Text(
                     'All Songs',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontSize:
-                          DeviceBreakpoints.getResponsiveTextSize(context, 16),
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -85,9 +84,11 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
                     size: 24, // Made bigger from 20
                   ),
                   onPressed: () {
+                    debugPrint('AllSongsView: Back button pressed');
                     context.read<SongProvider>().resetSelectionMode();
                     _searchController.clear();
                     context.read<SongProvider>().searchSongs('');
+                    debugPrint('AllSongsView: Calling widget.onBack()');
                     widget.onBack();
                   },
                   tooltip: 'Back to menu',

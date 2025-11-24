@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
@@ -22,14 +23,15 @@ import 'presentation/widgets/app_wrapper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hide the status bar while the app is open to avoid overlaying UI.
-  if (defaultTargetPlatform == TargetPlatform.iOS) {
+  // Enable system status bar on mobile devices, hide on desktop/tablet
+  if (Platform.isIOS || Platform.isAndroid) {
+    // Mobile: Show status bar with clock and icons
     await SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
-      overlays: [],
+      overlays: SystemUiOverlay.values,
     );
-  } else if (defaultTargetPlatform == TargetPlatform.android) {
-    // Use immersive sticky mode for Android - allows swipe down to temporarily show status bar
+  } else {
+    // Desktop/Tablet: Hide status bar for fullscreen experience
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 

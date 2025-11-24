@@ -12,6 +12,20 @@
       "deviceId": "windows"
     },
     {
+      "name": "Flutter iPhone",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "257ED20B-7545-44DA-8703-0BB3EF9CDEED"
+    },    
+    {
+      "name": "Flutter macOS",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "macos"
+    },      
+    {
       "name": "Flutter Android",
       "request": "launch",
       "type": "dart",
@@ -26,6 +40,13 @@
         "Flutter Windows",
         "Flutter Android"
       ]
-    }
+    },
+    {
+      "name": "Flutter Macos+iPhone",
+      "configurations": [
+        "Flutter macOS",
+        "Flutter iPhone"
+      ]
+    }    
   ]
 }

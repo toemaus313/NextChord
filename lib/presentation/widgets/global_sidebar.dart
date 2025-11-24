@@ -92,7 +92,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     final isPhone = ResponsiveConfig.isPhone(context);
 
     if (isPhone) {
-      // Phone mode: full-screen sidebar
+      // Phone mode: full-screen sidebar with SafeArea for camera notch
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -105,7 +105,9 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               ],
             ),
           ),
-          child: _buildSidebar(context, MediaQuery.of(context).size.width),
+          child: SafeArea(
+            child: _buildSidebar(context, MediaQuery.of(context).size.width),
+          ),
         ),
       );
     } else {
