@@ -37,7 +37,7 @@ class GoogleDriveSyncService {
   static const String _tokenExpiryKey = 'universal_token_expiry_v2';
 
   // Backup configuration
-  static const String _backupFolderName = 'NextChord';
+  static const String _backupFolderName = 'Troubadour';
   static const String _libraryFileName = 'library.json';
 
   static GoogleSignIn get _googleSignInInstance {

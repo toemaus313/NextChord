@@ -89,10 +89,10 @@ class _SidebarTagSongsViewState extends State<SidebarTagSongsView> {
                                 )
                               : null,
                           onTap: () {
-                            // Navigate to song
-                            Provider.of<GlobalSidebarProvider>(context,
-                                    listen: false)
-                                .navigateToSong(song);
+                            // Navigate to song with phone mode support
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .navigateToSongWithPhoneMode(song);
                           },
                         );
                       },

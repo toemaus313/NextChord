@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nextchord/core/utils/ug_text_converter.dart';
+import 'package:troubadour/core/utils/ug_text_converter.dart';
 
 void main() {
   group('UGTextConverter', () {

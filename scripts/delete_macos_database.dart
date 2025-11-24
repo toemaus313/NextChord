@@ -2,15 +2,15 @@
 
 import 'dart:io';
 
-/// Script to delete NextChord local databases for macOS debug instance
+/// Script to delete Troubadour local databases for macOS debug instance
 /// This script removes the local SQLite database and any backup files
 
 void main() async {
-  // Deleting NextChord macOS local database...
+  // Deleting Troubadour macOS local database...
 
   // Get the macOS application documents directory
   final macDbPath =
-      '${Platform.environment['HOME']}/Documents/nextchord_db.sqlite';
+      '${Platform.environment['HOME']}/Documents/troubadour_db.sqlite';
 
   // Check if database exists and delete it
   final dbFile = File(macDbPath);
@@ -21,7 +21,7 @@ void main() async {
 
   // Check for backup file and delete it
   final macBackupPath =
-      '${Platform.environment['HOME']}/Documents/nextchord_db.sqlite.backup';
+      '${Platform.environment['HOME']}/Documents/troubadour_db.sqlite.backup';
   final backupFile = File(macBackupPath);
   if (backupFile.existsSync()) {
     // Found and deleted macOS backup
@@ -30,7 +30,7 @@ void main() async {
 
   // Also check in Library/Application Support (alternative location)
   final altDbPath =
-      '${Platform.environment['HOME']}/Library/Application Support/nextchord_db.sqlite';
+      '${Platform.environment['HOME']}/Library/Application Support/troubadour_db.sqlite';
   final altDbFile = File(altDbPath);
   if (altDbFile.existsSync()) {
     // Found and deleted alternative macOS database

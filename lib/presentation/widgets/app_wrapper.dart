@@ -132,16 +132,22 @@ class _PhoneContentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sidebarProvider = context.watch<GlobalSidebarProvider>();
+    final hasActiveSong = sidebarProvider.currentSong != null;
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0468cc),
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(''),
-      ),
+      // Hide AppBar when viewing a song - song viewer has its own header
+      appBar: hasActiveSong
+          ? null
+          : AppBar(
+              backgroundColor: const Color(0xFF0468cc),
+              foregroundColor: Colors.white,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(''),
+            ),
       body: content,
     );
   }

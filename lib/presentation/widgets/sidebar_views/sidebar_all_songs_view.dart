@@ -5,8 +5,10 @@ import '../../providers/song_provider.dart';
 import '../../screens/library_screen.dart';
 import '../bottom_search_bar.dart';
 import '../sidebar_components/sidebar_header.dart';
+import '../standard_wide_button.dart';
 import '../../../core/widgets/responsive_config.dart';
 import '../../../core/utils/device_breakpoints.dart';
+import '../../screens/song_editor_screen_refactored.dart';
 
 /// All songs view for the sidebar
 class SidebarAllSongsView extends StatefulWidget {
@@ -38,6 +40,138 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
   Widget build(BuildContext context) {
     final isPhone = ResponsiveConfig.isPhone(context);
 
+    if (isPhone) {
+      // Mobile layout with Stack for proper bottom positioning
+      return Stack(
+        children: [
+          // Main content
+          Column(
+            children: [
+              // Select Songs button just below Global Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Consumer<SongProvider>(
+                  builder: (context, provider, child) {
+                    return StandardWideButton(
+                      label: provider.selectionMode
+                          ? 'Cancel Selection'
+                          : 'Select Songs',
+                      icon: provider.selectionMode
+                          ? Icons.close
+                          : Icons.checklist,
+                      onPressed: () {
+                        provider.toggleSelectionMode();
+                      },
+                    );
+                  },
+                ),
+              ),
+              // Song list with bottom padding for search bar + button
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      bottom: 120), // Space for search bar + button
+                  child: LibraryScreen(
+                    inSidebar: true,
+                    onSongSelected: (song) {
+                      context
+                          .read<GlobalSidebarProvider>()
+                          .navigateToSongWithPhoneMode(song);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Transparent search bar overlay (just above button)
+          Positioned(
+            bottom: 60, // Above the button
+            left: 16,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Song, tag or artist',
+                  hintStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.6),
+                    fontSize: 16,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.clear,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            context.read<SongProvider>().searchSongs('');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onChanged: (value) {
+                  context.read<SongProvider>().searchSongs(value);
+                },
+              ),
+            ),
+          ),
+
+          // Fixed bottom Add Songs button
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: StandardWideButton(
+              label: '+ Add Songs',
+              icon: Icons.add,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SongEditorScreenRefactored(),
+                  ),
+                );
+                if (result == true && context.mounted) {
+                  context.read<SongProvider>().loadSongs();
+                }
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Desktop/Tablet layout (unchanged)
     return ResponsiveSearchWrapper(
       searchHintText: 'Song, tag or artist',
       searchController: _searchController,
@@ -110,32 +244,26 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
             ),
           ],
           const SizedBox(height: 8),
-          // Select Songs button
-          Consumer<SongProvider>(
-            builder: (context, provider, child) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    provider.toggleSelectionMode();
-                  },
-                  icon: Icon(
-                      provider.selectionMode ? Icons.close : Icons.checklist,
-                      size: 16),
-                  label: Text(provider.selectionMode
-                      ? 'Cancel Selection'
-                      : 'Select Songs'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: provider.selectionMode
-                        ? Colors.red.withAlpha(20)
-                        : Colors.white.withAlpha(20),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 36),
+          // Add Songs button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: StandardWideButton(
+              label: '+ Add Songs',
+              icon: Icons.add,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SongEditorScreenRefactored(),
                   ),
-                ),
-              );
-            },
+                );
+                if (result == true && context.mounted) {
+                  context.read<SongProvider>().loadSongs();
+                }
+              },
+            ),
           ),
+          const SizedBox(height: 8),
           Expanded(
             child: LibraryScreen(
               inSidebar: true,

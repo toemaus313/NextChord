@@ -354,7 +354,7 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
+    final file = File(p.join(dbFolder.path, 'troubadour_db.sqlite'));
 
     return NativeDatabase(file);
   });

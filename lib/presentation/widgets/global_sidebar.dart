@@ -20,6 +20,7 @@ import 'sidebar_views/sidebar_artists_list_view.dart';
 import 'sidebar_views/sidebar_artist_songs_view.dart';
 import 'sidebar_views/sidebar_tags_list_view.dart';
 import 'sidebar_views/sidebar_tag_songs_view.dart';
+import 'mobile_songs_layout.dart';
 import 'sidebar_components/mobile_sidebar_scaffold.dart';
 import '../../core/widgets/responsive_config.dart';
 
@@ -186,7 +187,12 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     switch (_controller.currentView) {
       case 'allSongs':
         final view = SidebarAllSongsView(
-          onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
+          onBack: () {
+            // Reset selection mode and search before going back
+            context.read<SongProvider>().resetSelectionMode();
+            context.read<SongProvider>().searchSongs('');
+            _controller.navigateToMenuKeepSongsExpanded();
+          },
           onAddSong: () => _navigateToAddSong(),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
@@ -194,7 +200,12 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             ? MobileSidebarScaffold(
                 title: 'All Songs',
                 icon: Icons.music_note,
-                onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
+                onBack: () {
+                  // Reset selection mode and search before going back
+                  context.read<SongProvider>().resetSelectionMode();
+                  context.read<SongProvider>().searchSongs('');
+                  _controller.navigateToMenuKeepSongsExpanded();
+                },
                 body: view,
               )
             : view;
@@ -232,19 +243,24 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             : view;
 
       case 'artistSongs':
-        final view = SidebarArtistSongsView(
-          artist: _controller.selectedArtist ?? '',
-          onBack: () => _controller.navigateToView('artistsList'),
-          showHeader: !isPhone, // Hide header on mobile, show on desktop
-        );
-        return isPhone
-            ? MobileSidebarScaffold(
-                title: _controller.selectedArtist ?? '',
-                icon: Icons.person,
-                onBack: () => _controller.navigateToView('artistsList'),
-                body: view,
-              )
-            : view;
+        if (isPhone) {
+          // Mobile layout using reusable MobileSongsLayout
+          return MobileSongsLayout(
+            searchHint: 'Search ${_controller.selectedArtist ?? ''} songs',
+            child: SidebarArtistSongsView(
+              artist: _controller.selectedArtist ?? '',
+              onBack: () => _controller.navigateToView('artistsList'),
+              showHeader: false, // No header on mobile
+            ),
+          );
+        } else {
+          // Desktop layout
+          return SidebarArtistSongsView(
+            artist: _controller.selectedArtist ?? '',
+            onBack: () => _controller.navigateToView('artistsList'),
+            showHeader: true,
+          );
+        }
 
       case 'tagsList':
         final view = SidebarTagsListView(
@@ -265,19 +281,24 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             : view;
 
       case 'tagSongs':
-        final view = SidebarTagSongsView(
-          tag: _controller.selectedTag ?? '',
-          onBack: () => _controller.navigateToView('tagsList'),
-          showHeader: !isPhone, // Hide header on mobile, show on desktop
-        );
-        return isPhone
-            ? MobileSidebarScaffold(
-                title: '#${_controller.selectedTag ?? ''}',
-                icon: Icons.tag,
-                onBack: () => _controller.navigateToView('tagsList'),
-                body: view,
-              )
-            : view;
+        if (isPhone) {
+          // Mobile layout using reusable MobileSongsLayout
+          return MobileSongsLayout(
+            searchHint: 'Search #${_controller.selectedTag ?? ''} songs',
+            child: SidebarTagSongsView(
+              tag: _controller.selectedTag ?? '',
+              onBack: () => _controller.navigateToView('tagsList'),
+              showHeader: false, // No header on mobile
+            ),
+          );
+        } else {
+          // Desktop layout
+          return SidebarTagSongsView(
+            tag: _controller.selectedTag ?? '',
+            onBack: () => _controller.navigateToView('tagsList'),
+            showHeader: true,
+          );
+        }
 
       case 'setlistView':
         final view = SidebarSetlistView(

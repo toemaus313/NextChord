@@ -5,13 +5,13 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = nextchord
+PRODUCT_NAME = troubadour
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.nextchord
+PRODUCT_BUNDLE_IDENTIFIER = us.antonovich.troubadour
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 us.antonovich. All rights reserved.
 
 // Include CocoaPods configurations for all build modes
 #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"

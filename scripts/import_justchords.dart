@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:nextchord/core/utils/justchords_importer.dart';
-import 'package:nextchord/data/database/app_database.dart';
-import 'package:nextchord/data/repositories/song_repository.dart';
+import 'package:troubadour/core/utils/justchords_importer.dart';
+import 'package:troubadour/data/database/app_database.dart';
+import 'package:troubadour/data/repositories/song_repository.dart';
 
 /// Script to import 5 random songs from Justchords library.json
 void main() async {

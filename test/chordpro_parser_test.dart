@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nextchord/core/utils/chordpro_parser.dart';
+import 'package:troubadour/core/utils/chordpro_parser.dart';
 
 void main() {
   group('ChordPro Metadata Extraction', () {
@@ -334,7 +334,7 @@ E|-----------|---------|---------|---------|-------|------------|
 ''';
 
       final result = ChordProParser.autoCompleteTabSections(input);
-      
+
       // Should have {eot} before the chord line
       expect(result.contains('{eot}'), true);
       expect(result.indexOf('{eot}') < result.indexOf('[C]'), true);
@@ -354,7 +354,7 @@ E|-----------|---------|---------|---------|-------|------------|
 E|-------|-------------|-----------|---------|''';
 
       final result = ChordProParser.autoCompleteTabSections(input);
-      
+
       // Should have {eot} before the chord line
       expect(result.contains('{eot}'), true);
       final eotIndex = result.indexOf('{eot}');
@@ -376,7 +376,7 @@ E|-----------|---------|---------|---------|-------|------------|
 E|-------|-------------|-----------|---------|''';
 
       final result = ChordProParser.autoCompleteTabSections(input);
-      
+
       // Should have {eot} at the end since both blocks are tab
       expect(result.contains('{eot}'), true);
     });
@@ -392,7 +392,7 @@ B|-----------|---------|---------|---------|-----3-|------------|
 ''';
 
       final result = ChordProParser.autoCompleteTabSections(input);
-      
+
       // Should not add another {eot}
       final eotCount = '{eot}'.allMatches(result).length;
       expect(eotCount, 1);
@@ -410,7 +410,7 @@ G|---4-4-2-0-|-2-------|-4-4-2-0-|-2-----4-|-4-4---|-2--2-0-----|
 ''';
 
       final result = ChordProParser.autoCompleteTabSections(input);
-      
+
       // Should have {eot} at the end
       expect(result.contains('{eot}'), true);
       expect(result.trim().endsWith('{eot}'), true);

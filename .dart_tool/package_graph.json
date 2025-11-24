@@ -1,10 +1,10 @@
 {
   "roots": [
-    "nextchord"
+    "troubadour"
   ],
   "packages": [
     {
-      "name": "nextchord",
+      "name": "troubadour",
       "version": "0.1.0+1",
       "dependencies": [
         "app_links",

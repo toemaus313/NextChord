@@ -1,4 +1,4 @@
-package com.example.nextchord
+package us.antonovich.troubadour
 
 import io.flutter.embedding.android.FlutterActivity
 

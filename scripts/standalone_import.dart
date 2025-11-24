@@ -195,7 +195,7 @@ String _resolveLibraryPath(String? cliArgument) {
   final env = Platform.environment;
   final overrides = <String?>[
     cliArgument,
-    env['NEXTCHORD_LIBRARY_PATH'],
+    env['TROUBADOUR_LIBRARY_PATH'],
   ];
 
   final candidates = <String>[];
@@ -308,30 +308,31 @@ Future<String?> _findDatabasePath() async {
 
   if (Platform.isMacOS) {
     possiblePaths.addAll([
-      '$homeDir/Library/Containers/com.example.nextchord/Data/Documents/nextchord_db.sqlite',
-      '$homeDir/Documents/nextchord_db.sqlite',
+      '$homeDir/Library/Containers/us.antonovich.troubadour/Data/Documents/troubadour_db.sqlite',
+      '$homeDir/Documents/troubadour_db.sqlite',
     ]);
   } else if (Platform.isWindows) {
     final userProfile = env['USERPROFILE'] ?? homeDir;
     possiblePaths.addAll([
-      '$userProfile\\Documents\\nextchord_db.sqlite',
-      '$userProfile\\AppData\\Local\\nextchord_db.sqlite',
-      '$userProfile\\AppData\\Roaming\\nextchord_db.sqlite',
+      '$userProfile\\Documents\\troubadour_db.sqlite',
+      '$userProfile\\AppData\\Local\\troubadour_db.sqlite',
+      '$userProfile\\AppData\\Roaming\\troubadour_db.sqlite',
     ]);
     deepSearchRoot = Directory('$userProfile\\Documents');
   } else {
     possiblePaths.addAll([
-      '$homeDir/nextchord_db.sqlite',
-      '$homeDir/Documents/nextchord_db.sqlite',
+      '$homeDir/troubadour_db.sqlite',
+      '$homeDir/Documents/troubadour_db.sqlite',
+      '$homeDir/Documents/troubadour_db.sqlite',
     ]);
   }
 
-  possiblePaths.add('nextchord_db.sqlite'); // Current directory fallback
+  possiblePaths.add('troubadour_db.sqlite'); // Current directory fallback
 
   if (deepSearchRoot != null && await deepSearchRoot.exists()) {
     await for (final entity
         in deepSearchRoot.list(recursive: true, followLinks: false)) {
-      if (entity is File && entity.path.endsWith('nextchord_db.sqlite')) {
+      if (entity is File && entity.path.endsWith('troubadour_db.sqlite')) {
         return entity.path;
       }
     }

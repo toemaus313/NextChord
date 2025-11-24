@@ -56,54 +56,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     // Sidebar mode: no Scaffold wrapper
     if (widget.inSidebar) {
-      return Column(
-        children: [
-          Expanded(
-            child: _buildSongList(inSidebar: true),
-          ),
-          // Add song button in sidebar
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SongEditorScreenRefactored(),
-                    ),
-                  );
-                  if (result == true && context.mounted) {
-                    context.read<SongProvider>().loadSongs();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF0468cc),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Add Song',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
+      return _buildSongList(inSidebar: true);
     }
 
     // Full screen mode: with Scaffold

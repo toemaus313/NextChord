@@ -77,38 +77,35 @@ class _BottomSearchBarState extends State<BottomSearchBar>
         child: Container(
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.black.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: TextField(
             controller: widget.controller,
             style: const TextStyle(
-              color: Colors.black87,
+              color: Colors.white,
               fontSize: 16,
             ),
             decoration: InputDecoration(
               hintText: widget.hintText,
               hintStyle: TextStyle(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: Colors.white.withOpacity(0.6),
                 fontSize: 16,
               ),
               prefixIcon: const Icon(
                 Icons.search,
-                color: Colors.black54,
+                color: Colors.white70,
                 size: 20,
               ),
               suffixIcon: widget.controller.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(
                         Icons.clear,
-                        color: Colors.black54,
+                        color: Colors.white70,
                         size: 20,
                       ),
                       onPressed: () {

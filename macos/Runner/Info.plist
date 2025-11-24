@@ -29,7 +29,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>NextChord needs microphone access to tune your guitar by analyzing the sound of your strings.</string>
+	<string>Troubadour needs microphone access to tune your guitar by analyzing the sound of your strings.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

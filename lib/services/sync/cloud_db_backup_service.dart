@@ -8,7 +8,7 @@ import '../../data/database/app_database.dart';
 
 /// Service for managing cloud database backups
 class CloudDbBackupService {
-  static const String _backupFileName = 'nextchord_backup.db';
+  static const String _backupFileName = 'troubadour_backup.db';
   final GoogleDriveSyncService _syncService;
   final AppDatabase _database;
 
@@ -254,7 +254,7 @@ class CloudDbBackupService {
   /// Get the local database file
   Future<File> _getLocalDatabaseFile() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    return File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
+    return File(p.join(dbFolder.path, 'troubadour_db.sqlite'));
   }
 
   /// Check if cloud backup exists

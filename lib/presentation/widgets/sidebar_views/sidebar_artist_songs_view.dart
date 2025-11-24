@@ -74,10 +74,10 @@ class _SidebarArtistSongsViewState extends State<SidebarArtistSongsView> {
                                 )
                               : null,
                           onTap: () {
-                            // Navigate to song
-                            Provider.of<GlobalSidebarProvider>(context,
-                                    listen: false)
-                                .navigateToSong(song);
+                            // Navigate to song with phone mode support
+                            context
+                                .read<GlobalSidebarProvider>()
+                                .navigateToSongWithPhoneMode(song);
                           },
                         );
                       },
