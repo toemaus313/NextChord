@@ -71,9 +71,11 @@ class SongViewerProvider extends ChangeNotifier {
         _currentCapo = setlistContext?.capo ?? song.capo {
     _initializeViewerAdjustments();
 
-    // Listen to database change events for automatic song updates
-    _dbChangeSubscription =
-        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // Defer stream subscription to avoid build-phase issues
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _dbChangeSubscription =
+          _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    });
   }
 
   // Getters

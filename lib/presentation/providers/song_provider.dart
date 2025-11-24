@@ -17,9 +17,13 @@ class SongProvider extends ChangeNotifier {
   final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
   SongProvider(this._repository) {
-    // Listen to database change events for automatic updates
-    _dbChangeSubscription =
-        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // TEMPORARILY DISABLED: Defer stream subscription to avoid build-phase issues
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _dbChangeSubscription =
+    //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // });
+    debugPrint(
+        '🎵 SongProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   // Public getter for repository access
@@ -119,8 +123,13 @@ class SongProvider extends ChangeNotifier {
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
+    debugPrint(
+        '🎵 SongProvider.loadSongs() called - checking if in build phase');
     _isLoading = true;
     _errorMessage = null;
+    debugPrint('🎵 About to call notifyListeners() in loadSongs()');
+    notifyListeners();
+    debugPrint('🎵 notifyListeners() completed in loadSongs()');
     _currentListType = SongListType.all;
     notifyListeners();
 

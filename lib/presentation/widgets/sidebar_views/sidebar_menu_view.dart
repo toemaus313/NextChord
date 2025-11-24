@@ -82,27 +82,30 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       final provider = context.read<SongProvider>();
 
       // Load all songs to get counts
-      await provider.loadSongs();
-      final allSongs = provider.songs;
+      // Use post-frame callback to avoid build-phase setState error
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await provider.loadSongs();
+        final allSongs = provider.songs;
 
-      // Calculate counts
-      final totalSongsCount = allSongs.length;
-      final artistsCount = allSongs.map((song) => song.artist).toSet().length;
-      final tagsCount = allSongs
-          .where((song) => song.tags.isNotEmpty)
-          .expand((song) => song.tags)
-          .toSet()
-          .length;
-      final deletedSongsCount = await provider.getDeletedSongsCount();
+        // Calculate counts
+        final totalSongsCount = allSongs.length;
+        final artistsCount = allSongs.map((song) => song.artist).toSet().length;
+        final tagsCount = allSongs
+            .where((song) => song.tags.isNotEmpty)
+            .expand((song) => song.tags)
+            .toSet()
+            .length;
+        final deletedSongsCount = await provider.getDeletedSongsCount();
 
-      if (mounted) {
-        setState(() {
-          _totalSongsCount = totalSongsCount;
-          _artistsCount = artistsCount;
-          _tagsCount = tagsCount;
-          _deletedSongsCount = deletedSongsCount;
-        });
-      }
+        if (mounted) {
+          setState(() {
+            _totalSongsCount = totalSongsCount;
+            _artistsCount = artistsCount;
+            _tagsCount = tagsCount;
+            _deletedSongsCount = deletedSongsCount;
+          });
+        }
+      });
     } catch (e) {
       debugPrint('Error loading song counts: $e');
       if (mounted) {

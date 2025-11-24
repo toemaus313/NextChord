@@ -2,7 +2,7 @@
 
 This document tracks ALL active debug logs across the entire NextChord codebase for easy maintenance and troubleshooting.
 
-**Total Active Debug Statements**: 84 debugPrint calls across 11 files
+**Total Active Debug Statements**: 97 debugPrint calls across 12 files
 **Last Audit Date**: 2025-11-23
 **Audit Method**: `Grep` search for `debugPrint` pattern across entire codebase
 
@@ -78,6 +78,10 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `🎵 Error refreshing from database change: X`
 - `🎵 Error refreshing songs list: X`
 - `🎵 Error refreshing deleted songs list: X`
+- `🎵 SongProvider.loadSongs() called - checking if in build phase`
+- `🎵 About to call notifyListeners() in loadSongs()`
+- `🎵 notifyListeners() completed in loadSongs()`
+- `🎵 SongProvider: Database change monitoring temporarily disabled for debugging`
 
 ## Setlist Provider Reactive Update Logs
 **Location**: `lib/presentation/providers/setlist_provider.dart`
@@ -88,11 +92,13 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `📋 Active setlist refreshed: X`
 - `📋 Active setlist was deleted, clearing state`
 - `📋 Error refreshing active setlist: X`
+- `📋 SetlistProvider: Database change monitoring temporarily disabled for debugging`
 
 ## Global Sidebar Provider Reactive Update Logs
 **Location**: `lib/presentation/providers/global_sidebar_provider.dart`
 - `📱 GlobalSidebarProvider received DB change: X`
 - `📱 Sidebar counts updated, notifying listeners`
+- `📱 GlobalSidebarProvider: Database change monitoring temporarily disabled for debugging`
 
 ## Song Viewer Provider State Preservation Logs
 **Location**: `lib/presentation/providers/song_viewer_provider.dart`
@@ -111,6 +117,25 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `GlobalSidebarController: Setlist activation completed`
 - `GlobalSidebarController: navigateToMenu called - clearing active setlist`
 - `GlobalSidebarController: navigateToMenuKeepSongsExpanded called - clearing active setlist`
+
+## App Initialization & Build-Phase Debugging Logs
+**Location**: `lib/main.dart`
+- `🔄 onSyncCompleted callback triggered - checking if in build phase`
+- `🔄 Post-frame callback executing - calling loadSongs()`
+- `🔄 All provider load methods called in post-frame callback`
+- `🏗️ NextChordApp.build() called - platform-specific build phase`
+- `🏗️ App initializing - showing loading indicator`
+- `🏗️ App initialization completed after frame delay`
+- `🏗️ App initialization complete - building widget tree`
+
+## Sidebar Menu View Debugging Logs
+**Location**: `lib/presentation/widgets/sidebar_views/sidebar_menu_view.dart`
+- `Building setlists section...`
+- `Setlists section tapped`
+- `Loading setlists...`
+- `Setlists loaded successfully`
+- `Error loading setlists: X`
+- `Error loading song counts: X`
 
 ## Detailed Merge Delta Logs
 **Location**: `lib/services/sync/library_sync_service.dart`
@@ -204,13 +229,14 @@ The following verbose debug logs have been removed for cleaner output:
 - **Google Drive Service**: `lib/services/sync/google_drive_sync_service.dart` (47 statements)
 - **Library Sync Service**: `lib/services/sync/library_sync_service.dart` (29 statements)
 - **Database Change Service**: `lib/core/services/database_change_service.dart` (17 statements)
-- **Song Provider**: `lib/presentation/providers/song_provider.dart` (5 statements)
-- **Setlist Provider**: `lib/presentation/providers/setlist_provider.dart` (7 statements)
-- **Global Sidebar Provider**: `lib/presentation/providers/global_sidebar_provider.dart` (2 statements)
+- **Song Provider**: `lib/presentation/providers/song_provider.dart` (9 statements)
+- **Setlist Provider**: `lib/presentation/providers/setlist_provider.dart` (8 statements)
+- **Global Sidebar Provider**: `lib/presentation/providers/global_sidebar_provider.dart` (3 statements)
 - **Song Viewer Provider**: `lib/presentation/providers/song_viewer_provider.dart` (5 statements)
 - **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart` (7 statements)
 - **Database Migrations**: `lib/data/database/migrations/migrations.dart` (16 statements)
 - **Sidebar Menu View**: `lib/presentation/widgets/sidebar_views/sidebar_menu_view.dart` (7 statements)
+- **App Initialization (main.dart)**: `lib/main.dart` (7 statements)
 
 ## New Reactive Database Monitoring System
 **Added**: 17 new debugPrint statements for reactive UI updates

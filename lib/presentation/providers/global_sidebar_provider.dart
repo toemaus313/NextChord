@@ -33,9 +33,13 @@ class GlobalSidebarProvider extends ChangeNotifier {
 
   // Initialize reactive monitoring
   GlobalSidebarProvider() {
-    // Listen to database change events for count updates
-    _dbChangeSubscription =
-        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // TEMPORARILY DISABLED: Defer stream subscription to avoid build-phase issues
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _dbChangeSubscription =
+    //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // });
+    debugPrint(
+        '📱 GlobalSidebarProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   /// Initialize the animation controller

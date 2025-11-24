@@ -12,9 +12,13 @@ class SetlistProvider extends ChangeNotifier {
   final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
   SetlistProvider(this._repository) {
-    // Listen to database change events for automatic updates
-    _dbChangeSubscription =
-        _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // TEMPORARILY DISABLED: Defer stream subscription to avoid build-phase issues
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _dbChangeSubscription =
+    //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    // });
+    debugPrint(
+        '📋 SetlistProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   // State
