@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:troubadour/core/utils/ultimate_guitar_parser.dart';
+import 'package:nextchord/core/utils/ultimate_guitar_parser.dart';
 
 void main() {
   group('UltimateGuitarParser', () {

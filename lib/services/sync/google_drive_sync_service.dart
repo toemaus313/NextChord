@@ -37,6 +37,7 @@ class GoogleDriveSyncService {
   static const String _tokenExpiryKey = 'universal_token_expiry_v2';
 
   // Backup configuration
+  // Legacy name kept for backward compatibility with existing cloud backups
   static const String _backupFolderName = 'Troubadour';
   static const String _libraryFileName = 'library.json';
 

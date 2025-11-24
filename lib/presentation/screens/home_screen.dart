@@ -84,14 +84,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/images/Applogo-T.png',
+                  'assets/images/NextChord-Logo-transparent.png',
                   width: 700,
                   fit: BoxFit.contain,
-                  semanticLabel: 'Troubadour logo',
+                  semanticLabel: 'NextChord logo',
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Troubadour',
+                  'NextChord',
                   style: TextStyle(
                     fontSize: 48,
                     fontWeight: FontWeight.bold,

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "us.antonovich" "\0"
-            VALUE "FileDescription", "troubadour" "\0"
+            VALUE "FileDescription", "nextchord" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "troubadour" "\0"
+            VALUE "InternalName", "nextchord" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 us.antonovich. All rights reserved." "\0"
-            VALUE "OriginalFilename", "troubadour.exe" "\0"
-            VALUE "ProductName", "troubadour" "\0"
+            VALUE "OriginalFilename", "nextchord.exe" "\0"
+            VALUE "ProductName", "nextchord" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

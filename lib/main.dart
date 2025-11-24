@@ -76,7 +76,7 @@ void main() async {
   );
   SyncServiceLocator.initialize(syncProvider);
 
-  runApp(TroubadourApp(
+  runApp(NextChordApp(
     database: database,
     songRepository: songRepository,
     setlistRepository: setlistRepository,
@@ -86,7 +86,7 @@ void main() async {
   ));
 }
 
-class TroubadourApp extends StatelessWidget {
+class NextChordApp extends StatelessWidget {
   final AppDatabase database;
   final SongRepository songRepository;
   final SetlistRepository setlistRepository;
@@ -94,7 +94,7 @@ class TroubadourApp extends StatelessWidget {
   final SongProvider songProvider;
   final SetlistProvider setlistProvider;
 
-  const TroubadourApp({
+  const NextChordApp({
     Key? key,
     required this.database,
     required this.songRepository,
@@ -170,7 +170,7 @@ class TroubadourApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            title: 'Troubadour',
+            title: 'NextChord',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
             themeMode:

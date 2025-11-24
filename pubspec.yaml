@@ -1,4 +1,4 @@
-name: troubadour
+name: nextchord
 description: A cross-platform chord book and MIDI controller app for musicians.
 publish_to: 'none'
 
@@ -98,7 +98,7 @@ flutter:
   assets:
     - assets/audio/Synth_Block_B_hi.wav
     - assets/audio/Synth_Block_B_lo.wav
-    - assets/images/Applogo-T.png
+    - assets/images/NextChord-Logo-transparent.png
 
 # Flutter Launcher Icons configuration
 flutter_launcher_icons:
@@ -106,6 +106,6 @@ flutter_launcher_icons:
   ios: true
   windows:
     generate: true
-  image_path: "assets/images/Applogo-T.png"
+  image_path: "assets/images/NextChord_AppLogo.png"
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/images/Applogo-T.png"
+  adaptive_icon_foreground: "assets/images/NextChord_AppLogo.png"

@@ -195,7 +195,7 @@ String _resolveLibraryPath(String? cliArgument) {
   final env = Platform.environment;
   final overrides = <String?>[
     cliArgument,
-    env['TROUBADOUR_LIBRARY_PATH'],
+    env['NEXTCHORD_LIBRARY_PATH'],
   ];
 
   final candidates = <String>[];

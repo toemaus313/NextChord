@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:troubadour/presentation/widgets/stroboscopic_tuner_display.dart';
-import 'package:troubadour/services/audio/guitar_tuner_service.dart';
+import 'package:nextchord/presentation/widgets/stroboscopic_tuner_display.dart';
+import 'package:nextchord/services/audio/guitar_tuner_service.dart';
 
 void main() {
   group('StroboscopicTunerDisplay', () {

@@ -154,7 +154,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
         const SizedBox(height: 8),
         if (syncProvider.isSyncEnabled) ...[
           const Text(
-            'Your Troubadour data is being synced with Google Drive.',
+            'Your NextChord data is being synced with Google Drive.',
             style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ] else ...[
@@ -256,7 +256,7 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
         builder: (context) => AlertDialog(
           title: const Text('Restore from Cloud Backup'),
           content: const Text(
-            'This will replace the local Troubadour database with the backup stored in the cloud. Any unsynced local changes may be lost. Continue?',
+            'This will replace the local NextChord database with the backup stored in the cloud. Any unsynced local changes may be lost. Continue?',
           ),
           actions: [
             TextButton(
