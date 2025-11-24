@@ -60,8 +60,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     super.initState();
 
     // Initialize providers and services
+    final songRepository = context.read<SongRepository>();
     _songViewerProvider = SongViewerProvider(
       song: widget.song,
+      songRepository: songRepository,
       setlistContext: widget.setlistContext,
     );
 

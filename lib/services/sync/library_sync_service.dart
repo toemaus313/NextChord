@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
+import '../../core/services/database_change_service.dart';
 
 /// Model for Google Drive file metadata
 class DriveLibraryMetadata {
@@ -355,6 +356,8 @@ class MergeDeltaSummary {
   int songsDeleted = 0;
   int songsUpdated = 0;
   List<String> songFieldChanges = [];
+  List<String> updatedSongIds =
+      []; // Track specific song IDs for database change events
 
   int setlistsAdded = 0;
   int setlistsDeleted = 0;
@@ -373,6 +376,10 @@ class MergeDeltaSummary {
 
   void addSongChange(String change) {
     songFieldChanges.add(change);
+  }
+
+  void addUpdatedSongId(String songId) {
+    updatedSongIds.add(songId);
   }
 
   void addSetlistChange(String change) {
@@ -933,6 +940,26 @@ class LibrarySyncService {
         );
       });
 
+      // Emit database change events for all updated songs to trigger UI refresh
+      if (deltaSummary.updatedSongIds.isNotEmpty) {
+        debugPrint(_timestampedLog(
+            '📡 Emitting database change events for ${deltaSummary.updatedSongIds.length} updated songs'));
+        debugPrint(_timestampedLog(
+            '📡 Updated song IDs: ${deltaSummary.updatedSongIds.join(", ")}'));
+        final dbChangeService = DatabaseChangeService();
+        for (final songId in deltaSummary.updatedSongIds) {
+          debugPrint(
+              _timestampedLog('📡 Emitting change event for song ID: $songId'));
+          dbChangeService.notifyDatabaseChanged(
+              table: 'songs', operation: 'update', recordId: songId);
+        }
+        debugPrint(
+            _timestampedLog('📡 All change events emitted successfully'));
+      } else {
+        debugPrint(
+            _timestampedLog('ℹ️  No song IDs to emit change events for'));
+      }
+
       debugPrint('Successfully imported and merged library from JSON');
     } catch (e) {
       debugPrint('Error importing library from JSON: $e');
@@ -1067,9 +1094,19 @@ class LibrarySyncService {
         // Track changes based on who won
         if (remoteWins) {
           // Track update
-          if (recordType == 'song')
+          if (recordType == 'song') {
             deltaSummary.songsUpdated++;
-          else if (recordType == 'setlist')
+            // Track song ID for database change notification
+            final id = (remoteModel as dynamic).id;
+            if (id != null) {
+              debugPrint(_timestampedLog(
+                  '📝 Tracking updated song ID for change event: $id'));
+              deltaSummary.addUpdatedSongId(id);
+            } else {
+              debugPrint(_timestampedLog(
+                  '⚠️  WARNING: Song has null ID, cannot track for change event'));
+            }
+          } else if (recordType == 'setlist')
             deltaSummary.setlistsUpdated++;
           else if (recordType == 'midiMapping')
             deltaSummary.midiMappingsUpdated++;

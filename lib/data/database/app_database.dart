@@ -1,9 +1,10 @@
-import 'package:drift/drift.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:drift/native.dart';
-import 'dart:convert';
 import 'dart:io';
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import '../../core/services/database_change_service.dart';
+import 'dart:convert';
 import 'dart:math';
 import 'tables/tables.dart';
 import 'migrations/migrations.dart';
@@ -104,6 +105,10 @@ class AppDatabase extends _$AppDatabase {
         SongsCompanion(
             isDeleted: const Value(true),
             updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+
+    // Notify database change service for auto-sync
+    DatabaseChangeService()
+        .notifyDatabaseChanged(operation: 'softDelete', table: 'songs');
   }
 
   /// Restore a soft-deleted song
@@ -112,11 +117,19 @@ class AppDatabase extends _$AppDatabase {
         SongsCompanion(
             isDeleted: const Value(false),
             updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+
+    // Notify database change service for auto-sync
+    DatabaseChangeService()
+        .notifyDatabaseChanged(operation: 'restore', table: 'songs');
   }
 
   /// Permanently delete a song
   Future<void> permanentlyDeleteSong(String id) async {
     await (delete(songs)..where((tbl) => tbl.id.equals(id))).go();
+
+    // Notify database change service for auto-sync
+    DatabaseChangeService()
+        .notifyDatabaseChanged(operation: 'permanentDelete', table: 'songs');
   }
 
   /// Get all unique keys from non-deleted songs

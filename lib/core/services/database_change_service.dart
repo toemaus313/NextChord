@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../../data/database/app_database.dart';
 import 'sync_service_locator.dart';
 
 /// Types of database change events
@@ -37,7 +36,6 @@ class DatabaseChangeService {
 
   Timer? _debounceTimer;
   bool _isSyncInProgress = false;
-  AppDatabase? _database;
 
   // Reactive monitoring streams
   final StreamController<DbChangeEvent> _changeController =
@@ -46,20 +44,9 @@ class DatabaseChangeService {
   /// Get the stream of all database change events
   Stream<DbChangeEvent> get changeStream => _changeController.stream;
 
-  /// Initialize the service with database instance
-  /// Note: Reactive monitoring disabled - using manual refresh approach
-  void initialize(AppDatabase database) {
-    if (_database != null) {
-      debugPrint('🔍 DatabaseChangeService already initialized');
-      return;
-    }
-
-    _database = database;
-    debugPrint(
-        '🔍 DatabaseChangeService initialized with database (manual refresh mode)');
-
-    // Note: Reactive monitoring disabled due to Drift watch() compatibility issues
-    // Providers will use manual refresh via notifyDatabaseChanged() instead
+  /// Initialize the service (no database needed - just for compatibility)
+  void initialize() {
+    debugPrint('🔍 DatabaseChangeService initialized (notification mode)');
   }
 
   /// Emit a change event to the stream
@@ -78,13 +65,14 @@ class DatabaseChangeService {
   /// Called when any database write operation completes
   /// This will trigger an auto-sync and reset the periodic timer
   /// Uses debouncing to prevent rapid syncs during bulk operations
-  void notifyDatabaseChanged({String? operation, String? table}) {
+  void notifyDatabaseChanged(
+      {String? operation, String? table, String? recordId}) {
     debugPrint(
-        '🔍 DB CHANGE DETECTED: operation=${operation ?? "unknown"}, table=${table ?? "unknown"}');
+        '🔍 DB CHANGE DETECTED: operation=${operation ?? "unknown"}, table=${table ?? "unknown"}, recordId=${recordId ?? "none"}');
 
     // Also emit a change event for immediate UI updates
     if (table != null) {
-      _emitChangeEvent(table, DbChangeType.update);
+      _emitChangeEvent(table, DbChangeType.update, recordId: recordId);
     }
 
     // Skip change notifications during sync to prevent feedback loops
@@ -97,8 +85,8 @@ class DatabaseChangeService {
     _debounceTimer?.cancel();
 
     // Schedule a new sync after a short delay to batch rapid changes
-    debugPrint('⏰ Scheduling auto-sync in 500ms...');
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+    debugPrint('⏰ Scheduling auto-sync in 10 seconds...');
+    _debounceTimer = Timer(const Duration(seconds: 10), () {
       debugPrint('🚀 Triggering auto-sync after database change');
       // Trigger auto-sync after database change
       SyncServiceLocator.triggerAutoSync();
@@ -126,7 +114,5 @@ class DatabaseChangeService {
     if (!_changeController.isClosed) {
       _changeController.close();
     }
-
-    _database = null;
   }
 }

@@ -37,7 +37,7 @@ void main() async {
   final database = AppDatabase();
 
   // Initialize database change monitoring service
-  DatabaseChangeService().initialize(database);
+  DatabaseChangeService().initialize();
 
   // Initialize repository
   final songRepository = SongRepository(database);

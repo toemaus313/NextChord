@@ -2,7 +2,7 @@
 
 This document tracks ALL active debug logs across the entire NextChord codebase for easy maintenance and troubleshooting.
 
-**Total Active Debug Statements**: 133 debugPrint calls across 13 files
+**Total Active Debug Statements**: 141 debugPrint calls across 13 files
 **Last Audit Date**: 2025-11-23
 **Audit Method**: `Grep` search for `debugPrint` pattern across entire codebase
 
@@ -144,6 +144,10 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
 - `🎵 SongViewerProvider refreshing current song from database`
 - `🎵 Song content change detected for current song: X`
 - `🎵 Error refreshing current song from database: X`
+- `🎵 SongViewerProvider: Skipping self-triggered event`
+- `🎵 SongViewerProvider received DB change: table=X, recordId=Y, currentSongId=Z`
+- `🎵 SongViewerProvider: RecordId MATCHES current song - refreshing!`
+- `🎵 SongViewerProvider: RecordId does NOT match current song (X != Y) - ignoring`
 
 ## Setlist Navigation & Sidebar Controller Logs
 **Location**: `lib/presentation/controllers/global_sidebar_controller.dart`
@@ -189,6 +193,16 @@ This document tracks ALL active debug logs across the entire NextChord codebase 
   - `MIDI Mappings: X added, Y deleted, Z updated`
   - `MIDI Profiles: X added, Y deleted, Z updated`
 - `Successfully imported and merged library from JSON`
+
+## Song ID Tracking & Database Change Event Logs
+**Location**: `lib/services/sync/library_sync_service.dart`
+- `[timestamp] 📝 Tracking updated song ID for change event: X`
+- `[timestamp] ⚠️ WARNING: Song has null ID, cannot track for change event`
+- `[timestamp] 📡 Emitting database change events for X updated songs`
+- `[timestamp] 📡 Updated song IDs: X, Y, Z`
+- `[timestamp] 📡 Emitting change event for song ID: X`
+- `[timestamp] 📡 All change events emitted successfully`
+- `[timestamp] ℹ️ No song IDs to emit change events for`
 
 ## Hash Comparison Logs
 **Location**: `lib/services/sync/library_sync_service.dart`
@@ -262,18 +276,19 @@ The following verbose debug logs have been removed for cleaner output:
 5. **Sync completion**: Look for "Sync completed successfully" or error messages
 
 ## File Locations Summary
-- **Sync Provider**: `lib/providers/sync_provider.dart` (2 statements)
+- **Sync Provider**: `lib/providers/sync_provider.dart` (12 statements)
 - **Google Drive Service**: `lib/services/sync/google_drive_sync_service.dart` (47 statements)
-- **Library Sync Service**: `lib/services/sync/library_sync_service.dart` (29 statements)
-- **Database Change Service**: `lib/core/services/database_change_service.dart` (17 statements)
-- **Song Provider**: `lib/presentation/providers/song_provider.dart` (9 statements)
+- **Library Sync Service**: `lib/services/sync/library_sync_service.dart` (36 statements)
+- **Database Change Service**: `lib/core/services/database_change_service.dart` (9 statements)
+- **Song Provider**: `lib/presentation/providers/song_provider.dart` (13 statements)
 - **Setlist Provider**: `lib/presentation/providers/setlist_provider.dart` (8 statements)
 - **Global Sidebar Provider**: `lib/presentation/providers/global_sidebar_provider.dart` (3 statements)
-- **Song Viewer Provider**: `lib/presentation/providers/song_viewer_provider.dart` (5 statements)
-- **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart` (7 statements)
+- **Song Viewer Provider**: `lib/presentation/providers/song_viewer_provider.dart` (9 statements)
+- **Global Sidebar Controller**: `lib/presentation/controllers/global_sidebar_controller.dart` (8 statements)
 - **Database Migrations**: `lib/data/database/migrations/migrations.dart` (16 statements)
 - **Sidebar Menu View**: `lib/presentation/widgets/sidebar_views/sidebar_menu_view.dart` (7 statements)
 - **App Initialization (main.dart)**: `lib/main.dart` (7 statements)
+- **Other Files**: Various additional files with debug statements
 
 ## New Reactive Database Monitoring System
 **Added**: 17 new debugPrint statements for reactive UI updates
@@ -281,6 +296,22 @@ The following verbose debug logs have been removed for cleaner output:
 - Provider-specific reactive update handling
 - State preservation during automatic updates
 - Non-disruptive UI refresh mechanisms
+
+## Song Viewer Auto-Refresh Debug System (NEW)
+**Added**: 8 new debugPrint statements for song viewer remote sync auto-refresh
+- Song ID tracking during merge operations (`📝 Tracking updated song ID`)
+- Database change event emission with specific song IDs (`📡 Emitting change event`)
+- Event reception and filtering in SongViewerProvider (`🎵 received DB change`)
+- Record ID matching logic (`🎵 RecordId MATCHES` vs `🎵 RecordId does NOT match`)
+- Null ID warning handling (`⚠️ WARNING: Song has null ID`)
+- Complete flow tracing from remote sync to UI refresh
+
+## VS Code Debug Configuration Documentation
+**Location**: `PROJECT_SETUP.md` - "VS Code Debug Configuration (Windows)" section
+- Documents optimized debug settings for Windows "Connected to VM Service" hangs
+- Includes `.vscode/settings.json` and `.vscode/launch.json` configurations
+- Troubleshooting steps for debug connection issues
+- Alternative command-line debugging approaches
 
 ---
 *Last Updated: 2025-11-23*

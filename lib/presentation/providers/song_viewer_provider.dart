@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
+import '../../core/services/database_change_service.dart';
+import '../../data/repositories/song_repository.dart';
 import '../../core/constants/song_viewer_constants.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
-import '../../core/services/database_change_service.dart';
 
 /// Enum for different flyout types
 enum FlyoutType {
@@ -58,24 +59,26 @@ class SongViewerProvider extends ChangeNotifier {
 
   // Database change monitoring
   final DatabaseChangeService _dbChangeService = DatabaseChangeService();
+  final SongRepository _songRepository;
   StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
   bool _isUpdatingFromDatabase = false;
 
   SongViewerProvider({
     required Song song,
+    required SongRepository songRepository,
     SetlistSongItem? setlistContext,
   })  : _currentSong = song,
+        _songRepository = songRepository,
         _setlistContext = setlistContext,
         _fontSize = SongViewerConstants.defaultFontSize,
         _transposeSteps = setlistContext?.transposeSteps ?? 0,
         _currentCapo = setlistContext?.capo ?? song.capo {
     _initializeViewerAdjustments();
 
-    // Defer stream subscription to avoid build-phase issues
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _dbChangeSubscription =
-          _dbChangeService.changeStream.listen(_handleDatabaseChange);
-    });
+    // Set up stream subscription immediately to catch events during initial sync
+    // Build-phase protection is handled within _handleDatabaseChange via postFrameCallback
+    _dbChangeSubscription =
+        _dbChangeService.changeStream.listen(_handleDatabaseChange);
   }
 
   // Getters
@@ -139,17 +142,26 @@ class SongViewerProvider extends ChangeNotifier {
   void _handleDatabaseChange(DbChangeEvent event) {
     if (_isUpdatingFromDatabase) {
       // Skip events that we triggered ourselves
+      debugPrint('🎵 SongViewerProvider: Skipping self-triggered event');
       return;
     }
 
-    debugPrint('🎵 SongViewerProvider received DB change: ${event.table}');
+    debugPrint(
+        '🎵 SongViewerProvider received DB change: table=${event.table}, recordId=${event.recordId}, currentSongId=${_currentSong.id}');
 
     // Only react to song changes, and only if they affect the current song
-    if (event.table == 'songs' && event.recordId == _currentSong.id) {
-      // Defer refresh to avoid calling notifyListeners() during build phase
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _refreshCurrentSongFromDatabase();
-      });
+    if (event.table == 'songs') {
+      if (event.recordId == _currentSong.id) {
+        debugPrint(
+            '🎵 SongViewerProvider: RecordId MATCHES current song - refreshing!');
+        // Defer refresh to avoid calling notifyListeners() during build phase
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _refreshCurrentSongFromDatabase();
+        });
+      } else {
+        debugPrint(
+            '🎵 SongViewerProvider: RecordId does NOT match current song (${event.recordId} != ${_currentSong.id}) - ignoring');
+      }
     }
   }
 
@@ -162,18 +174,23 @@ class SongViewerProvider extends ChangeNotifier {
     try {
       _isUpdatingFromDatabase = true;
 
-      // This would need to be implemented to fetch the updated song
-      // For now, we'll emit a notification that the song should be refreshed
-      // The actual song fetching will be handled by the parent widget
-      // that has access to the song repository
+      // Fetch the updated song from database
+      final updatedSong = await _songRepository.getSongById(_currentSong.id);
 
-      // We could add a callback mechanism for the parent to handle this
-      debugPrint(
-          '🎵 Song content change detected for current song: ${_currentSong.title}');
+      if (updatedSong != null) {
+        debugPrint(
+            '🎵 Song content change detected for current song: ${updatedSong.title}');
 
-      // For now, just notify listeners that something changed
-      // The UI layer can handle the actual song refresh
-      notifyListeners();
+        // Update only the song content, preserve all UI state (transpose, capo, font size, etc.)
+        _currentSong = updatedSong;
+
+        // Don't reset transpose/capo/font size/flyout states
+        // Don't call _initializeViewerAdjustments() as it would reset state
+
+        notifyListeners();
+      } else {
+        debugPrint('🎵 Warning: Could not find updated song in database');
+      }
     } catch (e) {
       debugPrint('🎵 Error refreshing current song from database: $e');
     } finally {

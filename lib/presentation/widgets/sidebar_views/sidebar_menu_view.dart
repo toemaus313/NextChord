@@ -182,14 +182,13 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
                 count: _tagsCount,
                 isPhoneMode: widget.isPhoneMode,
               ),
-              if (_deletedSongsCount > 0)
-                SidebarSubMenuItem(
-                  title: 'Deleted',
-                  isSelected: false,
-                  onTap: widget.onNavigateToDeletedSongs,
-                  count: _deletedSongsCount,
-                  isPhoneMode: widget.isPhoneMode,
-                ),
+              SidebarSubMenuItem(
+                title: 'Deleted',
+                isSelected: false,
+                onTap: widget.onNavigateToDeletedSongs,
+                count: _deletedSongsCount,
+                isPhoneMode: widget.isPhoneMode,
+              ),
             ]
           : null,
     );

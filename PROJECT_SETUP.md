@@ -124,6 +124,66 @@ These will be built as you work through WINDSURF_GUIDE.md:
 
 5. **Build incrementally**: Each task is designed to be completable in 30-60 minutes with AI help
 
+## VS Code Debug Configuration (Windows)
+
+If you experience debug hangs where VS Code shows "Connected to VM Service" but doesn't continue until you pause/continue, use these optimized debug settings:
+
+### `.vscode/settings.json`
+```json
+{
+  "dart.analysisExcludedFolders": [
+    "build",
+    ".dart_tool"
+  ],
+  "dart.debugExternalLibraries": false,
+  "dart.debugSdkLibraries": false,
+  "dart.debugExtensionBackendProtocol": "ws",
+  "dart.debugEvaluateGettersInDebugViews": false,
+  "dart.flutterSdkPath": "flutter",
+  "dart.cliConsole": "terminal",
+  "debug.allowBreakpointsEverywhere": false
+}
+```
+
+### `.vscode/launch.json`
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Windows",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "windows"
+    },
+    {
+      "name": "Flutter Android",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Flutter Windows + Android",
+      "configurations": [
+        "Flutter Windows",
+        "Flutter Android"
+      ]
+    }
+  ]
+}
+```
+
+### Troubleshooting Steps
+1. **Restart VS Code** after applying settings
+2. **Use Flutter clean**: `flutter clean && flutter pub get`
+3. **Check Windows Firewall**: Add exceptions for flutter.exe and dart.exe
+4. **Run as Administrator**: If permissions issues persist
+5. **Alternative**: Use command line `flutter run -d windows` if VS Code issues persist
+
 ---
 
 ## File Organization Philosophy

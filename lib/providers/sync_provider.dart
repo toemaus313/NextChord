@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
 import '../services/sync/cloud_db_backup_service.dart';
@@ -79,6 +81,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       // Small delay to ensure app is fully initialized
       Future.delayed(const Duration(seconds: 5), () async {
         try {
+          debugPrint('🔄 SyncProvider: Starting initial autoSync()');
           await autoSync();
         } catch (e) {}
 
@@ -86,6 +89,15 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         try {
           await _maintainCloudBackup();
         } catch (e) {}
+
+        // Start metadata polling after initial sync
+        try {
+          debugPrint(
+              '🔄 SyncProvider: Starting metadata polling after initial sync');
+          _syncService.startMetadataPolling();
+        } catch (e) {
+          debugPrint('🔄 SyncProvider: Failed to start metadata polling: $e');
+        }
       });
     }
   }
@@ -138,14 +150,26 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         break;
       case AppLifecycleState.paused:
         _isAppInForeground = false;
-        debugPrint('App paused, stopping metadata polling');
-        _syncService.stopMetadataPolling();
+        debugPrint('App paused, checking platform for metadata polling');
+        // Only stop polling on mobile platforms (iOS/Android)
+        // Windows and Mac continue polling even when unfocused
+        if (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android) {
+          debugPrint('Mobile platform detected, stopping metadata polling');
+          _syncService.stopMetadataPolling();
+        } else {
+          debugPrint('Desktop platform detected, continuing metadata polling');
+        }
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
         _isAppInForeground = false;
-        _syncService.stopMetadataPolling();
+        // Only stop polling on mobile platforms
+        if (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android) {
+          _syncService.stopMetadataPolling();
+        }
         break;
     }
   }
@@ -168,6 +192,12 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       await _syncService.sync();
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
+
+      // Trigger UI refresh after successful auto-sync
+      if (_onSyncCompleted != null) {
+        debugPrint('🔄 Triggering UI refresh after auto-sync');
+        _onSyncCompleted!();
+      }
     } catch (e) {
       _lastError = e.toString();
 
