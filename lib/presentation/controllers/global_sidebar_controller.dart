@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../providers/setlist_provider.dart';
+import '../providers/song_provider.dart';
 
 /// Controller for managing global sidebar navigation state
 class GlobalSidebarController extends ChangeNotifier {
@@ -9,6 +10,7 @@ class GlobalSidebarController extends ChangeNotifier {
   String? _selectedTag;
   String? _selectedSetlistId;
   SetlistProvider? _setlistProvider;
+  SongProvider? _songProvider;
 
   // Expansion states
   bool _isSongsExpanded = false;
@@ -27,10 +29,12 @@ class GlobalSidebarController extends ChangeNotifier {
   bool get isToolsExpanded => _isToolsExpanded;
   bool get isSettingsExpanded => _isSettingsExpanded;
 
-  /// Initialize with SetlistProvider reference
-  void initialize(SetlistProvider setlistProvider) {
-    debugPrint('GlobalSidebarController: Initializing with SetlistProvider');
+  /// Initialize with provider references
+  void initialize(SetlistProvider setlistProvider, SongProvider songProvider) {
+    debugPrint(
+        'GlobalSidebarController: Initializing with SetlistProvider and SongProvider');
     _setlistProvider = setlistProvider;
+    _songProvider = songProvider;
   }
 
   /// Navigate to a specific view
@@ -57,6 +61,12 @@ class GlobalSidebarController extends ChangeNotifier {
       // Set to 0 initially - will be updated when user clicks a song
       await _setlistProvider?.setActiveSetlist(setlistId, 0);
       debugPrint('GlobalSidebarController: Setlist activation completed');
+    }
+
+    // Load deleted songs when navigating to deleted songs view
+    if (view == 'deletedSongs') {
+      debugPrint('GlobalSidebarController: Loading deleted songs');
+      await _songProvider?.loadDeletedSongs();
     }
 
     notifyListeners();

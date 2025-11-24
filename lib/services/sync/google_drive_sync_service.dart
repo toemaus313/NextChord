@@ -331,7 +331,7 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<drive.DriveApi> _createDriveApi() async {
+  Future<drive.DriveApi> createDriveApi() async {
     try {
       if (_isMobilePlatform()) {
         // Use GoogleSignIn for mobile platforms
@@ -403,17 +403,17 @@ class GoogleDriveSyncService {
       }
 
       // Create Drive API client
-      final driveApi = await _createDriveApi();
+      final driveApi = await createDriveApi();
 
       // Find or create backup folder
-      final folderId = await _findOrCreateFolder(driveApi);
+      final folderId = await findOrCreateFolder(driveApi);
       if (folderId == null) {
         throw Exception('Failed to create/find backup folder');
       }
 
       // Find existing library file
       final existingFile =
-          await _findExistingFile(driveApi, folderId, _libraryFileName);
+          await findExistingFile(driveApi, folderId, _libraryFileName);
 
       if (existingFile == null) {
         debugPrint(_timestampedLog('Library metadata: No remote file found'));
@@ -446,10 +446,10 @@ class GoogleDriveSyncService {
       }
 
       // Create Drive API client
-      final driveApi = await _createDriveApi();
+      final driveApi = await createDriveApi();
 
       // Find or create backup folder
-      final folderId = await _findOrCreateFolder(driveApi);
+      final folderId = await findOrCreateFolder(driveApi);
       if (folderId == null) {
         throw Exception('Failed to create/find backup folder');
       }
@@ -471,7 +471,7 @@ class GoogleDriveSyncService {
 
       // Try to download existing library JSON from Google Drive
       final existingLibraryFile =
-          await _findExistingFile(driveApi, folderId, _libraryFileName);
+          await findExistingFile(driveApi, folderId, _libraryFileName);
 
       String? remoteJson;
       DriveLibraryMetadata? remoteMetadata;
@@ -590,7 +590,7 @@ class GoogleDriveSyncService {
     try {
       // Check if file already exists
       final existingFile =
-          await _findExistingFile(driveApi, folderId, _libraryFileName);
+          await findExistingFile(driveApi, folderId, _libraryFileName);
 
       final media = drive.Media(
         Stream.value(utf8.encode(jsonContent)),
@@ -621,7 +621,7 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<drive.File?> _findExistingFile(
+  Future<drive.File?> findExistingFile(
       drive.DriveApi driveApi, String folderId, String fileName) async {
     try {
       final response = await driveApi.files.list(
@@ -638,7 +638,7 @@ class GoogleDriveSyncService {
     }
   }
 
-  Future<String?> _findOrCreateFolder(drive.DriveApi driveApi) async {
+  Future<String?> findOrCreateFolder(drive.DriveApi driveApi) async {
     try {
       // Search for existing folder
       final response = await driveApi.files.list(

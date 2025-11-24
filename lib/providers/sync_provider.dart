@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
+import '../services/sync/cloud_db_backup_service.dart';
 import '../data/database/app_database.dart';
 import '../core/services/database_change_service.dart';
 
 class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   static const String _syncEnabledKey = 'isSyncEnabled';
   late GoogleDriveSyncService _syncService;
+  late CloudDbBackupService _backupService;
   final VoidCallback? _onSyncCompleted;
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
@@ -41,6 +43,12 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
           }
         },
       );
+
+      // Initialize cloud backup service
+      _backupService = CloudDbBackupService(
+        syncService: _syncService,
+        database: database,
+      );
     } catch (e) {
       rethrow;
     }
@@ -73,7 +81,24 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         try {
           await autoSync();
         } catch (e) {}
+
+        // Maintain cloud backup after initial sync
+        try {
+          await _maintainCloudBackup();
+        } catch (e) {}
       });
+    }
+  }
+
+  /// Maintain cloud backup (called on app startup)
+  Future<void> _maintainCloudBackup() async {
+    try {
+      if (!_isSyncEnabled) return;
+
+      debugPrint('🔄 Starting cloud backup maintenance');
+      await _backupService.maintainCloudBackup();
+    } catch (e) {
+      debugPrint('⚠️ Cloud backup maintenance failed: $e');
     }
   }
 
@@ -250,6 +275,51 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     _syncService.stopMetadataPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Check if cloud backup exists
+  Future<bool> hasCloudBackup() async {
+    try {
+      return await _backupService.hasCloudBackup();
+    } catch (e) {
+      debugPrint('⚠️ Failed to check for cloud backup: $e');
+      return false;
+    }
+  }
+
+  /// Restore database from cloud backup
+  /// Returns true if restore was successful, false otherwise
+  Future<bool> restoreFromCloudBackup() async {
+    try {
+      if (!_isSyncEnabled) {
+        throw Exception('Cloud sync is not enabled');
+      }
+
+      if (!await _syncService.isSignedIn()) {
+        throw Exception('Not signed in to Google Drive');
+      }
+
+      _isSyncing = true;
+      _lastError = null;
+      notifyListeners();
+
+      final success = await _backupService.restoreFromCloudBackup();
+
+      if (success) {
+        _lastSyncTime = DateTime.now();
+        _lastError = null;
+      } else {
+        _lastError = 'Failed to restore from cloud backup';
+      }
+
+      return success;
+    } catch (e) {
+      _lastError = e.toString();
+      return false;
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
   }
 
   // Helper method to show migration dialog

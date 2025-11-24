@@ -343,8 +343,11 @@ class SongProvider extends ChangeNotifier {
   Future<int> getDeletedSongsCount() async {
     try {
       final deletedSongs = await _repository.getDeletedSongs();
+      debugPrint(
+          '🎵 getDeletedSongsCount: Found ${deletedSongs.length} deleted songs');
       return deletedSongs.length;
     } catch (e) {
+      debugPrint('🎵 getDeletedSongsCount error: $e');
       return 0;
     }
   }
@@ -353,9 +356,12 @@ class SongProvider extends ChangeNotifier {
   Future<void> loadDeletedSongs() async {
     try {
       _deletedSongs = await _repository.getDeletedSongs();
+      debugPrint(
+          '🎵 loadDeletedSongs: Loaded ${_deletedSongs.length} deleted songs');
       _currentListType = SongListType.deleted;
       notifyListeners();
     } catch (e) {
+      debugPrint('🎵 loadDeletedSongs error: $e');
       _errorMessage = 'Failed to load deleted songs: $e';
       notifyListeners();
     }

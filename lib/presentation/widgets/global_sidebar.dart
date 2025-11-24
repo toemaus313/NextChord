@@ -63,7 +63,10 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             .read<GlobalSidebarProvider>()
             .initializeAnimation(_animationController);
         // Initialize controller with SetlistProvider for active setlist management
-        _controller.initialize(context.read<SetlistProvider>());
+        _controller.initialize(
+          context.read<SetlistProvider>(),
+          context.read<SongProvider>(),
+        );
       }
     });
 

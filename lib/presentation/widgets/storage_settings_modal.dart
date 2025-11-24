@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../../../providers/sync_provider.dart';
 import '../../../core/config/google_oauth_config.dart';
 import 'templates/standard_modal_template.dart';
@@ -40,6 +41,8 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
 
     return isMobileOrMac || isDesktopWithConfig;
   }
+
+  bool _isRestoring = false;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +192,18 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
         if (!syncProvider.isSyncEnabled) const SizedBox(height: 8),
         if (_isPlatformSupported && syncProvider.isSyncEnabled)
           StandardModalTemplate.buildButton(
+            label: 'Resync from Cloud',
+            icon: Icons.cloud_download,
+            onPressed: _isRestoring || syncProvider.isSyncing
+                ? null
+                : () {
+                    _handleResyncFromCloud(context, syncProvider);
+                  },
+          ),
+        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+          const SizedBox(height: 8),
+        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+          StandardModalTemplate.buildButton(
             label: 'Sign Out',
             icon: Icons.logout,
             onPressed: () {
@@ -215,6 +230,122 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
     try {
       await syncProvider.signOut();
     } catch (e) {}
+  }
+
+  Future<void> _handleResyncFromCloud(
+      BuildContext context, SyncProvider syncProvider) async {
+    try {
+      // Check if cloud backup exists first
+      final hasBackup = await syncProvider.hasCloudBackup();
+      if (!hasBackup) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No cloud backup available'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Restore from Cloud Backup'),
+          content: const Text(
+            'This will replace the local NextChord database with the backup stored in the cloud. Any unsynced local changes may be lost. Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // Set restoring state
+      setState(() {
+        _isRestoring = true;
+      });
+
+      // Perform restore
+      final success = await syncProvider.restoreFromCloudBackup();
+
+      if (context.mounted) {
+        if (success) {
+          // Show restart dialog
+          final restartConfirmed = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Database Restored'),
+              content: const Text(
+                'Your database has been successfully restored from the cloud backup. The app needs to restart to apply the changes.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Later'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Restart Now'),
+                ),
+              ],
+            ),
+          );
+
+          if (restartConfirmed == true) {
+            // Exit the app to force restart
+            if (!kIsWeb) {
+              exit(0);
+            } else {
+              // On web, just show success message since we can't restart
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Database restored successfully. Please refresh the page.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Restore failed: ${syncProvider.lastError}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Restore failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Reset restoring state
+      if (mounted) {
+        setState(() {
+          _isRestoring = false;
+        });
+      }
+    }
   }
 
   String _formatLastSync(DateTime dateTime) {

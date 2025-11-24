@@ -2,9 +2,46 @@
 
 This document tracks ALL active debug logs across the entire NextChord codebase for easy maintenance and troubleshooting.
 
-**Total Active Debug Statements**: 97 debugPrint calls across 12 files
+**Total Active Debug Statements**: 133 debugPrint calls across 13 files
 **Last Audit Date**: 2025-11-23
 **Audit Method**: `Grep` search for `debugPrint` pattern across entire codebase
+
+## Cloud Database Backup Service Logs
+**Location**: `lib/services/sync/cloud_db_backup_service.dart`
+- `[timestamp] CloudDbBackup: Starting cloud backup maintenance`
+- `[timestamp] CloudDbBackup: Google Drive not signed in - skipping backup maintenance`
+- `[timestamp] CloudDbBackup: Failed to create/find backup folder`
+- `[timestamp] CloudDbBackup: No cloud backup found - creating initial backup`
+- `[timestamp] CloudDbBackup: Cloud backup found, age: X minutes`
+- `[timestamp] CloudDbBackup: Backup is older than 1 hour - refreshing`
+- `[timestamp] CloudDbBackup: Backup is recent - no action needed`
+- `[timestamp] CloudDbBackup: Backup maintenance failed: X`
+- `[timestamp] CloudDbBackup: Starting database restore from cloud`
+- `[timestamp] CloudDbBackup: Cloud backup found - downloading`
+- `[timestamp] CloudDbBackup: Backup downloaded to: X`
+- `[timestamp] CloudDbBackup: Failed to download backup: X`
+- `[timestamp] CloudDbBackup: Backup file is too small or does not exist`
+- `[timestamp] CloudDbBackup: Backup file does not have valid SQLite header`
+- `[timestamp] CloudDbBackup: Backup file validation passed`
+- `[timestamp] CloudDbBackup: Backup file validation failed: X`
+- `[timestamp] CloudDbBackup: Created safety backup: X`
+- `[timestamp] CloudDbBackup: Closing database connection`
+- `[timestamp] CloudDbBackup: Replacing database file`
+- `[timestamp] CloudDbBackup: Database file replaced successfully - app restart required`
+- `[timestamp] CloudDbBackup: Database replacement failed, attempting restore: X`
+- `[timestamp] CloudDbBackup: Restored original database from backup`
+- `[timestamp] CloudDbBackup: Failed to restore original database: X`
+- `[timestamp] CloudDbBackup: Warning: Failed to clean up safety backup: X`
+- `[timestamp] CloudDbBackup: Failed to replace local database: X`
+- `[timestamp] CloudDbBackup: Database restore completed successfully`
+- `[timestamp] CloudDbBackup: Database restore failed: X`
+- `[timestamp] CloudDbBackup: Uploading database backup (X bytes)`
+- `[timestamp] CloudDbBackup: Updating existing backup file`
+- `[timestamp] CloudDbBackup: Creating new backup file`
+- `[timestamp] CloudDbBackup: Database backup uploaded successfully`
+- `[timestamp] CloudDbBackup: Failed to upload database backup: X`
+- `[timestamp] CloudDbBackup: Failed to check for cloud backup: X`
+- `[timestamp] CloudDbBackup: Warning: Failed to delete temp file: X`
 
 ## Sync Lifecycle Logs
 **Location**: `lib/services/sync/google_drive_sync_service.dart`
