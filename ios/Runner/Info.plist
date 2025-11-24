@@ -62,5 +62,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NextChord needs access to your photo library to let you choose images for songs and setlists in your music collection.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NextChord uses the microphone to tune your guitar and other instruments by analyzing the pitch of the notes you play.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>NextChord may use Bluetooth to connect with external audio devices and MIDI controllers for enhanced music functionality.</string>
 </dict>
 </plist>

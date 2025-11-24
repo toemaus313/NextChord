@@ -150,11 +150,7 @@ DEPENDENCIES:
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
-  file:///Users/antonovt/.cocoapods/repos/trunk-ssh:
-    - AppAuth
-    - GoogleUtilities
-    - GTMSessionFetcher
-  "git@github.com:CocoaPods/Specs.git":
+  trunk:
     - AppAuth
     - AppCheckCore
     - DKImagePickerController
@@ -232,6 +228,6 @@ SPEC CHECKSUMS:
   universal_ble: ff19787898040d721109c6324472e5dd4bc86adc
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
-PODFILE CHECKSUM: 95e64d32bf6e2ec8edefb4ebc4873ff4e8cd56e3
+PODFILE CHECKSUM: 477d9ab474d691c42599af780d70249216f268df
 
 COCOAPODS: 1.16.2

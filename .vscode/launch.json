@@ -11,6 +11,13 @@
       "program": "lib/main.dart",
       "deviceId": "278738C9-EB08-4BE8-8E7C-3D103964F491"
     },      
+     {
+      "name": "Flutter iPhone(myMac)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "257ED20B-7545-44DA-8703-0BB3EF9CDEED"
+    },     
     {
       "name": "Flutter macOS",
       "request": "launch",
@@ -38,7 +45,7 @@
       "name": "Flutter Macos+iPhone",
       "configurations": [
         "Flutter macOS",
-        "Flutter iPhone(workMac)"
+        "Flutter iPhone(myMac)"
       ]
     }    
   ]
