@@ -7,11 +7,13 @@ import '../sidebar_components/sidebar_header.dart';
 class SidebarArtistsListView extends StatefulWidget {
   final VoidCallback onBack;
   final Function(String) onArtistSelected;
+  final bool showHeader;
 
   const SidebarArtistsListView({
     Key? key,
     required this.onBack,
     required this.onArtistSelected,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -39,11 +41,13 @@ class _SidebarArtistsListViewState extends State<SidebarArtistsListView> {
 
         return Column(
           children: [
-            SidebarHeader(
-              title: 'Artists',
-              icon: Icons.person_outline,
-              onClose: widget.onBack,
-            ),
+            // Only show header if not on mobile (mobile has its own header)
+            if (widget.showHeader)
+              SidebarHeader(
+                title: 'Artists',
+                icon: Icons.person_outline,
+                onClose: widget.onBack,
+              ),
             Expanded(
               child: sortedArtists.isEmpty
                   ? const Center(

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/setlist.dart';
@@ -18,12 +19,14 @@ class SetlistEditorDialog extends StatefulWidget {
     BuildContext context, {
     Setlist? setlist,
   }) {
+    final isMobile = Platform.isIOS || Platform.isAndroid;
+
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
+        insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(4),
         child: SetlistEditorDialog(setlist: setlist),
       ),
     );
@@ -48,7 +51,7 @@ class SetlistEditorDialog extends StatefulWidget {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+          constraints: const BoxConstraints(maxHeight: 800),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
@@ -406,7 +409,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
+        constraints: const BoxConstraints(maxHeight: 800),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -433,8 +436,11 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withAlpha(20),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      minimumSize: const Size(60, 36),
                     ),
-                    child: const Text('Cancel'),
+                    child: const Text('Cancel', style: TextStyle(fontSize: 14)),
                   ),
                   // Centered title
                   Expanded(
@@ -456,6 +462,9 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withAlpha(20),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      minimumSize: const Size(60, 36),
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -467,7 +476,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                                   AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text('Save'),
+                        : const Text('Save', style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
@@ -548,14 +557,16 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                 ),
                 const SizedBox(height: 16),
                 // Add Songs button for empty setlist
-                ElevatedButton.icon(
+                ElevatedButton(
                   onPressed: _isLoading ? null : _addSongs,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add Songs'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white.withAlpha(20),
                     foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: const Size(36, 36),
                   ),
+                  child: const Icon(Icons.add, size: 20),
                 ),
               ],
             ),
@@ -570,7 +581,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
               child: Row(
                 children: [
                   // Selection mode toggle
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: _isLoading
                         ? null
                         : () {
@@ -579,39 +590,52 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                               _selectedSongs.clear();
                             });
                           },
-                    icon: Icon(_isSelectionMode ? Icons.close : Icons.checklist,
-                        size: 16),
-                    label: Text(
-                        _isSelectionMode ? 'Cancel Selection' : 'Select Songs'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isSelectionMode
                           ? Colors.red.withAlpha(20)
                           : Colors.white.withAlpha(20),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      minimumSize: const Size(36, 36),
                     ),
+                    child: Icon(
+                        _isSelectionMode ? Icons.close : Icons.checklist,
+                        size: 20),
                   ),
                   const SizedBox(width: 8),
                   // Bulk delete button
                   if (_isSelectionMode && _selectedSongs.isNotEmpty)
-                    ElevatedButton.icon(
+                    ElevatedButton(
                       onPressed: _isLoading ? null : _deleteSelectedSongs,
-                      icon: const Icon(Icons.delete, size: 16),
-                      label: Text('Delete (${_selectedSongs.length})'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.withAlpha(40),
                         foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        minimumSize: const Size(36, 36),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.delete, size: 16),
+                          const SizedBox(width: 4),
+                          Text('(${_selectedSongs.length})'),
+                        ],
                       ),
                     ),
                   const Spacer(),
                   // Add Songs button
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: _isLoading ? null : _addSongs,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Songs'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withAlpha(20),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      minimumSize: const Size(36, 36),
                     ),
+                    child: const Icon(Icons.add, size: 20),
                   ),
                 ],
               ),

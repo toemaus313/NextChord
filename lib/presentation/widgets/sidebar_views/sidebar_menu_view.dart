@@ -22,6 +22,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToGuitarTuner;
   final VoidCallback onNavigateToStorageSettings;
   final bool isPhoneMode;
+  final bool showHeader;
 
   const SidebarMenuView({
     Key? key,
@@ -37,6 +38,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToGuitarTuner,
     required this.onNavigateToStorageSettings,
     this.isPhoneMode = false,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -123,10 +125,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SidebarHeader(
-          title: 'Library',
-          icon: Icons.library_music,
-        ),
+        // Only show header if not on mobile (mobile has its own header)
+        if (widget.showHeader)
+          const SidebarHeader(
+            title: 'Library',
+            icon: Icons.library_music,
+          ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

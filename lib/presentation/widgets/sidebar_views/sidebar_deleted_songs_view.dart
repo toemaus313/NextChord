@@ -7,10 +7,12 @@ import '../sidebar_select_all_bar.dart';
 /// Deleted songs view for the sidebar
 class SidebarDeletedSongsView extends StatefulWidget {
   final VoidCallback onBack;
+  final bool showHeader;
 
   const SidebarDeletedSongsView({
     Key? key,
     required this.onBack,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -27,11 +29,13 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
 
         return Column(
           children: [
-            SidebarHeader(
-              title: 'Deleted Songs',
-              icon: Icons.delete_outline,
-              onClose: widget.onBack,
-            ),
+            // Only show header if not on mobile (mobile has its own header)
+            if (widget.showHeader)
+              SidebarHeader(
+                title: 'Deleted Songs',
+                icon: Icons.delete_outline,
+                onClose: widget.onBack,
+              ),
             // Select Songs button
             Consumer<SongProvider>(
               builder: (context, provider, child) {

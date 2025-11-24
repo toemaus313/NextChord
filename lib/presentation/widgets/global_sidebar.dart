@@ -20,6 +20,7 @@ import 'sidebar_views/sidebar_artists_list_view.dart';
 import 'sidebar_views/sidebar_artist_songs_view.dart';
 import 'sidebar_views/sidebar_tags_list_view.dart';
 import 'sidebar_views/sidebar_tag_songs_view.dart';
+import 'sidebar_components/mobile_sidebar_scaffold.dart';
 import '../../core/widgets/responsive_config.dart';
 
 /// Helper method to detect if we're actually on a phone (not just small screen)
@@ -180,51 +181,123 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   }
 
   Widget _buildCurrentView(BuildContext context) {
+    final isPhone = _isActualPhone(context);
+
     switch (_controller.currentView) {
       case 'allSongs':
-        return SidebarAllSongsView(
+        final view = SidebarAllSongsView(
           onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
           onAddSong: () => _navigateToAddSong(),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: 'All Songs',
+                icon: Icons.music_note,
+                onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
+                body: view,
+              )
+            : view;
+
       case 'deletedSongs':
-        return SidebarDeletedSongsView(
+        final view = SidebarDeletedSongsView(
           onBack: () => _controller.navigateToMenu(),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: 'Deleted Songs',
+                icon: Icons.delete_outline,
+                onBack: () => _controller.navigateToMenu(),
+                body: view,
+              )
+            : view;
+
       case 'artistsList':
-        return SidebarArtistsListView(
+        final view = SidebarArtistsListView(
           onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
           onArtistSelected: (artist) => _controller.navigateToView(
             'artistSongs',
             artist: artist,
           ),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: 'Artists',
+                icon: Icons.person_outline,
+                onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
+                body: view,
+              )
+            : view;
+
       case 'artistSongs':
-        return SidebarArtistSongsView(
+        final view = SidebarArtistSongsView(
           artist: _controller.selectedArtist ?? '',
           onBack: () => _controller.navigateToView('artistsList'),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: _controller.selectedArtist ?? '',
+                icon: Icons.person,
+                onBack: () => _controller.navigateToView('artistsList'),
+                body: view,
+              )
+            : view;
+
       case 'tagsList':
-        return SidebarTagsListView(
+        final view = SidebarTagsListView(
           onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
           onTagSelected: (tag) => _controller.navigateToView(
             'tagSongs',
             tag: tag,
           ),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: 'Tags',
+                icon: Icons.tag,
+                onBack: () => _controller.navigateToMenuKeepSongsExpanded(),
+                body: view,
+              )
+            : view;
+
       case 'tagSongs':
-        return SidebarTagSongsView(
+        final view = SidebarTagSongsView(
           tag: _controller.selectedTag ?? '',
           onBack: () => _controller.navigateToView('tagsList'),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: '#${_controller.selectedTag ?? ''}',
+                icon: Icons.tag,
+                onBack: () => _controller.navigateToView('tagsList'),
+                body: view,
+              )
+            : view;
+
       case 'setlistView':
-        return SidebarSetlistView(
+        final view = SidebarSetlistView(
           setlistId: _controller.selectedSetlistId ?? '',
           onBack: () => _controller.navigateToMenu(),
           onAddSong: () => _showAddSongsToSetlist(),
           onAddDivider: () => _showDividerDialog(),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: _getSetlistTitle(context),
+                icon: Icons.playlist_play,
+                onBack: () => _controller.navigateToMenu(),
+                body: view,
+              )
+            : view;
+
       default:
-        return SidebarMenuView(
+        final view = SidebarMenuView(
           onNavigateToAllSongs: () => _controller.navigateToView('allSongs'),
           onNavigateToArtistsList: () =>
               _controller.navigateToView('artistsList'),
@@ -241,8 +314,25 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToGuitarTuner: () => _showGuitarTuner(),
           onNavigateToStorageSettings: () => _showStorageSettings(),
           isPhoneMode: _isActualPhone(context),
+          showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
+        return isPhone
+            ? MobileSidebarScaffold(
+                title: 'Library',
+                icon: Icons.library_music,
+                body: view,
+              )
+            : view;
     }
+  }
+
+  /// Helper method to get setlist title for mobile header
+  String _getSetlistTitle(BuildContext context) {
+    final setlistProvider = context.read<SetlistProvider>();
+    final setlist = setlistProvider.setlists
+        .where((s) => s.id == _controller.selectedSetlistId)
+        .firstOrNull;
+    return setlist?.name ?? 'Setlist';
   }
 
   void _navigateToAddSong() async {

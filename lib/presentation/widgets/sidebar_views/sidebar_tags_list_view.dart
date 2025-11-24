@@ -7,11 +7,13 @@ import '../sidebar_components/sidebar_header.dart';
 class SidebarTagsListView extends StatefulWidget {
   final VoidCallback onBack;
   final Function(String) onTagSelected;
+  final bool showHeader;
 
   const SidebarTagsListView({
     Key? key,
     required this.onBack,
     required this.onTagSelected,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -40,11 +42,13 @@ class _SidebarTagsListViewState extends State<SidebarTagsListView> {
 
         return Column(
           children: [
-            SidebarHeader(
-              title: 'Tags',
-              icon: Icons.tag,
-              onClose: widget.onBack,
-            ),
+            // Only show header if not on mobile (mobile has its own header)
+            if (widget.showHeader)
+              SidebarHeader(
+                title: 'Tags',
+                icon: Icons.tag,
+                onClose: widget.onBack,
+              ),
             Expanded(
               child: sortedTags.isEmpty
                   ? const Center(

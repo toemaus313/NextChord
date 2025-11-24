@@ -12,11 +12,13 @@ import '../../../core/utils/device_breakpoints.dart';
 class SidebarAllSongsView extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onAddSong;
+  final bool showHeader;
 
   const SidebarAllSongsView({
     Key? key,
     required this.onBack,
     required this.onAddSong,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -49,18 +51,20 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
       showSearchBar: isPhone,
       child: Column(
         children: [
-          SidebarHeader(
-            title: 'All Songs',
-            icon: Icons.music_note,
-            onClose: () {
-              debugPrint('AllSongsView: Back button pressed');
-              context.read<SongProvider>().resetSelectionMode();
-              _searchController.clear();
-              context.read<SongProvider>().searchSongs('');
-              debugPrint('AllSongsView: Calling widget.onBack()');
-              widget.onBack();
-            },
-          ),
+          // Only show header if not on mobile (mobile has its own header)
+          if (widget.showHeader)
+            SidebarHeader(
+              title: 'All Songs',
+              icon: Icons.music_note,
+              onClose: () {
+                debugPrint('AllSongsView: Back button pressed');
+                context.read<SongProvider>().resetSelectionMode();
+                _searchController.clear();
+                context.read<SongProvider>().searchSongs('');
+                debugPrint('AllSongsView: Calling widget.onBack()');
+                widget.onBack();
+              },
+            ),
           // Only show desktop search bar on desktop/tablet
           if (!isPhone) ...[
             const SizedBox(height: 8),

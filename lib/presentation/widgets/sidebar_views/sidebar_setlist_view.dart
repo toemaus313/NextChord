@@ -18,6 +18,7 @@ class SidebarSetlistView extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onAddSong;
   final VoidCallback onAddDivider;
+  final bool showHeader;
 
   const SidebarSetlistView({
     Key? key,
@@ -25,6 +26,7 @@ class SidebarSetlistView extends StatefulWidget {
     required this.onBack,
     required this.onAddSong,
     required this.onAddDivider,
+    this.showHeader = true,
   }) : super(key: key);
 
   @override
@@ -43,11 +45,13 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
         if (currentSetlist == null) {
           return Column(
             children: [
-              SidebarHeader(
-                title: 'Setlist',
-                icon: Icons.playlist_play,
-                onClose: widget.onBack,
-              ),
+              // Only show header if not on mobile (mobile has its own header)
+              if (widget.showHeader)
+                SidebarHeader(
+                  title: 'Setlist',
+                  icon: Icons.playlist_play,
+                  onClose: widget.onBack,
+                ),
               const Expanded(
                 child: Center(
                   child: Text(
@@ -63,11 +67,12 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
         return Column(
           children: [
             // Header with setlist icon and back button
-            SidebarHeader(
-              title: currentSetlist.name,
-              icon: Icons.playlist_play,
-              onClose: widget.onBack,
-            ),
+            if (widget.showHeader)
+              SidebarHeader(
+                title: currentSetlist.name,
+                icon: Icons.playlist_play,
+                onClose: widget.onBack,
+              ),
             const SizedBox(height: 8),
             // Logo area (200x200 placeholder)
             Container(
