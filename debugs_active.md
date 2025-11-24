@@ -1,79 +1,80 @@
 # Active Debug Logs - NextChord Codebase
 
-## Status: CLEAN ✅
+## Status: ACTIVE DEBUG LOGGING ✅
 
-All debugging code has been removed from the NextChord codebase.
-
-**Cleanup Date**: 2025-11-24  
-**Cleanup Method**: Comprehensive removal of all debugPrint, print, and debug-related code + compilation error fixes + final stabilization delay  
-**Result**: No active debug statements remain in production code
+**Updated**: 2025-11-24  
+**Purpose**: Minimal debug logging for Google sync functionality
 
 ---
 
-## What Was Removed
+## Current Active Debug Statements
 
-### Debug Statements Removed:
-- ✅ All `debugPrint()` statements from sync services
-- ✅ All `_timestampedLog()` function calls and definitions  
-- ✅ All `print()` statements from utility scripts (database deletion scripts)
-- ✅ Orphaned debug strings with emoji prefixes (🔍, ⚠️, ✅, 🔄, 🎵, 📋, 📱, 🏗️)
-- ✅ Debug print statements from utility scripts (replaced with clean status messages)
-- ✅ Empty catch blocks and debug-only UI elements
-- ✅ Temporary debug flags and conditional debug code
-- ✅ TODO comments that were debug-related
+### ✅ Global Debug Foundation
+- **File**: `lib/main.dart`
+- **Function**: `myDebug(String message)`
+- **Flag**: `bool isDebug = true`
+- **Format**: `[$timestamp] $message` (HH:MM:SS format)
+- **Description**: Standardized debug helper with timestamps for consistent logging across the app
 
-### Compilation Errors Fixed:
-- ✅ Fixed malformed `showDialog` calls in multiple files (standard_modal_template.dart, storage_settings_modal.dart, concise_modal_template.dart, song_editor_screen_refactored.dart)
-- ✅ Fixed missing semicolon in sync_provider.dart
-- ✅ Fixed unchecked nullable value errors in ultimate_guitar_import_service.dart
-- ✅ Fixed incomplete method implementation in song_persistence_service.dart
-- ✅ Fixed orphaned dialog code in midi_settings_screen.dart
+### ✅ Google Sync Service Debug Logging
+- **File**: `lib/services/sync/google_drive_sync_service.dart`
+- **Location**: Line 663 (metadata polling)
+- **Message**: `"[HH:MM:SS] Remote change detected in Google Drive - triggering sync"`
+- **Trigger**: When remote changes are detected during metadata polling
 
-### Files Cleaned:
-- `lib/services/midi/midi_service.dart` - Removed unused debug utility methods (getProgramChangeBytes, getControlChangeBytes, getMidiClockBytes)
-- `lib/presentation/widgets/sidebar_views/sidebar_menu_view.dart` - Removed debug comment ("Debug logging to verify values")
+- **File**: `lib/services/sync/google_drive_sync_service.dart`
+- **Location**: Line 498 (sync application)
+- **Message**: `"[HH:MM:SS] Remote changes successfully applied to local database"`
+- **Trigger**: When remote changes are successfully merged into the local database
 
-### Final Cleanup:
-- ✅ Removed remaining debug utility methods from MIDI service
-- ✅ Removed debug comment from sidebar menu view
-- ✅ Confirmed no actual analyzer errors (only warnings remain)
-- ✅ Tests run (some pre-existing test failures unrelated to cleanup)
-- ✅ Final delayed analysis (10 second stabilization) completed without errors
+### ✅ Local Database Change Debug Logging
+- **File**: `lib/core/services/database_change_service.dart`
+- **Location**: Line 79 (change notification)
+- **Message**: `"[HH:MM:SS] Local db change detected - sending to cloud"`
+- **Trigger**: When local database changes are detected and scheduled for sync
+
+- **File**: `lib/providers/sync_provider.dart`
+- **Location**: Line 184 (sync completion)
+- **Message**: `"[HH:MM:SS] Local db change successfully sent to cloud"`
+- **Trigger**: When local changes are successfully uploaded to Google Drive
 
 ---
 
-## Current State
+## Debug Behavior
 
-### ✅ Debug Code Status
-- No print/debugPrint/log statements remain in utility scripts
-- All empty catch blocks now have appropriate comments
-- Debug-related TODO comments have been cleaned up
-- Production code is free of debug noise
+### What Gets Logged:
+1. **Local Change Detection**: When local database changes are detected and scheduled for cloud sync
+2. **Remote Change Detection**: When the metadata polling detects changes in Google Drive
+3. **Successful Sync Application**: When remote changes are successfully applied to the local database
+4. **Successful Local Upload**: When local changes are successfully uploaded to Google Drive
 
-### ✅ Compilation Status
-- All analyzer errors have been fixed
-- Project compiles cleanly with `flutter analyze`
-- No syntax errors or missing implementations remain
-- Final delayed analysis confirms stability
+### What Does NOT Get Logged:
+- Normal sync operations without changes
+- Network errors or authentication issues (handled silently)
+- Metadata polling when no changes are found
+- Manual sync operations without underlying changes
 
-### ✅ Code Quality
-- Only production logging and error handling remain
-- Clean, readable code without debug noise
-- All empty blocks filled with meaningful comments
-- Proper error handling maintained
+---
+
+## Implementation Notes
+
+- Uses standardized `myDebug()` function with timestamps (HH:MM:SS format)
+- Debug output can be toggled globally via `isDebug` flag in `main.dart`
+- Minimal logging approach - only logs key sync events with precise timing
+- No performance impact on normal sync operations
+- Provides complete visibility into sync flow in both directions with timing information
 
 ---
 
 ## Future Debug Guidelines
 
-If adding debug code in the future:
-1. Use structured logging only for essential troubleshooting
-2. Document all debug additions in this file
-3. Ensure debug code can be easily removed
-4. Avoid emoji prefixes and temporary debug UI elements
-5. Keep debug code out of production builds where possible
+If adding more debug code:
+1. Use the standardized `myDebug()` function from `main.dart`
+2. Update this file to document new debug statements
+3. Keep debug logging minimal and focused on key events
+4. Ensure debug code can be easily removed via automated cleanup
 
 ---
 
 *Last Updated: 2025-11-24*  
-*Status: Clean - No active debug statements, all compilation errors fixed, stabilized*
+*Status: Active - Complete sync debug logging enabled (local + remote)*

@@ -20,6 +20,17 @@ import 'core/services/sync_service_locator.dart';
 import 'core/services/database_change_service.dart';
 import 'presentation/widgets/app_wrapper.dart';
 
+// Global debug configuration
+bool isDebug = true;
+
+void myDebug(String message) {
+  if (isDebug) {
+    final timestamp =
+        DateTime.now().toIso8601String().substring(11, 19); // HH:MM:SS
+    debugPrint('[$timestamp] $message');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -95,7 +106,6 @@ class NextChordApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     // Android-specific fix: Use FutureBuilder to delay widget tree construction
     // to prevent build-phase setState errors on Android
     return FutureBuilder<void>(

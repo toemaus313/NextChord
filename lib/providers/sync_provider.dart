@@ -6,6 +6,7 @@ import '../services/sync/google_drive_sync_service.dart';
 import '../services/sync/cloud_db_backup_service.dart';
 import '../data/database/app_database.dart';
 import '../core/services/database_change_service.dart';
+import '../main.dart' as main;
 
 class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   static const String _syncEnabledKey = 'isSyncEnabled';
@@ -178,6 +179,9 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       await _syncService.sync();
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
+
+      // Log successful local change upload
+      main.myDebug("Local db change successfully sent to cloud");
 
       // Trigger UI refresh after successful auto-sync
       if (_onSyncCompleted != null) {

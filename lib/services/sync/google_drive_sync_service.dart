@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
+import '../../main.dart' as main;
 import 'library_sync_service.dart';
 
 class GoogleDriveSyncService {
@@ -494,6 +495,7 @@ class GoogleDriveSyncService {
       // Merge remote library into local database (if remote exists and is valid)
       if (remoteJson != null && remoteJson.isNotEmpty) {
         await _librarySyncService.importAndMergeLibraryFromJson(remoteJson);
+        main.myDebug("Remote changes successfully applied to local database");
       } else {
         // No merge needed - no remote changes to apply
       }
@@ -659,6 +661,8 @@ class GoogleDriveSyncService {
               await _librarySyncService.hasRemoteChanges(remoteMetadata);
 
           if (hasRemoteChanges) {
+            main.myDebug(
+                "Remote change detected in Google Drive - triggering sync");
             // Trigger full sync through the sync provider
             await SyncServiceLocator.triggerAutoSync();
           } else {
