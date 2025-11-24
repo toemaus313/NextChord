@@ -6,6 +6,7 @@ import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../core/constants/song_viewer_constants.dart';
+import '../../core/utils/device_breakpoints.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/metronome_provider.dart';
@@ -361,6 +362,53 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     super.dispose();
   }
 
+  /// Build action buttons for phone mode header
+  List<Widget> _buildActionButtons(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDarkMode
+        ? SongViewerConstants.darkModeAccent
+        : SongViewerConstants.lightModeAccent;
+
+    return [
+      // Share button
+      IconButton(
+        icon: Icon(
+          Icons.share,
+          color: accent,
+          size: 24, // Smaller size for phone header
+        ),
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Share functionality coming soon!')),
+          );
+        },
+        tooltip: 'Share song',
+        constraints: const BoxConstraints(),
+        padding: const EdgeInsets.all(4), // Tight padding for grouping
+      ),
+      // Delete button
+      IconButton(
+        icon: const Icon(Icons.delete, color: Colors.red, size: 24),
+        onPressed: _deleteSong,
+        tooltip: 'Delete song',
+        constraints: const BoxConstraints(),
+        padding: const EdgeInsets.all(4), // Tight padding for grouping
+      ),
+      // Edit button
+      IconButton(
+        icon: Icon(
+          Icons.edit,
+          color: accent,
+          size: 24, // Smaller size for phone header
+        ),
+        onPressed: _handleEdit,
+        tooltip: 'Edit song',
+        constraints: const BoxConstraints(),
+        padding: const EdgeInsets.all(4), // Tight padding for grouping
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
@@ -372,6 +420,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
           final backgroundColor =
               isDarkMode ? const Color(0xFF121212) : Colors.white;
           final textColor = isDarkMode ? Colors.white : Colors.black87;
+          final isPhone = DeviceBreakpoints.isPhone(context);
 
           return Scaffold(
             backgroundColor: backgroundColor,
@@ -438,6 +487,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                                     nextSongDisplayTextFuture:
                                         _setlistNavigationService
                                             .getNextSongDisplayText(),
+                                    isPhoneMode: isPhone,
+                                    actionButtons: isPhone
+                                        ? _buildActionButtons(context)
+                                        : null,
                                   ),
                                   // Scrollable content
                                   Expanded(
@@ -483,7 +536,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                               ),
                             ),
                             // Floating UI elements
-                            _buildFloatingUI(context, isDarkMode, textColor),
+                            _buildFloatingUI(
+                                context, isDarkMode, textColor, isPhone),
                             const MetronomeFlashOverlay(),
                           ],
                         ),
@@ -500,67 +554,69 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   }
 
   Widget _buildFloatingUI(
-      BuildContext context, bool isDarkMode, Color textColor) {
+      BuildContext context, bool isDarkMode, Color textColor, bool isPhone) {
     return Stack(
       children: [
-        // Sidebar toggle button
-        Positioned(
-          top: 8,
-          left: 8,
-          child: IconButton(
-            icon: Icon(Icons.menu, color: textColor, size: 28),
-            onPressed: () =>
-                context.read<GlobalSidebarProvider>().toggleSidebar(),
-            tooltip: 'Toggle sidebar',
+        // Sidebar toggle button - only show on desktop/tablet
+        if (!isPhone)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: IconButton(
+              icon: Icon(Icons.menu, color: textColor, size: 28),
+              onPressed: () =>
+                  context.read<GlobalSidebarProvider>().toggleSidebar(),
+              tooltip: 'Toggle sidebar',
+            ),
           ),
-        ),
-        // Top right buttons
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Share button
-              IconButton(
-                icon: Icon(
-                  Icons.share,
-                  color: isDarkMode
-                      ? SongViewerConstants.darkModeAccent
-                      : SongViewerConstants.lightModeAccent,
-                  size: 28,
+        // Top right buttons - only show on desktop/tablet
+        if (!isPhone)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Share button
+                IconButton(
+                  icon: Icon(
+                    Icons.share,
+                    color: isDarkMode
+                        ? SongViewerConstants.darkModeAccent
+                        : SongViewerConstants.lightModeAccent,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Share functionality coming soon!')),
+                    );
+                  },
+                  tooltip: 'Share song',
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Share functionality coming soon!')),
-                  );
-                },
-                tooltip: 'Share song',
-              ),
-              const SizedBox(width: 8),
-              // Delete button
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red, size: 28),
-                onPressed: _deleteSong,
-                tooltip: 'Delete song',
-              ),
-              const SizedBox(width: 8),
-              // Edit button
-              IconButton(
-                icon: Icon(
-                  Icons.edit,
-                  color: isDarkMode
-                      ? SongViewerConstants.darkModeAccent
-                      : SongViewerConstants.lightModeAccent,
-                  size: 28,
+                const SizedBox(width: 8),
+                // Delete button
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 28),
+                  onPressed: _deleteSong,
+                  tooltip: 'Delete song',
                 ),
-                onPressed: _handleEdit,
-                tooltip: 'Edit song',
-              ),
-            ],
+                const SizedBox(width: 8),
+                // Edit button
+                IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: isDarkMode
+                        ? SongViewerConstants.darkModeAccent
+                        : SongViewerConstants.lightModeAccent,
+                    size: 28,
+                  ),
+                  onPressed: _handleEdit,
+                  tooltip: 'Edit song',
+                ),
+              ],
+            ),
           ),
-        ),
         // Bottom right adjustment buttons
         Positioned(
           bottom: 16,

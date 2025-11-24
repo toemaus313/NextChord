@@ -7,11 +7,15 @@ import '../providers/setlist_provider.dart';
 class SongViewerHeader extends StatelessWidget {
   final String songTitle;
   final Future<String?> nextSongDisplayTextFuture;
+  final List<Widget>? actionButtons;
+  final bool isPhoneMode;
 
   const SongViewerHeader({
     Key? key,
     required this.songTitle,
     required this.nextSongDisplayTextFuture,
+    this.actionButtons,
+    this.isPhoneMode = false,
   }) : super(key: key);
 
   @override
@@ -24,31 +28,87 @@ class SongViewerHeader extends StatelessWidget {
     // Watch SetlistProvider to trigger rebuild when setlist state changes
     context.watch<SetlistProvider>();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: SongViewerConstants.headerPadding,
-        vertical: 12,
-      ),
-      color: backgroundColor,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    if (isPhoneMode) {
+      // Phone layout: Row with back button, left-justified title, and tightly grouped buttons
+      return Container(
+        width: double.infinity,
+        height: 48, // Explicit height to avoid constraint issues
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8, // Minimal padding for tight layout
+          vertical: 12,
+        ),
+        color: backgroundColor,
+        child: Row(
           children: [
-            Text(
-              songTitle,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            // Back button (left aligned)
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icon(
+                Icons.arrow_back,
                 color: textColor,
+                size: 24,
+              ),
+              tooltip: 'Back',
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.all(4), // Minimal padding
+            ),
+            const SizedBox(width: 8),
+            // Title (left-justified, takes available space)
+            Expanded(
+              child: Text(
+                songTitle,
+                style: TextStyle(
+                  fontSize: 20, // Slightly smaller on phones
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
-            const SizedBox(height: 4),
-            _buildNextSongDisplay(textColor),
+            // Action buttons on the right (very tightly grouped)
+            if (actionButtons != null && actionButtons!.isNotEmpty)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: actionButtons!.map((button) {
+                  // Very tight spacing between buttons
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: button,
+                  );
+                }).toList(),
+              ),
           ],
         ),
-      ),
-    );
+      );
+    } else {
+      // Desktop/tablet layout: Original centered column layout
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: SongViewerConstants.headerPadding,
+          vertical: 12,
+        ),
+        color: backgroundColor,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                songTitle,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildNextSongDisplay(textColor),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildNextSongDisplay(Color textColor) {

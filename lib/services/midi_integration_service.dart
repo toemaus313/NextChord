@@ -17,16 +17,27 @@ class MidiIntegrationService {
   Future<void> sendMidiMappingOnOpen(
       String songId, String songTitle, int bpm) async {
     try {
+      // Check if MidiService is still valid (not disposed)
+      if (_midiService.isDisposed) {
+        return;
+      }
+
       // Load MIDI profile from database
       final midiProfile = await _songRepository.getSongMidiProfile(songId);
 
       if (midiProfile == null) {
       } else {
+        // Check again before sending profile (async operation might have completed after disposal)
+        if (_midiService.isDisposed) {
+          return;
+        }
         await _sendMidiProfile(midiProfile, songTitle);
       }
 
       // Send MIDI clock stream if enabled
-      await _sendMidiClockStreamIfNeeded(bpm);
+      if (!_midiService.isDisposed) {
+        await _sendMidiClockStreamIfNeeded(bpm);
+      }
     } catch (e, stackTrace) {}
   }
 

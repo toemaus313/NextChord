@@ -42,6 +42,7 @@ class MidiService with ChangeNotifier {
   // MIDI Configuration
   int _midiChannel = 0; // Internal storage: 0-15 (displayed as 1-16)
   bool _sendMidiClockEnabled = false; // Send MIDI clock when songs are opened
+  bool _isDisposed = false; // Track disposal state
 
   // Getters
   MidiConnectionState get connectionState => _connectionState;
@@ -52,6 +53,7 @@ class MidiService with ChangeNotifier {
   bool get isScanning => _connectionState == MidiConnectionState.scanning;
   int get midiChannel => _midiChannel;
   bool get sendMidiClockEnabled => _sendMidiClockEnabled;
+  bool get isDisposed => _isDisposed;
 
   /// Set the MIDI channel (1-16, displayed to user)
   void setMidiChannel(int channel) {
@@ -79,6 +81,10 @@ class MidiService with ChangeNotifier {
     int durationSeconds = 2,
     int? bpm,
   }) async {
+    if (_isDisposed) {
+      return;
+    }
+
     if (!isConnected || _connectedDevice == null) {
       return;
     }
@@ -93,7 +99,7 @@ class MidiService with ChangeNotifier {
     final tickTimestamps = <DateTime>[];
     var nextTickTime = DateTime.now().add(clockInterval);
 
-    while (DateTime.now().isBefore(endTime)) {
+    while (DateTime.now().isBefore(endTime) && !_isDisposed) {
       final now = DateTime.now();
       _midiCommand.sendData(clockData);
       tickTimestamps.add(now);
@@ -103,7 +109,7 @@ class MidiService with ChangeNotifier {
     }
 
     final tickCount = tickTimestamps.length;
-    if (tickCount < 2) {
+    if (tickCount < 2 || _isDisposed) {
       return;
     }
 
@@ -256,6 +262,10 @@ class MidiService with ChangeNotifier {
   ///
   /// Example: sendProgramChange(1) selects preset 1 on the connected device
   Future<bool> sendProgramChange(int program, {int channel = 0}) async {
+    if (_isDisposed) {
+      return false;
+    }
+
     try {
       if (!isConnected || _connectedDevice == null) {
         _setError('No MIDI device connected');
@@ -297,6 +307,10 @@ class MidiService with ChangeNotifier {
   /// Example: sendControlChange(64, 127) enables sustain pedal on channel 0
   Future<bool> sendControlChange(int controller, int value,
       {int channel = 0}) async {
+    if (_isDisposed) {
+      return false;
+    }
+
     try {
       if (!isConnected || _connectedDevice == null) {
         _setError('No MIDI device connected');
@@ -404,6 +418,10 @@ class MidiService with ChangeNotifier {
   /// Send MIDI Clock message (real-time message: 0xF8)
   /// Used for timing synchronization with MIDI devices
   Future<bool> sendMidiClock() async {
+    if (_isDisposed) {
+      return false;
+    }
+
     try {
       if (!isConnected || _connectedDevice == null) {
         _setError('No MIDI device connected');
@@ -460,6 +478,9 @@ class MidiService with ChangeNotifier {
   /// Dispose the MIDI service and clean up resources
   @override
   void dispose() {
+    if (_isDisposed) return; // Prevent multiple disposals
+
+    _isDisposed = true;
     disconnect();
     super.dispose();
   }
@@ -467,16 +488,19 @@ class MidiService with ChangeNotifier {
   // Private helper methods
 
   void _setConnectionState(MidiConnectionState state) {
+    if (_isDisposed) return;
     _connectionState = state;
     notifyListeners();
   }
 
   void _setError(String error) {
+    if (_isDisposed) return;
     _errorMessage = error;
     notifyListeners();
   }
 
   void _clearError() {
+    if (_isDisposed) return;
     _errorMessage = null;
     notifyListeners();
   }

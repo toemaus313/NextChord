@@ -3,18 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/metronome_settings_provider.dart';
 import '../../services/midi/midi_service.dart';
-import 'templates/concise_modal_template.dart';
+import 'templates/standard_modal_template.dart';
 
-/// **Concise Modal Template Implementation** - Metronome Settings
-///
-/// This demonstrates how to use the ConciseModalTemplate for consistent,
-/// compact modal design across the application.
+/// Metronome Settings Modal - Using StandardModalTemplate
 class MetronomeSettingsModal extends StatefulWidget {
   const MetronomeSettingsModal({Key? key}) : super(key: key);
 
-  /// Show the Metronome Settings modal using the concise template
+  /// Show the Metronome Settings modal
   static Future<void> show(BuildContext context) {
-    return ConciseModalTemplate.showConciseModal<void>(
+    return StandardModalTemplate.show<void>(
       context: context,
       barrierDismissible: false,
       child: const MetronomeSettingsModal(),
@@ -25,8 +22,7 @@ class MetronomeSettingsModal extends StatefulWidget {
   State<MetronomeSettingsModal> createState() => _MetronomeSettingsModalState();
 }
 
-class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
-    with ConciseModalContentMixin {
+class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
   late final TextEditingController _midiSendController;
   String? _midiSendError;
 
@@ -80,19 +76,33 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
       builder: (context, settingsProvider, child) {
         return Consumer<MidiService>(
           builder: (context, midiService, child) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildHeader(context, settingsProvider),
-                buildConciseContent(
-                  children: addConciseSpacing([
-                    _buildCountInSetting(settingsProvider),
-                    _buildTickActionSetting(settingsProvider),
-                    _buildMidiSendSetting(settingsProvider, midiService),
-                    _buildMidiStatusInfo(midiService),
-                  ]),
-                ),
-              ],
+            return StandardModalTemplate.buildModalContainer(
+              context: context,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StandardModalTemplate.buildHeader(
+                    context: context,
+                    title: 'Metronome Settings',
+                    onCancel: () => _cancelChanges(context, settingsProvider),
+                    onOk: _midiSendError == null
+                        ? () => _saveChanges(context, settingsProvider)
+                        : () {},
+                    okEnabled: _midiSendError == null,
+                  ),
+                  StandardModalTemplate.buildContent(
+                    children: [
+                      _buildCountInSetting(settingsProvider),
+                      const SizedBox(height: 8),
+                      _buildTickActionSetting(settingsProvider),
+                      const SizedBox(height: 8),
+                      _buildMidiSendSetting(settingsProvider, midiService),
+                      const SizedBox(height: 8),
+                      _buildMidiStatusInfo(midiService),
+                    ],
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -100,24 +110,11 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
     );
   }
 
-  Widget _buildHeader(
-      BuildContext context, MetronomeSettingsProvider settingsProvider) {
-    return ConciseModalTemplate.buildConciseHeader(
-      context: context,
-      title: 'Metronome Settings',
-      onCancel: () => _cancelChanges(context, settingsProvider),
-      onOk: _midiSendError == null
-          ? () => _saveChanges(context, settingsProvider)
-          : () {},
-      okEnabled: _midiSendError == null,
-    );
-  }
-
   Widget _buildCountInSetting(MetronomeSettingsProvider settingsProvider) {
-    return ConciseModalTemplate.buildConciseSettingRow(
+    return StandardModalTemplate.buildSettingRow(
       icon: Icons.timer,
       label: 'Count In',
-      control: ConciseModalTemplate.buildConciseDropdown<int>(
+      control: StandardModalTemplate.buildDropdown<int>(
         value: settingsProvider.countInMeasures,
         items: const [
           DropdownMenuItem<int>(
@@ -146,39 +143,50 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
   }
 
   Widget _buildTickActionSetting(MetronomeSettingsProvider settingsProvider) {
-    return ConciseModalTemplate.buildConciseSettingRow(
+    return StandardModalTemplate.buildSettingRow(
       icon: Icons.vibration,
-      label: 'Tick Action:',
-      control: Expanded(
-        child: ConciseModalTemplate.buildConciseDropdown<String>(
-          value: settingsProvider.tickAction,
-          isExpanded: true,
-          items: MetronomeSettingsProvider.availableTickActions
-              .map((action) => DropdownMenuItem<String>(
-                    value: action,
-                    child: Text(
-                      action,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ))
-              .toList(),
-          onChanged: (String? newAction) {
-            if (newAction != null) {
-              settingsProvider.setTickAction(newAction);
-            }
-          },
-        ),
+      label: 'Tick Action',
+      control: StandardModalTemplate.buildDropdown<String>(
+        value: settingsProvider.tickAction,
+        items: MetronomeSettingsProvider.availableTickActions
+            .map((action) => DropdownMenuItem<String>(
+                  value: action,
+                  child: Text(
+                    action,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ))
+            .toList(),
+        onChanged: (String? newAction) {
+          if (newAction != null) {
+            settingsProvider.setTickAction(newAction);
+          }
+        },
       ),
     );
   }
 
   Widget _buildMidiSendSetting(
       MetronomeSettingsProvider settingsProvider, MidiService midiService) {
-    return ConciseModalTemplate.buildConciseSettingColumn(
-      icon: Icons.piano,
-      label: 'MIDI Send on Tick:',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ConciseModalTemplate.buildConciseTextField(
+        Row(
+          children: [
+            const Icon(Icons.piano, color: Colors.white70, size: 20),
+            const SizedBox(width: 12),
+            const Text(
+              'MIDI Send on Tick',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        StandardModalTemplate.buildTextField(
           controller: _midiSendController,
           hintText: 'e.g., PC10, CC7:100, timing',
           errorText: _midiSendError,
@@ -187,33 +195,27 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
             setState(() {
               _midiSendError = error;
             });
-            // Update provider asynchronously but don't wait for it
             settingsProvider.setMidiSendOnTick(value);
           },
           onSubmitted: (value) {
-            // Unfocus the text field to hide keyboard when ENTER is pressed
             FocusScope.of(context).unfocus();
           },
         ),
-        const SizedBox(height: ConciseModalTemplate.smallSpacing),
+        const SizedBox(height: 8),
         Consumer<MidiService>(
           builder: (context, midiService, child) {
-            // Check controller text directly for immediate responsiveness
             final hasText = _midiSendController.text.trim().isNotEmpty;
             final isConnected = midiService.isConnected;
             final hasNoError = _midiSendError == null;
-
-            // Re-enabled MIDI device check
             final canTest = hasText && isConnected && hasNoError;
 
-            return ConciseModalTemplate.buildConciseButton(
+            return StandardModalTemplate.buildButton(
               label: 'Test',
               icon: Icons.play_arrow,
-              enabled: canTest,
               onPressed: canTest
                   ? () => _testMidiCommand(
                       context.read<MetronomeSettingsProvider>(), midiService)
-                  : () {},
+                  : null,
             );
           },
         ),
@@ -236,7 +238,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal>
       statusIcon = Icons.info_outline;
     }
 
-    return ConciseModalTemplate.buildConciseInfoBox(
+    return StandardModalTemplate.buildInfoBox(
       icon: statusIcon,
       text: statusText,
       color: statusColor,

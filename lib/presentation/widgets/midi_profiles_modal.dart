@@ -9,6 +9,7 @@ import 'midi_profiles/profile_name_input.dart';
 import 'midi_profiles/midi_code_input.dart';
 import 'midi_profiles/midi_commands_list.dart';
 import 'midi_profiles/midi_action_buttons.dart';
+import 'templates/standard_modal_template.dart';
 
 /// Modal for creating and managing MIDI profiles
 ///
@@ -24,14 +25,10 @@ class MidiProfilesModal extends StatefulWidget {
 
   /// Show the MIDI Profiles modal
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return StandardModalTemplate.show<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.all(24),
-        child: MidiProfilesModal(),
-      ),
+      child: const MidiProfilesModal(),
     );
   }
 
@@ -40,7 +37,6 @@ class MidiProfilesModal extends StatefulWidget {
 }
 
 class _MidiProfilesModalState extends State<MidiProfilesModal> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _controlChangeController = TextEditingController();
   final _notesController = TextEditingController();
@@ -301,151 +297,65 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     return result ?? false;
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        // Cancel button (upper left)
-        TextButton(
-          onPressed: () => _cancelChanges(context),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: const BorderSide(color: Colors.white24),
-            ),
-          ),
-          child: const Text('Cancel', style: TextStyle(fontSize: 14)),
-        ),
-        const Spacer(),
-        const Text(
-          'MIDI Profiles',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 13.6, // Reduced by 15% from 16
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const Spacer(),
-        // OK button (upper right) to balance layout and center title
-        TextButton(
-          onPressed: () => _saveProfile(),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: const BorderSide(color: Colors.white24),
-            ),
-          ),
-          child: const Text('OK', style: TextStyle(fontSize: 14)),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Calculate available screen height with padding
-    final screenHeight = MediaQuery.of(context).size.height;
-    final availableHeight =
-        screenHeight - 48; // Account for dialog padding (24 top + 24 bottom)
-    final maxHeight = availableHeight < 650 ? availableHeight : 650.0;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 480,
-          maxHeight: maxHeight,
-        ),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0468cc),
-              Color.fromARGB(150, 3, 73, 153),
-            ],
+    return StandardModalTemplate.buildModalContainer(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with Cancel/Save buttons
+          StandardModalTemplate.buildHeader(
+            context: context,
+            title: 'MIDI Profiles',
+            onCancel: () => _cancelChanges(context),
+            onOk: () => _saveProfile(),
           ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(51),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header with Cancel/Save buttons
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: _buildHeader(context),
-            ),
-            // Form content
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Profile selector
-                      ProfileSelector(
-                        profiles: _profiles,
-                        selectedProfile: _selectedProfile,
-                        onProfileSelected: _selectProfile,
-                      ),
-                      const SizedBox(height: 8),
-                      // Profile name input
-                      ProfileNameInput(
-                        nameController: _nameController,
-                      ),
-                      const SizedBox(height: 8),
-                      // MIDI code input
-                      MidiCodeInput(
-                        controlChangeController: _controlChangeController,
-                        notesController: _notesController,
-                        midiCodeFocusNode: _midiCodeFocusNode,
-                        onAddCommand: _addControlChange,
-                      ),
-                      const SizedBox(height: 8),
-                      // MIDI commands list
-                      Flexible(
-                        child: MidiCommandsList(
-                          controlChanges: _controlChanges,
-                          timing: _timing,
-                          onRemoveCommand: _removeControlChange,
-                          onRemoveTiming: _removeTiming,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Action buttons
-                      MidiActionButtons(
-                        selectedProfile: _selectedProfile,
-                        isLoading: _isLoading,
-                        onSave: _saveProfile,
-                        onTest: _testProfileMidiCommands,
-                        onDelete: _deleteProfile,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+          // Form content
+          StandardModalTemplate.buildContent(
+            children: [
+              // Profile selector
+              ProfileSelector(
+                profiles: _profiles,
+                selectedProfile: _selectedProfile,
+                onProfileSelected: _selectProfile,
+              ),
+              const SizedBox(height: 8),
+              // Profile name input
+              ProfileNameInput(
+                nameController: _nameController,
+              ),
+              const SizedBox(height: 8),
+              // MIDI code input
+              MidiCodeInput(
+                controlChangeController: _controlChangeController,
+                notesController: _notesController,
+                midiCodeFocusNode: _midiCodeFocusNode,
+                onAddCommand: _addControlChange,
+              ),
+              const SizedBox(height: 8),
+              // MIDI commands list
+              Flexible(
+                child: MidiCommandsList(
+                  controlChanges: _controlChanges,
+                  timing: _timing,
+                  onRemoveCommand: _removeControlChange,
+                  onRemoveTiming: _removeTiming,
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 16),
+              // Action buttons
+              MidiActionButtons(
+                selectedProfile: _selectedProfile,
+                isLoading: _isLoading,
+                onSave: _saveProfile,
+                onTest: _testProfileMidiCommands,
+                onDelete: _deleteProfile,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ],
       ),
     );
   }

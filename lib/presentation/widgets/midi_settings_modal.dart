@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/midi/midi_service.dart';
-import 'templates/concise_modal_template.dart';
+import 'templates/standard_modal_template.dart';
 
-/// **Concise Modal Template Implementation** - MIDI Settings
-///
-/// This demonstrates how to use the ConciseModalTemplate for consistent,
-/// compact modal design across the application.
+/// MIDI Settings Modal - Using StandardModalTemplate
 class MidiSettingsModal extends StatefulWidget {
   const MidiSettingsModal({Key? key}) : super(key: key);
 
-  /// Show the MIDI Settings modal using the concise template
+  /// Show the MIDI Settings modal
   static Future<void> show(BuildContext context) {
-    return ConciseModalTemplate.showConciseModal<void>(
+    return StandardModalTemplate.show<void>(
       context: context,
       barrierDismissible: false,
       child: const MidiSettingsModal(),
@@ -23,8 +20,7 @@ class MidiSettingsModal extends StatefulWidget {
   State<MidiSettingsModal> createState() => _MidiSettingsModalState();
 }
 
-class _MidiSettingsModalState extends State<MidiSettingsModal>
-    with ConciseModalContentMixin {
+class _MidiSettingsModalState extends State<MidiSettingsModal> {
   bool _isInitializing = true;
   String? _initError;
   bool _isTestStreamActive = false;
@@ -68,61 +64,70 @@ class _MidiSettingsModalState extends State<MidiSettingsModal>
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return StandardModalTemplate.buildModalContainer(
+        context: context,
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     if (_initError != null) {
-      return Center(
-        child: AlertDialog(
-          title: const Text('MIDI Error'),
-          content: Text('Failed to initialize MIDI service: $_initError'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
+      return StandardModalTemplate.buildModalContainer(
+        context: context,
+        child: Center(
+          child: AlertDialog(
+            title: const Text('MIDI Error'),
+            content: Text('Failed to initialize MIDI service: $_initError'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Consumer<MidiService>(
       builder: (context, midiService, child) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(context, midiService),
-            buildConciseContent(
-              children: addConciseSpacing([
-                _buildMidiChannelSetting(midiService),
-                _buildMidiClockSetting(midiService),
-                _buildConnectionStatus(midiService),
-                _buildDeviceList(midiService),
-                _buildActionButtons(midiService),
-              ]),
-            ),
-          ],
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title: 'MIDI Settings',
+                onCancel: () => _cancelChanges(context, midiService),
+                onOk: () => _saveChanges(context, midiService),
+              ),
+              StandardModalTemplate.buildContent(
+                children: [
+                  _buildMidiChannelSetting(midiService),
+                  const SizedBox(height: 8),
+                  _buildMidiClockSetting(midiService),
+                  const SizedBox(height: 8),
+                  _buildConnectionStatus(midiService),
+                  const SizedBox(height: 8),
+                  _buildDeviceList(midiService),
+                  const SizedBox(height: 8),
+                  _buildActionButtons(midiService),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildHeader(BuildContext context, MidiService midiService) {
-    return ConciseModalTemplate.buildConciseHeader(
-      context: context,
-      title: 'MIDI Settings',
-      onCancel: () => _cancelChanges(context, midiService),
-      onOk: () => _saveChanges(context, midiService),
-    );
-  }
-
   Widget _buildMidiChannelSetting(MidiService midiService) {
-    return ConciseModalTemplate.buildConciseSettingRow(
+    return StandardModalTemplate.buildSettingRow(
       icon: Icons.tune,
       label: 'MIDI Channel',
-      control: ConciseModalTemplate.buildConciseDropdown<int>(
+      control: StandardModalTemplate.buildDropdown<int>(
         value: midiService.displayMidiChannel,
         items: List.generate(16, (index) {
           final channel = index + 1;
@@ -144,7 +149,7 @@ class _MidiSettingsModalState extends State<MidiSettingsModal>
   }
 
   Widget _buildMidiClockSetting(MidiService midiService) {
-    return ConciseModalTemplate.buildConciseSettingRow(
+    return StandardModalTemplate.buildSettingRow(
       icon: Icons.schedule,
       label: 'Send MIDI Clock',
       control: Switch(
@@ -193,7 +198,7 @@ class _MidiSettingsModalState extends State<MidiSettingsModal>
         statusIcon = Icons.bluetooth_disabled;
     }
 
-    return ConciseModalTemplate.buildConciseInfoBox(
+    return StandardModalTemplate.buildInfoBox(
       icon: statusIcon,
       text: statusText,
       color: statusColor,
@@ -382,58 +387,22 @@ class _MidiSettingsModalState extends State<MidiSettingsModal>
     return Column(
       children: [
         // Scan Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: midiService.isScanning
-                ? null
-                : () async {
-                    await midiService.scanForDevices();
-                  },
-            icon: midiService.isScanning
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Icon(Icons.refresh, size: 16),
-            label: Text(
-                midiService.isScanning ? 'Scanning...' : 'Scan for Devices'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withAlpha(20),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: Colors.white24),
-              ),
-            ),
-          ),
+        StandardModalTemplate.buildButton(
+          label: midiService.isScanning ? 'Scanning...' : 'Scan for Devices',
+          icon: Icons.refresh,
+          onPressed: midiService.isScanning
+              ? null
+              : () async {
+                  await midiService.scanForDevices();
+                },
         ),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _toggleTestStream,
-            icon: _isTestStreamActive
-                ? const Icon(Icons.stop, size: 16)
-                : const Icon(Icons.play_arrow, size: 16),
-            label: Text(
-                _isTestStreamActive ? 'Stop Test Stream' : 'Start Test Stream'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isTestStreamActive
-                  ? Colors.red.withAlpha(100)
-                  : Colors.white.withAlpha(20),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: Colors.white24),
-              ),
-            ),
-          ),
+        const SizedBox(height: 8),
+        // Test Stream Button
+        StandardModalTemplate.buildButton(
+          label: _isTestStreamActive ? 'Stop Test Stream' : 'Start Test Stream',
+          icon: _isTestStreamActive ? Icons.stop : Icons.play_arrow,
+          isDestructive: _isTestStreamActive,
+          onPressed: _toggleTestStream,
         ),
       ],
     );
