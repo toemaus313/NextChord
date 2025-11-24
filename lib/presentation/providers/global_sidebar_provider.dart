@@ -85,6 +85,7 @@ class GlobalSidebarProvider extends ChangeNotifier {
   /// Clear the current song and return to welcome screen
   void clearCurrentSong() {
     _currentSong = null;
+    _activeSetlistId = null; // Clear active setlist to fully unload setlist
     _currentSongIndex = -1;
     _currentSetlistSongItem = null;
     notifyListeners();
@@ -114,9 +115,19 @@ class GlobalSidebarProvider extends ChangeNotifier {
   /// Navigate to a song within an active setlist context
   void navigateToSongInSetlist(Song song, int songIndex,
       [SetlistSongItem? setlistSongItem]) {
+    // Check if we're transitioning from "no song" to "first song"
+    final wasNoActiveSong = _currentSong == null;
+
     _currentSong = song;
     _currentSongIndex = songIndex;
     _currentSetlistSongItem = setlistSongItem;
+
+    // Only trigger navigation callback if we're transitioning from no song to first song
+    // This prevents stacking multiple routes during swipe navigation
+    if (_isPhoneMode && _onNavigateToContent != null && wasNoActiveSong) {
+      _onNavigateToContent!();
+    }
+
     notifyListeners();
   }
 
@@ -155,7 +166,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
       // Skip events that we triggered ourselves
       return;
     }
-
 
     // Update sidebar counts and navigation state
     if (event.table == 'songs_count' ||
