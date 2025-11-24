@@ -163,8 +163,8 @@ class NextChordApp extends StatelessWidget {
         ChangeNotifierProvider.value(
           value: syncProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => MidiService(),
+        ChangeNotifierProvider.value(
+          value: MidiService(),
         ),
       ],
       child: Consumer<ThemeProvider>(

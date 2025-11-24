@@ -4,6 +4,7 @@ import '../../providers/global_sidebar_provider.dart';
 import '../../providers/song_provider.dart';
 import '../../screens/library_screen.dart';
 import '../bottom_search_bar.dart';
+import '../sidebar_components/sidebar_header.dart';
 import '../../../core/widgets/responsive_config.dart';
 import '../../../core/utils/device_breakpoints.dart';
 
@@ -48,55 +49,17 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
       showSearchBar: isPhone,
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black.withAlpha(20),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.music_note,
-                  color: Colors.white70,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'All Songs',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white70,
-                    size: 24, // Made bigger from 20
-                  ),
-                  onPressed: () {
-                    debugPrint('AllSongsView: Back button pressed');
-                    context.read<SongProvider>().resetSelectionMode();
-                    _searchController.clear();
-                    context.read<SongProvider>().searchSongs('');
-                    debugPrint('AllSongsView: Calling widget.onBack()');
-                    widget.onBack();
-                  },
-                  tooltip: 'Back to menu',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
+          SidebarHeader(
+            title: 'All Songs',
+            icon: Icons.music_note,
+            onClose: () {
+              debugPrint('AllSongsView: Back button pressed');
+              context.read<SongProvider>().resetSelectionMode();
+              _searchController.clear();
+              context.read<SongProvider>().searchSongs('');
+              debugPrint('AllSongsView: Calling widget.onBack()');
+              widget.onBack();
+            },
           ),
           // Only show desktop search bar on desktop/tablet
           if (!isPhone) ...[

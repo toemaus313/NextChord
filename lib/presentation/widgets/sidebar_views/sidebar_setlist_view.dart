@@ -46,6 +46,7 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
               SidebarHeader(
                 title: 'Setlist',
                 icon: Icons.playlist_play,
+                onClose: widget.onBack,
               ),
               const Expanded(
                 child: Center(
@@ -62,48 +63,10 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
         return Column(
           children: [
             // Header with setlist icon and back button
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(20),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.playlist_play,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Setlist',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white70,
-                      size: 24,
-                    ),
-                    onPressed: widget.onBack,
-                    tooltip: 'Back to setlists',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
+            SidebarHeader(
+              title: currentSetlist.name,
+              icon: Icons.playlist_play,
+              onClose: widget.onBack,
             ),
             const SizedBox(height: 8),
             // Logo area (200x200 placeholder)
