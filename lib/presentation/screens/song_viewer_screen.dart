@@ -169,7 +169,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Handle horizontal swipe gestures for setlist navigation
   void _handleHorizontalSwipeEnd(DragEndDetails details) {
-    if (!shouldHandleGesture()) return;
+    if (!shouldHandleHorizontalSwipe()) return;
     handleHorizontalSwipeEnd(details, _handleSetlistNavigation);
   }
 
@@ -182,6 +182,12 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   /// Handle setlist navigation (both swipe and keyboard)
   void _handleSetlistNavigation(bool isNext) async {
     if (!_setlistNavigationService.canNavigate) return;
+
+    // Stop autoscroll when navigating to a new song
+    final autoscroll = context.read<AutoscrollProvider>();
+    if (autoscroll.isActive) {
+      autoscroll.stop();
+    }
 
     Song? newSong;
     if (isNext) {

@@ -152,7 +152,7 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
             left: 16,
             right: 16,
             child: StandardWideButton(
-              label: '+ Add Songs',
+              label: 'Add Song',
               icon: Icons.add,
               onPressed: () async {
                 final result = await Navigator.push(
@@ -244,22 +244,20 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
             ),
           ],
           const SizedBox(height: 8),
-          // Add Songs button
+          // Select Songs button at the top (matching mobile layout)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: StandardWideButton(
-              label: '+ Add Songs',
-              icon: Icons.add,
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SongEditorScreenRefactored(),
-                  ),
+            child: Consumer<SongProvider>(
+              builder: (context, provider, child) {
+                return StandardWideButton(
+                  label: provider.selectionMode
+                      ? 'Cancel Selection'
+                      : 'Select Songs',
+                  icon: provider.selectionMode ? Icons.close : Icons.checklist,
+                  onPressed: () {
+                    provider.toggleSelectionMode();
+                  },
                 );
-                if (result == true && context.mounted) {
-                  context.read<SongProvider>().loadSongs();
-                }
               },
             ),
           ),
@@ -271,6 +269,25 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
                 context
                     .read<GlobalSidebarProvider>()
                     .navigateToSongWithPhoneMode(song);
+              },
+            ),
+          ),
+          // Add Songs button at the bottom (matching mobile layout)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: StandardWideButton(
+              label: 'Add Song',
+              icon: Icons.add,
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SongEditorScreenRefactored(),
+                  ),
+                );
+                if (result == true && context.mounted) {
+                  context.read<SongProvider>().loadSongs();
+                }
               },
             ),
           ),

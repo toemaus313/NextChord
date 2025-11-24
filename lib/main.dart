@@ -34,15 +34,21 @@ void myDebug(String message) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enable system status bar on mobile devices, hide on desktop/tablet
+  // Configure system UI for all platforms
   if (Platform.isIOS || Platform.isAndroid) {
-    // Mobile: Show status bar with clock and icons
-    await SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
+    // iOS (including iPad) and Android: Show status bar
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    // Set status bar to be visible with dark icons on light background
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Dark icons
+        statusBarBrightness: Brightness.light, // Light background (iOS)
+      ),
     );
   } else {
-    // Desktop/Tablet: Hide status bar for fullscreen experience
+    // Desktop: Fullscreen
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 

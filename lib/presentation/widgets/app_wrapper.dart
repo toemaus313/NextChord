@@ -40,17 +40,19 @@ class _AppWrapperState extends State<AppWrapper> {
             // Phone: Navigator-based layout with sidebar as home screen
             return const _PhoneLayout();
           } else {
-            // Desktop/Tablet: Split-pane layout (existing behavior)
-            return const Row(
-              children: [
-                // Global sidebar (animated width)
-                GlobalSidebar(),
+            // Desktop/Tablet: Split-pane layout with SafeArea to respect system bar
+            return SafeArea(
+              child: Row(
+                children: [
+                  // Global sidebar (animated width)
+                  GlobalSidebar(),
 
-                // Main app content (takes remaining space)
-                Expanded(
-                  child: HomeScreen(),
-                ),
-              ],
+                  // Main app content (takes remaining space)
+                  Expanded(
+                    child: HomeScreen(),
+                  ),
+                ],
+              ),
             );
           }
         },
@@ -115,7 +117,9 @@ class _PhoneSidebarScreenState extends State<_PhoneSidebarScreen> {
         return false;
       },
       child: const Scaffold(
-        body: GlobalSidebar(),
+        body: SafeArea(
+          child: GlobalSidebar(),
+        ),
       ),
     );
   }
@@ -148,7 +152,9 @@ class _PhoneContentScreen extends StatelessWidget {
               ),
               title: const Text(''),
             ),
-      body: content,
+      body: SafeArea(
+        child: content,
+      ),
     );
   }
 }

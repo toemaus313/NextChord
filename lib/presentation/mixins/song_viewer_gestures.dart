@@ -75,9 +75,18 @@ mixin SongViewerGestures<T extends StatefulWidget> on State<T> {
   /// Check if a gesture should be handled based on current state
   bool shouldHandleGesture() {
     // Don't handle gestures if certain flyouts are open
+    // Note: We allow horizontal swipe gestures even when autoscroll flyout is open
+    // to enable song navigation during autoscroll
     return !_songViewerProvider.showTransposeFlyout &&
-        !_songViewerProvider.showCapoFlyout &&
-        !_songViewerProvider.showAutoscrollFlyout;
+        !_songViewerProvider.showCapoFlyout;
+  }
+
+  /// Check if horizontal swipe gestures should be handled (more permissive)
+  bool shouldHandleHorizontalSwipe() {
+    // Allow horizontal swipe even when autoscroll flyout is open
+    // Block only for transpose and capo flyouts which interfere with navigation
+    return !_songViewerProvider.showTransposeFlyout &&
+        !_songViewerProvider.showCapoFlyout;
   }
 
   /// Dispose of resources
