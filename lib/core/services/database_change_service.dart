@@ -45,9 +45,7 @@ class DatabaseChangeService {
   Stream<DbChangeEvent> get changeStream => _changeController.stream;
 
   /// Initialize the service (no database needed - just for compatibility)
-  void initialize() {
-    debugPrint('🔍 DatabaseChangeService initialized (notification mode)');
-  }
+  void initialize() {}
 
   /// Emit a change event to the stream
   void _emitChangeEvent(String table, DbChangeType type, {String? recordId}) {
@@ -58,7 +56,6 @@ class DatabaseChangeService {
       timestamp: DateTime.now(),
     );
 
-    debugPrint('🔍 Emitting DB change event: $event');
     _changeController.add(event);
   }
 
@@ -67,9 +64,6 @@ class DatabaseChangeService {
   /// Uses debouncing to prevent rapid syncs during bulk operations
   void notifyDatabaseChanged(
       {String? operation, String? table, String? recordId}) {
-    debugPrint(
-        '🔍 DB CHANGE DETECTED: operation=${operation ?? "unknown"}, table=${table ?? "unknown"}, recordId=${recordId ?? "none"}');
-
     // Also emit a change event for immediate UI updates
     if (table != null) {
       _emitChangeEvent(table, DbChangeType.update, recordId: recordId);
@@ -77,7 +71,6 @@ class DatabaseChangeService {
 
     // Skip change notifications during sync to prevent feedback loops
     if (_isSyncInProgress) {
-      debugPrint('⏭️  Skipping DB change notification during sync operation');
       return;
     }
 
@@ -85,9 +78,7 @@ class DatabaseChangeService {
     _debounceTimer?.cancel();
 
     // Schedule a new sync after a short delay to batch rapid changes
-    debugPrint('⏰ Scheduling auto-sync in 10 seconds...');
     _debounceTimer = Timer(const Duration(seconds: 10), () {
-      debugPrint('🚀 Triggering auto-sync after database change');
       // Trigger auto-sync after database change
       SyncServiceLocator.triggerAutoSync();
     });
@@ -95,20 +86,16 @@ class DatabaseChangeService {
 
   /// Mark sync as in progress to prevent feedback loops
   void setSyncInProgress(bool inProgress) {
-    debugPrint('🔄 Sync in progress: $inProgress');
     _isSyncInProgress = inProgress;
 
     // If sync just finished, cancel any pending change notifications
     if (!inProgress) {
       _debounceTimer?.cancel();
-      debugPrint('✅ Sync completed - cancelled pending change notifications');
     }
   }
 
   /// Dispose of the service and clean up resources
   Future<void> dispose() async {
-    debugPrint('🔍 Disposing DatabaseChangeService');
-
     _debounceTimer?.cancel();
 
     if (!_changeController.isClosed) {

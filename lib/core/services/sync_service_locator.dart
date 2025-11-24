@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../../providers/sync_provider.dart';
 
 /// Global service locator for accessing sync functionality throughout the app
@@ -15,23 +14,15 @@ class SyncServiceLocator {
 
   /// Trigger auto-sync if available and signed in
   static Future<void> triggerAutoSync() async {
-    debugPrint('🔄 SyncServiceLocator.triggerAutoSync() called');
-    debugPrint('🔄 _syncProvider is null: ${_syncProvider == null}');
     if (_syncProvider != null) {
-      debugPrint('🔄 isSignedIn: ${_syncProvider!.isSignedIn}');
-      debugPrint('🔄 isSyncEnabled: ${_syncProvider!.isSyncEnabled}');
     }
 
     if (_syncProvider != null && _syncProvider!.isSignedIn) {
       try {
-        debugPrint('🔄 Calling _syncProvider!.autoSync()');
         await _syncProvider!.autoSync();
-        debugPrint('🔄 autoSync() completed successfully');
       } catch (e) {
-        debugPrint('🔄 autoSync() failed: $e');
       }
     } else {
-      debugPrint('🔄 Skipping auto-sync - provider null or not signed in');
     }
   }
 

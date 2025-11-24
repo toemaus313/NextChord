@@ -17,8 +17,6 @@ class SetlistProvider extends ChangeNotifier {
     //   _dbChangeSubscription =
     //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
     // });
-    debugPrint(
-        '📋 SetlistProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   // State
@@ -68,7 +66,6 @@ class SetlistProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('📋 SetlistProvider received DB change: ${event.table}');
 
     // Only refresh if we're currently showing setlists or active setlist is affected
     if (event.table == 'setlists' || event.table == 'setlists_count') {
@@ -83,7 +80,6 @@ class SetlistProvider extends ChangeNotifier {
   Future<void> _refreshFromDatabaseChange() async {
     if (_isLoading) return; // Don't refresh if already loading
 
-    debugPrint('📋 SetlistProvider refreshing from database change');
 
     try {
       _isUpdatingFromDatabase = true;
@@ -94,7 +90,6 @@ class SetlistProvider extends ChangeNotifier {
         await _refreshActiveSetlist();
       }
     } catch (e) {
-      debugPrint('📋 Error refreshing from database change: $e');
     } finally {
       _isUpdatingFromDatabase = false;
     }
@@ -107,7 +102,6 @@ class SetlistProvider extends ChangeNotifier {
       _setlists = newSetlists;
       notifyListeners();
     } catch (e) {
-      debugPrint('📋 Error refreshing setlists list: $e');
     }
   }
 
@@ -120,16 +114,13 @@ class SetlistProvider extends ChangeNotifier {
           await _repository.getSetlistById(_activeSetlist!.id);
       if (updatedSetlist != null) {
         _activeSetlist = updatedSetlist;
-        debugPrint('📋 Active setlist refreshed: ${updatedSetlist.name}');
       } else {
         // Setlist was deleted, clear active state
-        debugPrint('📋 Active setlist was deleted, clearing state');
         _activeSetlist = null;
         _currentSongIndex = -1;
       }
       notifyListeners();
     } catch (e) {
-      debugPrint('📋 Error refreshing active setlist: $e');
     }
   }
 

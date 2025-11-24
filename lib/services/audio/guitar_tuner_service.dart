@@ -232,7 +232,9 @@ class GuitarTunerService extends ChangeNotifier {
           _audioBuffer.removeRange(0, _audioBuffer.length - requiredBytes);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore audio processing errors to prevent UI interruption
+    }
   }
 
   /// Analyze pitch using pitch detection libraries
@@ -265,7 +267,9 @@ class GuitarTunerService extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      // Ignore pitch analysis errors to prevent UI interruption
+    }
   }
 
   /// Find the closest guitar string to a given frequency
@@ -286,7 +290,8 @@ class GuitarTunerService extends ChangeNotifier {
 
   /// Calculate cents difference between two frequencies
   double _calculateCents(double frequency1, double frequency2) {
-    return 1200 * log(frequency1 / frequency2) / log(2);
+    // Calculate cents using logarithmic formula
+    return 1200 * log(frequency1 / frequency2) / ln2;
   }
 
   /// Apply smoothing to reduce jumpiness in tuner readings

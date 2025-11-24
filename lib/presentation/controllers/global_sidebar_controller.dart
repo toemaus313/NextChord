@@ -31,8 +31,6 @@ class GlobalSidebarController extends ChangeNotifier {
 
   /// Initialize with provider references
   void initialize(SetlistProvider setlistProvider, SongProvider songProvider) {
-    debugPrint(
-        'GlobalSidebarController: Initializing with SetlistProvider and SongProvider');
     _setlistProvider = setlistProvider;
     _songProvider = songProvider;
   }
@@ -40,12 +38,9 @@ class GlobalSidebarController extends ChangeNotifier {
   /// Navigate to a specific view
   void navigateToView(String view,
       {String? artist, String? tag, String? setlistId}) async {
-    debugPrint(
-        'GlobalSidebarController: navigateToView called with view=$view, setlistId=$setlistId');
 
     // Clear active setlist when navigating away from setlist view
     if (_currentView == 'setlistView' && view != 'setlistView') {
-      debugPrint('GlobalSidebarController: Clearing active setlist');
       _setlistProvider?.clearActiveSetlist();
     }
 
@@ -57,15 +52,12 @@ class GlobalSidebarController extends ChangeNotifier {
     // Activate setlist when navigating to setlist view (without overriding song index)
     // The song index will be properly set by GlobalSidebarProvider.navigateToSongInSetlist
     if (view == 'setlistView' && setlistId != null) {
-      debugPrint('GlobalSidebarController: Activating setlist $setlistId');
       // Set to 0 initially - will be updated when user clicks a song
       await _setlistProvider?.setActiveSetlist(setlistId, 0);
-      debugPrint('GlobalSidebarController: Setlist activation completed');
     }
 
     // Load deleted songs when navigating to deleted songs view
     if (view == 'deletedSongs') {
-      debugPrint('GlobalSidebarController: Loading deleted songs');
       await _songProvider?.loadDeletedSongs();
     }
 
@@ -74,8 +66,6 @@ class GlobalSidebarController extends ChangeNotifier {
 
   /// Navigate back to menu
   void navigateToMenu() {
-    debugPrint(
-        'GlobalSidebarController: navigateToMenu called - clearing active setlist');
     _currentView = 'menu';
     _selectedArtist = null;
     _selectedTag = null;
@@ -86,8 +76,6 @@ class GlobalSidebarController extends ChangeNotifier {
 
   /// Navigate back to menu while preserving Songs expansion state
   void navigateToMenuKeepSongsExpanded() {
-    debugPrint(
-        'GlobalSidebarController: navigateToMenuKeepSongsExpanded called - clearing active setlist');
     _currentView = 'menu';
     _selectedArtist = null;
     _selectedTag = null;

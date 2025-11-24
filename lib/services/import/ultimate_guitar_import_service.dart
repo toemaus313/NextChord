@@ -40,7 +40,7 @@ class ImportResult {
 /// Service for importing songs from Ultimate Guitar
 class UltimateGuitarImportService {
   /// Import a song from an Ultimate Guitar URL
-  /// 
+  ///
   /// Example URL: https://tabs.ultimate-guitar.com/tab/icehouse/crazy-chords-125754
   Future<ImportResult> importFromUrl(String url) async {
     try {
@@ -56,7 +56,8 @@ class UltimateGuitarImportService {
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
       );
 
@@ -87,36 +88,36 @@ class UltimateGuitarImportService {
 
       // Parse JSON
       final jsonData = json.decode(dataContent) as Map<String, dynamic>;
-      
+
       // Navigate to the tab content
       final store = jsonData['store'] as Map<String, dynamic>?;
       if (store == null) {
-        return ImportResult.error('Invalid data structure: missing store');
+        return ImportResult.error('Invalid tab data: missing store');
       }
 
       final page = store['page'] as Map<String, dynamic>?;
       if (page == null) {
-        return ImportResult.error('Invalid data structure: missing page');
+        return ImportResult.error('Invalid tab data: missing page');
       }
 
       final data = page['data'] as Map<String, dynamic>?;
       if (data == null) {
-        return ImportResult.error('Invalid data structure: missing data');
+        return ImportResult.error('Invalid tab data: missing data');
       }
 
       final tab = data['tab'] as Map<String, dynamic>?;
       if (tab == null) {
-        return ImportResult.error('Invalid data structure: missing tab');
+        return ImportResult.error('Invalid tab data: missing tab');
       }
 
       final tabView = data['tab_view'] as Map<String, dynamic>?;
       if (tabView == null) {
-        return ImportResult.error('Invalid data structure: missing tab_view');
+        return ImportResult.error('Invalid tab data: missing tab_view');
       }
 
       final wikiTab = tabView['wiki_tab'] as Map<String, dynamic>?;
       if (wikiTab == null) {
-        return ImportResult.error('Invalid data structure: missing wiki_tab');
+        return ImportResult.error('Invalid tab data: missing wiki_tab');
       }
 
       // Extract the content

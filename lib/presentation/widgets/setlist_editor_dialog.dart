@@ -13,7 +13,6 @@ import 'setlist_editor/image_picker.dart';
 class SetlistEditorDialog extends StatefulWidget {
   final Setlist? setlist;
 
-  const SetlistEditorDialog({super.key, this.setlist});
 
   static Future<bool?> show(
     BuildContext context, {
@@ -24,10 +23,8 @@ class SetlistEditorDialog extends StatefulWidget {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(4),
-        child: SetlistEditorDialog(setlist: setlist),
       ),
     );
   }
@@ -48,7 +45,6 @@ class SetlistEditorDialog extends StatefulWidget {
 
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           constraints: const BoxConstraints(maxHeight: 800),
@@ -290,7 +286,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         }
       }
     } catch (e) {
-      _showError('Failed to pick image: $e');
     } finally {
       if (mounted) {
         setState(() => _imageLoading = false);
@@ -381,7 +376,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      _showError('Failed to save setlist: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -406,7 +400,6 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(maxHeight: 800),

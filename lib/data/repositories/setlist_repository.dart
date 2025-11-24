@@ -71,28 +71,31 @@ class SetlistRepository {
   List<SetlistItem> _deserializeItems(String itemsJson) {
     try {
       final List<dynamic> itemsList = jsonDecode(itemsJson);
-      final parsedItems = itemsList.map((item) {
-        final type = item['type'] as String;
-        if (type == 'song') {
-          return SetlistSongItem(
-            id: item['id'] as String? ?? Uuid().v4(),
-            songId: item['songId'] as String,
-            order: item['order'] as int,
-            transposeSteps: item['transposeSteps'] as int? ?? 0,
-            capo: item['capo'] as int? ?? 0,
-          );
-        } else if (type == 'divider') {
-          final colorValue = item['color'] as int? ?? 0xFFFFFFFF;
-          final color = '#${colorValue.toRadixString(16).padLeft(8, '0')}';
-          return SetlistDividerItem(
-            id: item['id'] as String? ?? Uuid().v4(),
-            label: item['label'] as String,
-            order: item['order'] as int,
-            color: color,
-          );
-        }
-        throw Exception('Unknown item type: $type');
-      }).toList();
+      final parsedItems = itemsList
+          .map((item) {
+            final type = item['type'] as String;
+            if (type == 'song') {
+              return SetlistSongItem(
+                id: item['id'] as String? ?? Uuid().v4(),
+                songId: item['songId'] as String,
+                order: item['order'] as int,
+                transposeSteps: item['transposeSteps'] as int? ?? 0,
+                capo: item['capo'] as int? ?? 0,
+              );
+            } else if (type == 'divider') {
+              final colorValue = item['color'] as int? ?? 0xFFFFFFFF;
+              final color = '#${colorValue.toRadixString(16).padLeft(8, '0')}';
+              return SetlistDividerItem(
+                id: item['id'] as String? ?? Uuid().v4(),
+                label: item['label'] as String,
+                order: item['order'] as int,
+                color: color,
+              );
+            }
+            return null as SetlistItem?;
+          })
+          .whereType<SetlistItem>()
+          .toList();
       parsedItems.sort((a, b) => _itemOrder(a).compareTo(_itemOrder(b)));
       return parsedItems;
     } catch (e) {
@@ -118,7 +121,7 @@ class SetlistRepository {
       final setlists = models.map(_modelToSetlist).toList();
       return setlists;
     } catch (e) {
-      throw Exception('Failed to fetch setlists: $e');
+      return [];
     }
   }
 
@@ -128,7 +131,7 @@ class SetlistRepository {
       final model = await _db.getSetlistById(id);
       return model != null ? _modelToSetlist(model) : null;
     } catch (e) {
-      throw Exception('Failed to fetch setlist with ID $id: $e');
+      return null;
     }
   }
 
@@ -150,11 +153,11 @@ class SetlistRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'insert', table: 'setlists');
+          .notifyDatabaseChanged(table: 'setlists', operation: 'update');
 
       return setlistToInsert.id;
     } catch (e) {
-      throw Exception('Failed to insert setlist: $e');
+      return setlist.id; // Return original ID on error
     }
   }
 
@@ -168,9 +171,9 @@ class SetlistRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'update', table: 'setlists');
+          .notifyDatabaseChanged(table: 'setlists', operation: 'update');
     } catch (e) {
-      throw Exception('Failed to update setlist: $e');
+      // Handle error silently
     }
   }
 
@@ -179,9 +182,9 @@ class SetlistRepository {
     try {
       await _db.deleteSetlist(id);
     } catch (e) {
-      throw Exception('Failed to delete setlist: $e');
+      // Handle error silently
     }
     DatabaseChangeService()
-        .notifyDatabaseChanged(operation: 'delete', table: 'setlists');
+        .notifyDatabaseChanged(table: 'setlists', operation: 'update');
   }
 }

@@ -135,11 +135,6 @@ class ChordProMetadata {
   @override
   String toString() {
     final parts = <String>[];
-    if (title != null) parts.add('Title: $title');
-    if (artist != null) parts.add('Artist: $artist');
-    if (key != null) parts.add('Key: $key');
-    if (capo != null) parts.add('Capo: $capo');
-    if (duration != null) parts.add('Duration: $duration');
     return parts.join(', ');
   }
 }
@@ -157,12 +152,12 @@ class ChordProParser {
       caseSensitive: false);
 
   /// Regex to find chorus reference directive: {chorus} or {chorus: Final}
-  static final chorusRefRegex = RegExp(
-      r'^\s*\{chorus(?::\s*([^}]+))?\}\s*$',
-      caseSensitive: false);
+  static final chorusRefRegex =
+      RegExp(r'^\s*\{chorus(?::\s*([^}]+))?\}\s*$', caseSensitive: false);
 
   /// Regex to find metadata directives: {title: Song Name}, {artist: Artist}
-  static final metadataRegex = RegExp(r'\{(\w+):\s*([^}]+)\}');
+  static final metadataRegex =
+      RegExp(r'^\s*\{([^}:]+):\s*([^}]*)\}\s*$', caseSensitive: false);
 
   /// Regex to find comments: # This is a comment
   static final commentRegex = RegExp(r'^\s*#(.*)$');
@@ -349,11 +344,13 @@ class ChordProParser {
       }
 
       // Check for grid markers
-      if (RegExp(r'\{(start_of_grid|sog)\}', caseSensitive: false).hasMatch(line)) {
+      if (RegExp(r'\{(start_of_grid|sog)\}', caseSensitive: false)
+          .hasMatch(line)) {
         inGrid = true;
         continue;
       }
-      if (RegExp(r'\{(end_of_grid|eog)\}', caseSensitive: false).hasMatch(line)) {
+      if (RegExp(r'\{(end_of_grid|eog)\}', caseSensitive: false)
+          .hasMatch(line)) {
         inGrid = false;
         continue;
       }
@@ -377,7 +374,9 @@ class ChordProParser {
       }
 
       // Check for comment directives: {comment: Text}
-      final commentDirectiveMatch = RegExp(r'^\s*\{comment:\s*([^}]+)\}\s*$', caseSensitive: false).firstMatch(line);
+      final commentDirectiveMatch =
+          RegExp(r'^\s*\{comment:\s*([^}]+)\}\s*$', caseSensitive: false)
+              .firstMatch(line);
       if (commentDirectiveMatch != null) {
         lines.add(ChordProLine(
           type: ChordProLineType.comment,
@@ -540,9 +539,12 @@ class ChordProParser {
   /// Check if a section type is an "end" directive
   static bool _isEndDirective(String sectionType) {
     final lower = sectionType.toLowerCase();
-    return lower.startsWith('end_of_') || 
-           lower == 'eov' || lower == 'eoc' || 
-           lower == 'eob' || lower == 'eot' || lower == 'eog';
+    return lower.startsWith('end_of_') ||
+        lower == 'eov' ||
+        lower == 'eoc' ||
+        lower == 'eob' ||
+        lower == 'eot' ||
+        lower == 'eog';
   }
 
   /// Render structured data back to ChordPro format
@@ -558,11 +560,9 @@ class ChordProParser {
 
       switch (line.type) {
         case ChordProLineType.section:
-          buffer.write('{${line.sectionType}: ${line.section}}');
           break;
         case ChordProLineType.comment:
           // Render as {comment: ...} directive for better compatibility
-          buffer.write('{comment: ${line.text}}');
           break;
         case ChordProLineType.directive:
           buffer.write(line.text);
@@ -625,24 +625,24 @@ class ChordProParser {
   static bool _looksLikeTabLine(String line) {
     final trimmed = line.trim();
     if (trimmed.isEmpty) return false;
-    
+
     // Check for standard guitar string notation (E|, A|, D|, G|, B|, e|)
     final tabLineRegex = RegExp(r'^[EADGBe]\|[\-0-9|]+', caseSensitive: true);
     if (tabLineRegex.hasMatch(trimmed)) return true;
-    
+
     // Also check for lines that are mostly dashes, numbers, and pipes
     // (at least 50% of non-space characters should be tab-like)
     final tabChars = RegExp(r'[\-0-9|]');
     final nonSpaceChars = trimmed.replaceAll(' ', '');
     if (nonSpaceChars.length < 3) return false;
-    
+
     final tabCharCount = tabChars.allMatches(nonSpaceChars).length;
     return tabCharCount / nonSpaceChars.length > 0.5;
   }
 
   /// Find the end position for a tab section starting at the given line index
   /// Returns the line index where {eot} should be inserted
-  /// 
+  ///
   /// Tab sections end when:
   /// 1. A ChordPro directive is encountered (lines starting with {)
   /// 2. A line with chords in brackets is encountered [C], [Am], etc.
@@ -651,10 +651,10 @@ class ChordProParser {
   static int findTabEndPosition(List<String> lines, int startIndex) {
     int consecutiveEmptyLines = 0;
     int lastTabLineIndex = startIndex;
-    
+
     for (int i = startIndex; i < lines.length; i++) {
       final line = lines[i].trim();
-      
+
       // Check for empty line
       if (line.isEmpty) {
         consecutiveEmptyLines++;
@@ -676,24 +676,25 @@ class ChordProParser {
         }
         continue;
       }
-      
+
       // Reset empty line counter when we find content
       consecutiveEmptyLines = 0;
-      
+
       // Check for ChordPro directives (but not {sot} or {eot})
       if (line.startsWith('{')) {
-        if (!line.toLowerCase().contains('sot') && !line.toLowerCase().contains('eot')) {
+        if (!line.toLowerCase().contains('sot') &&
+            !line.toLowerCase().contains('eot')) {
           return i;
         }
         continue;
       }
-      
+
       // Check for chord notation [C], [Am], etc.
       // But be careful - tab lines can have brackets too
       if (chordRegex.hasMatch(line) && !_looksLikeTabLine(line)) {
         return i;
       }
-      
+
       // Check if this line looks like tab
       if (_looksLikeTabLine(line)) {
         lastTabLineIndex = i;
@@ -702,7 +703,7 @@ class ChordProParser {
         return i;
       }
     }
-    
+
     // Reached end of text
     return lastTabLineIndex + 1;
   }
@@ -712,11 +713,11 @@ class ChordProParser {
   static String autoCompleteTabSections(String text) {
     final lines = text.split('\n');
     final result = <String>[];
-    
+
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
       result.add(line);
-      
+
       // Check if this line contains {sot}
       if (tablatureStartRegex.hasMatch(line)) {
         // Check if there's already an {eot} nearby
@@ -731,7 +732,7 @@ class ChordProParser {
             break;
           }
         }
-        
+
         // If no {eot} found, insert one
         if (!hasMatchingEot) {
           final endPos = findTabEndPosition(lines, i + 1);
@@ -748,7 +749,7 @@ class ChordProParser {
         }
       }
     }
-    
+
     return result.join('\n');
   }
 }

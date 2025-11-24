@@ -57,11 +57,9 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
               title: 'All Songs',
               icon: Icons.music_note,
               onClose: () {
-                debugPrint('AllSongsView: Back button pressed');
                 context.read<SongProvider>().resetSelectionMode();
                 _searchController.clear();
                 context.read<SongProvider>().searchSongs('');
-                debugPrint('AllSongsView: Calling widget.onBack()');
                 widget.onBack();
               },
             ),

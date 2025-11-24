@@ -586,7 +586,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     title: const Text('Edit Tags...'),
                     onTap: () {
                       Navigator.pop(context);
-                      _showTagDialog(context);
                     },
                   ),
                   // Add to setlist option
@@ -608,7 +607,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Show dialog to edit tags for selected songs
-  Future<void> _showTagDialog(BuildContext context) async {
+  Future<void> showEditTagsDialog() async {
     final provider = context.read<SongProvider>();
 
     // Collect all tags from selected songs
@@ -649,7 +648,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Show dialog to edit tags for a single song
-  Future<void> _showSingleSongTagDialog(BuildContext context, Song song) async {
+  Future<void> showEditTagsDialogForSong(Song song) async {
     await showDialog<bool>(
       context: context,
       builder: (context) => TagEditDialog(
@@ -681,57 +680,56 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _confirmBulkDelete(BuildContext context) {
     final provider = context.read<SongProvider>();
     final sidebarProvider = context.read<GlobalSidebarProvider>();
+
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Songs'),
-          content: Text(
-              'Are you sure you want to delete ${provider.selectedSongIds.length} selected songs?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  // Check if current song is in the selection
-                  final currentSongId = sidebarProvider.currentSong?.id;
-                  final willDeleteCurrentSong = currentSongId != null &&
-                      provider.selectedSongIds.contains(currentSongId);
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Songs'),
+        content: Text(
+            'Are you sure you want to delete ${provider.selectedSongIds.length} selected songs?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                // Check if current song is in the selection
+                final currentSongId = sidebarProvider.currentSong?.id;
+                final willDeleteCurrentSong = currentSongId != null &&
+                    provider.selectedSongIds.contains(currentSongId);
 
-                  await provider.deleteSelectedSongs();
+                await provider.deleteSelectedSongs();
 
-                  // Clear current song if it was deleted
-                  if (willDeleteCurrentSong) {
-                    sidebarProvider.clearCurrentSong();
-                  }
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              '${provider.selectedSongIds.length} songs deleted')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to delete songs: $e')),
-                    );
-                  }
+                // Clear current song if it was deleted
+                if (willDeleteCurrentSong) {
+                  sidebarProvider.clearCurrentSong();
                 }
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Delete'),
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            '${provider.selectedSongIds.length} songs deleted')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete songs: $e')),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
             ),
-          ],
-        );
-      },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -784,7 +782,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 title: const Text('Edit Tags...'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSingleSongTagDialog(context, song);
                 },
               ),
               ListTile(
@@ -815,50 +812,48 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _confirmDelete(BuildContext context, song) {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Song'),
-          content: Text('Are you sure you want to delete "${song.title}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  final sidebarProvider = context.read<GlobalSidebarProvider>();
-                  await context.read<SongProvider>().deleteSong(
-                    song.id,
-                    onDeleted: () {
-                      // If this song is currently being viewed, clear it
-                      if (sidebarProvider.currentSong?.id == song.id) {
-                        sidebarProvider.clearCurrentSong();
-                      }
-                    },
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Song'),
+        content: Text('Are you sure you want to delete "${song.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final sidebarProvider = context.read<GlobalSidebarProvider>();
+                await context.read<SongProvider>().deleteSong(
+                  song.id,
+                  onDeleted: () {
+                    // If this song is currently being viewed, clear it
+                    if (sidebarProvider.currentSong?.id == song.id) {
+                      sidebarProvider.clearCurrentSong();
+                    }
+                  },
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Song deleted')),
                   );
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Song deleted')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to delete: $e')),
-                    );
-                  }
                 }
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Delete'),
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete: $e')),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
             ),
-          ],
-        );
-      },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 

@@ -84,7 +84,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         });
       }
     } catch (e) {
-      _showError('Failed to load profiles: $e');
     }
   }
 
@@ -142,7 +141,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       _controlChangeController.clear();
       _notesController.clear();
     } else {
-      _showError('Invalid MIDI command. Use PC#, CC#:#, or "timing"');
     }
   }
 
@@ -191,7 +189,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         );
       }
     } catch (e) {
-      _showError('Failed to save profile: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -202,7 +199,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   Future<void> _deleteProfile() async {
     if (_selectedProfile == null) return;
 
-    final confirmed = await _showConfirmDialog(
       'Delete Profile',
       'Are you sure you want to delete "${_selectedProfile!.name}"? This will remove it from any songs that use it.',
     );
@@ -225,7 +221,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         );
       }
     } catch (e) {
-      _showError('Error deleting profile: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -251,7 +246,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         );
       }
     } catch (e) {
-      _showError('Error testing MIDI commands: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -274,12 +268,10 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     }
   }
 
-  Future<bool> _showConfirmDialog(String title, String message) async {
     if (!mounted) return false;
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
         title: Text(title),
         content: Text(message),
         actions: [

@@ -38,8 +38,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
     //   _dbChangeSubscription =
     //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
     // });
-    debugPrint(
-        '📱 GlobalSidebarProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   /// Initialize the animation controller
@@ -158,7 +156,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('📱 GlobalSidebarProvider received DB change: ${event.table}');
 
     // Update sidebar counts and navigation state
     if (event.table == 'songs_count' ||
@@ -166,7 +163,6 @@ class GlobalSidebarProvider extends ChangeNotifier {
         event.table == 'deleted_songs_count') {
       // Defer notify to avoid calling notifyListeners() during build phase
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('📱 Sidebar counts updated, notifying listeners');
         notifyListeners();
       });
     }

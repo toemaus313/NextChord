@@ -74,7 +74,7 @@ abstract class ConciseModalTemplate extends StatefulWidget {
       return showDialog<T>(
         context: context,
         barrierDismissible: barrierDismissible,
-        builder: (_) => Dialog(
+        builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.all(24),
           child: Container(

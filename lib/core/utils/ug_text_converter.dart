@@ -185,27 +185,21 @@ class UGTextConverter {
 
     // Build ChordPro metadata directives
     if (title != null && title.isNotEmpty) {
-      chordProLines.add('{title: $title}');
       metadata['title'] = title;
     }
     if (artist != null && artist.isNotEmpty) {
-      chordProLines.add('{artist: $artist}');
       metadata['artist'] = artist;
     }
     if (key != null && key.isNotEmpty) {
-      chordProLines.add('{key: $key}');
       metadata['key'] = key;
     }
     if (capo != null) {
-      chordProLines.add('{capo: $capo}');
       metadata['capo'] = capo.toString();
     }
     if (bpm != null) {
-      chordProLines.add('{tempo: $bpm}');
       metadata['bpm'] = bpm.toString();
     }
     if (timeSignature != null && timeSignature.isNotEmpty) {
-      chordProLines.add('{time: $timeSignature}');
       metadata['timeSignature'] = timeSignature;
     }
 
@@ -566,8 +560,7 @@ class UGTextConverter {
         .replaceAll(
             RegExp(r'\s*Page\s+\d+\s*/\s*\d+\s*$', caseSensitive: false), '')
         .replaceAll(RegExp(r'Page\s+\d+\s*/\s*\d+', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s*\d+\s*/\s*\d+\s*$', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\d+\s*/\s*\d+', caseSensitive: false), '');
+        .replaceAll(RegExp(r'\s*\d+\s*/\s*\d+\s*$', caseSensitive: false), '');
 
     return cleaned;
   }

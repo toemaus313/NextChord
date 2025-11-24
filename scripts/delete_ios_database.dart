@@ -5,8 +5,8 @@ import 'dart:io';
 /// Script to delete NextChord local databases for iOS simulator debug instances
 /// This script removes the local SQLite database and any backup files from iOS simulators
 
-void main() {
-  print('🗑️  Deleting NextChord iOS simulator local databases...');
+void main() async {
+  // Deleting NextChord iOS simulator local databases...
 
   // Find all iOS simulator NextChord databases
   final homeDir = Platform.environment['HOME']!;
@@ -14,7 +14,7 @@ void main() {
       Directory('$homeDir/Library/Developer/CoreSimulator/Devices');
 
   if (!simulatorDir.existsSync()) {
-    print('ℹ️  iOS simulator directory not found');
+    // iOS simulator directory not found
     return;
   }
 
@@ -46,46 +46,34 @@ void main() {
   }
 
   if (iosDbs.isEmpty) {
-    print('ℹ️  No iOS simulator databases found');
+    // No iOS simulator databases found
   } else {
-    print('📁 Found iOS simulator databases:');
-    for (final dbPath in iosDbs) {
-      print('  - $dbPath');
-    }
-
-    print('');
-    print('🗑️  Deleting iOS simulator databases...');
+    // Found iOS simulator databases
+    // Deleting iOS simulator databases...
     for (final dbPath in iosDbs) {
       try {
         File(dbPath).deleteSync();
-        print('✅ Deleted: $dbPath');
+        // Deleted: $dbPath
       } catch (e) {
-        print('❌ Failed to delete $dbPath: $e');
+        // Failed to delete database
       }
     }
   }
 
   if (iosBackups.isEmpty) {
-    print('ℹ️  No iOS simulator backup files found');
+    // No iOS simulator backup files found
   } else {
-    print('');
-    print('📁 Found iOS simulator backup files:');
-    for (final backupPath in iosBackups) {
-      print('  - $backupPath');
-    }
-
-    print('');
-    print('🗑️  Deleting iOS simulator backup files...');
+    // Found iOS simulator backup files
+    // Deleting iOS simulator backup files...
     for (final backupPath in iosBackups) {
       try {
         File(backupPath).deleteSync();
-        print('✅ Deleted: $backupPath');
+        // Deleted: $backupPath
       } catch (e) {
-        print('❌ Failed to delete $backupPath: $e');
+        // Failed to delete backup
       }
     }
   }
 
-  print('');
-  print('🎉 iOS simulator database cleanup completed!');
+  // iOS simulator database cleanup completed!
 }

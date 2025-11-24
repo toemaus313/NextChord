@@ -25,7 +25,7 @@ class SongPersistenceService {
 
       return SongPersistenceResult.success(savedSong);
     } catch (e) {
-      return SongPersistenceResult.failure('Error saving song: $e');
+      return SongPersistenceResult.failure('Failed to save song: $e');
     }
   }
 
@@ -47,7 +47,7 @@ class SongPersistenceService {
 
       return SongPersistenceResult.success(song);
     } catch (e) {
-      return SongPersistenceResult.failure('Error updating song: $e');
+      return SongPersistenceResult.failure('Failed to update song: $e');
     }
   }
 
@@ -60,7 +60,7 @@ class SongPersistenceService {
       await repository.deleteSong(songId);
       return SongPersistenceResult.success(null);
     } catch (e) {
-      return SongPersistenceResult.failure('Error deleting song: $e');
+      return SongPersistenceResult.failure('Failed to delete song: $e');
     }
   }
 
@@ -100,6 +100,9 @@ class SongPersistenceService {
     required String bpm,
     required String duration,
   }) {
+    // Duration validation pattern (e.g., "3:45", "2:30")
+    final pattern = RegExp(r'^\d{1,2}:\d{2}$');
+
     // Check required fields
     if (title.trim().isEmpty) {
       return SongValidationResult.failure('Title is required');
@@ -121,10 +124,9 @@ class SongPersistenceService {
 
     // Validate duration (optional)
     if (duration.trim().isNotEmpty) {
-      final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
       if (!pattern.hasMatch(duration.trim())) {
         return SongValidationResult.failure(
-            'Duration format should be MM:SS or H:MM:SS');
+            'Duration must be in format M:SS (e.g., 3:45)');
       }
     }
 
@@ -141,8 +143,9 @@ class SongPersistenceService {
 
     if (durationRegex.hasMatch(updatedBody)) {
       // Update existing duration
-      updatedBody =
-          updatedBody.replaceFirst(durationRegex, '{duration:$duration}');
+      updatedBody = updatedBody.replaceAllMapped(durationRegex, (match) {
+        return '{duration:$duration}';
+      });
     } else {
       // Add duration directive at the beginning (after title/artist if present)
       final lines = updatedBody.split('\n');

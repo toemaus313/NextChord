@@ -12,19 +12,14 @@ class JustchordsImporter {
     final buffer = StringBuffer();
     
     if (title.isNotEmpty) {
-      buffer.writeln('{title:$title}');
     }
     if (artist.isNotEmpty) {
-      buffer.writeln('{artist:$artist}');
     }
     if (key.isNotEmpty) {
-      buffer.writeln('{key:$key}');
     }
     if (timeSignature.isNotEmpty) {
-      buffer.writeln('{time:$timeSignature}');
     }
     if (tempo != null && tempo.isNotEmpty) {
-      buffer.writeln('{tempo:$tempo}');
     }
     
     buffer.writeln();
@@ -70,7 +65,6 @@ class JustchordsImporter {
     );
     
     // Remove any SongSheet Pro attribution
-    converted = converted.replaceAll(RegExp(r'# Created using SongSheet Pro:.*'), '');
     
     buffer.write(converted.trim());
     
@@ -128,7 +122,6 @@ class JustchordsImporter {
   static Future<List<Song>> importFromFile(String filePath, {int? count, List<int>? indices}) async {
     final file = File(filePath);
     if (!await file.exists()) {
-      throw Exception('File not found: $filePath');
     }
     
     final jsonString = await file.readAsString();

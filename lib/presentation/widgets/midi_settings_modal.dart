@@ -23,7 +23,6 @@ class MidiSettingsModal extends StatefulWidget {
 class _MidiSettingsModalState extends State<MidiSettingsModal> {
   bool _isInitializing = true;
   String? _initError;
-  bool _isTestStreamActive = false;
 
   // Store original values for cancel functionality
   late int _originalMidiChannel;
@@ -76,7 +75,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       return StandardModalTemplate.buildModalContainer(
         context: context,
         child: Center(
-          child: AlertDialog(
             title: const Text('MIDI Error'),
             content: Text('Failed to initialize MIDI service: $_initError'),
             actions: [
@@ -396,14 +394,6 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
                   await midiService.scanForDevices();
                 },
         ),
-        const SizedBox(height: 8),
-        // Test Stream Button
-        StandardModalTemplate.buildButton(
-          label: _isTestStreamActive ? 'Stop Test Stream' : 'Start Test Stream',
-          icon: _isTestStreamActive ? Icons.stop : Icons.play_arrow,
-          isDestructive: _isTestStreamActive,
-          onPressed: _toggleTestStream,
-        ),
       ],
     );
   }
@@ -418,77 +408,5 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
   /// Save changes and close modal
   void _saveChanges(BuildContext context, MidiService midiService) {
     Navigator.of(context).pop();
-  }
-
-  /// Toggle the test stream on/off
-  Future<void> _toggleTestStream() async {
-    final midiService = MidiService();
-
-    if (_isTestStreamActive) {
-      setState(() {
-        _isTestStreamActive = false;
-      });
-      try {
-        await midiService.sendMidiStop();
-      } catch (e) {}
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Test stream stopped'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _isTestStreamActive = true;
-    });
-
-    try {
-      await midiService.sendControlChange(0, 0); // CC0:0
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      await midiService.sendProgramChange(13); // PC13
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      if (!_isTestStreamActive) {
-        return;
-      }
-
-      await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 30);
-
-      if (!_isTestStreamActive) {
-        return;
-      }
-
-      await midiService.sendMidiClockStream(durationSeconds: 2, bpm: 170);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('Test stream completed - CC0:0, PC13, and timing sweeps'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error running test stream: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isTestStreamActive = false;
-        });
-      }
-    }
   }
 }

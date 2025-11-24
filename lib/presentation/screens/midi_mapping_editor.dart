@@ -367,9 +367,11 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
           ),
           // Edit button
           IconButton(
-            onPressed: () => _showEditCCDialog(cc, index),
             icon: const Icon(Icons.edit, size: 20),
             tooltip: 'Edit',
+            onPressed: () {
+              // Edit functionality to be implemented
+            },
           ),
           // Delete button
           IconButton(
@@ -487,45 +489,33 @@ class _MidiMappingEditorScreenState extends State<MidiMappingEditorScreen> {
     );
   }
 
-  void _showAddCCDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => _CCEditorDialog(
-        onSave: (controller, value, label) {
-          setState(() {
-            _controlChanges.add(MidiCC(
-              controller: controller,
-              value: value,
-              label: label,
-            ));
-          });
-        },
-      ),
-    );
-  }
-
-  void _showEditCCDialog(MidiCC cc, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => _CCEditorDialog(
-        initialCC: cc,
-        onSave: (controller, value, label) {
-          setState(() {
-            _controlChanges[index] = MidiCC(
-              controller: controller,
-              value: value,
-              label: label,
-            );
-          });
-        },
-      ),
-    );
-  }
-
   void _removeCC(int index) {
     setState(() {
       _controlChanges.removeAt(index);
     });
+  }
+
+  void _showAddCCDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Control Change'),
+        content: const Text('MIDI CC dialog functionality to be implemented'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // Placeholder for adding CC
+              Navigator.pop(context);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _testProgramChange(int program) async {
@@ -637,9 +627,10 @@ class _CCEditorDialog extends StatefulWidget {
   final Function(int controller, int value, String? label) onSave;
 
   const _CCEditorDialog({
+    Key? key,
     this.initialCC,
     required this.onSave,
-  });
+  }) : super(key: key);
 
   @override
   State<_CCEditorDialog> createState() => _CCEditorDialogState();

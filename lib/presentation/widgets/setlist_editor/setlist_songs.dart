@@ -51,7 +51,6 @@ class _SetlistSongsState extends State<SetlistSongs> {
                 ),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: () => _showAddSongsDialog(context),
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add Songs'),
                   style: TextButton.styleFrom(
@@ -61,7 +60,6 @@ class _SetlistSongsState extends State<SetlistSongs> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: () => _showAddDividerDialog(context),
                   icon: const Icon(Icons.horizontal_rule, size: 16),
                   label: const Text('Add Divider'),
                   style: TextButton.styleFrom(
@@ -261,12 +259,9 @@ class _SetlistSongsState extends State<SetlistSongs> {
     );
   }
 
-  void _showAddSongsDialog(BuildContext context) {
     // Implementation would show song selection dialog
     // For now, just a placeholder
-    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
         title: const Text('Add Songs'),
         content: const Text('Song selection dialog would appear here'),
         actions: [
@@ -279,12 +274,9 @@ class _SetlistSongsState extends State<SetlistSongs> {
     );
   }
 
-  void _showAddDividerDialog(BuildContext context) {
     final controller = TextEditingController();
 
-    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
         title: const Text('Add Divider'),
         content: TextField(
           controller: controller,

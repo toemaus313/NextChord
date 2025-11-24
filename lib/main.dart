@@ -53,18 +53,13 @@ void main() async {
   final syncProvider = SyncProvider(
     database: database,
     onSyncCompleted: () {
-      debugPrint(
-          '🔄 onSyncCompleted callback triggered - checking if in build phase');
       // Refresh data in providers after successful sync
       // Use post-frame callback to avoid build-phase setState errors
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('🔄 Post-frame callback executing - calling loadSongs()');
         songProvider.loadSongs();
         songProvider
             .loadDeletedSongs(); // Also refresh deleted songs to prevent disappearing
         setlistProvider.loadSetlists();
-        debugPrint(
-            '🔄 All provider load methods called in post-frame callback');
       });
     },
   );
@@ -100,8 +95,6 @@ class NextChordApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-        '🏗️ NextChordApp.build() called - platform-specific build phase');
 
     // Android-specific fix: Use FutureBuilder to delay widget tree construction
     // to prevent build-phase setState errors on Android
@@ -109,10 +102,8 @@ class NextChordApp extends StatelessWidget {
       future: _initializeApp(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
-          debugPrint('🏗️ App initialization complete - building widget tree');
           return _buildProviderTree(context);
         }
-        debugPrint('🏗️ App initializing - showing loading indicator');
         return MaterialApp(
           home: Scaffold(
             body: Center(
@@ -127,7 +118,6 @@ class NextChordApp extends StatelessWidget {
   Future<void> _initializeApp() async {
     // Wait for next frame to ensure build phase is complete
     await Future.delayed(Duration.zero);
-    debugPrint('🏗️ App initialization completed after frame delay');
   }
 
   Widget _buildProviderTree(BuildContext context) {

@@ -126,8 +126,6 @@ class SongViewerProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint(
-        '🎵 SongViewerProvider updating song content only: ${newSong.title}');
 
     // Only update the song data, preserve all UI state
     _currentSong = newSong;
@@ -142,25 +140,18 @@ class SongViewerProvider extends ChangeNotifier {
   void _handleDatabaseChange(DbChangeEvent event) {
     if (_isUpdatingFromDatabase) {
       // Skip events that we triggered ourselves
-      debugPrint('🎵 SongViewerProvider: Skipping self-triggered event');
       return;
     }
 
-    debugPrint(
-        '🎵 SongViewerProvider received DB change: table=${event.table}, recordId=${event.recordId}, currentSongId=${_currentSong.id}');
 
     // Only react to song changes, and only if they affect the current song
     if (event.table == 'songs') {
       if (event.recordId == _currentSong.id) {
-        debugPrint(
-            '🎵 SongViewerProvider: RecordId MATCHES current song - refreshing!');
         // Defer refresh to avoid calling notifyListeners() during build phase
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _refreshCurrentSongFromDatabase();
         });
       } else {
-        debugPrint(
-            '🎵 SongViewerProvider: RecordId does NOT match current song (${event.recordId} != ${_currentSong.id}) - ignoring');
       }
     }
   }
@@ -169,7 +160,6 @@ class SongViewerProvider extends ChangeNotifier {
   Future<void> _refreshCurrentSongFromDatabase() async {
     if (_isUpdatingFromDatabase) return;
 
-    debugPrint('🎵 SongViewerProvider refreshing current song from database');
 
     try {
       _isUpdatingFromDatabase = true;
@@ -178,8 +168,6 @@ class SongViewerProvider extends ChangeNotifier {
       final updatedSong = await _songRepository.getSongById(_currentSong.id);
 
       if (updatedSong != null) {
-        debugPrint(
-            '🎵 Song content change detected for current song: ${updatedSong.title}');
 
         // Update only the song content, preserve all UI state (transpose, capo, font size, etc.)
         _currentSong = updatedSong;
@@ -189,10 +177,8 @@ class SongViewerProvider extends ChangeNotifier {
 
         notifyListeners();
       } else {
-        debugPrint('🎵 Warning: Could not find updated song in database');
       }
     } catch (e) {
-      debugPrint('🎵 Error refreshing current song from database: $e');
     } finally {
       _isUpdatingFromDatabase = false;
     }

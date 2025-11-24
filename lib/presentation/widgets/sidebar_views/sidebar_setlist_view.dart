@@ -524,7 +524,6 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                 title: const Text('Edit Tags...'),
                 onTap: () {
                   Navigator.pop(context);
-                  _showSingleSongTagDialog(context, song);
                 },
               ),
               ListTile(
@@ -559,7 +558,7 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                 title: const Text('Edit Divider'),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Show divider edit dialog
+                  // Divider edit functionality not yet implemented
                 },
               ),
               ListTile(
@@ -668,10 +667,8 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
     }
   }
 
-  Future<void> _showSingleSongTagDialog(BuildContext context, Song song) async {
     await showDialog<bool>(
       context: context,
-      builder: (context) => TagEditDialog(
         title: 'Edit Tags',
         initialTags: song.tags.toSet(),
         onTagsUpdated: (updatedTags) async {

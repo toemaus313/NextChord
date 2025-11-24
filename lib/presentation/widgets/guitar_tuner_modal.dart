@@ -70,11 +70,9 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
-      return _buildLoadingDialog();
     }
 
     if (_initError != null) {
-      return _buildErrorDialog();
     }
 
     return ChangeNotifierProvider.value(
@@ -99,7 +97,6 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
     );
   }
 
-  Widget _buildLoadingDialog() {
     return Center(
       child: Container(
         padding: const EdgeInsets.all(32),
@@ -126,7 +123,6 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
     );
   }
 
-  Widget _buildErrorDialog() {
     return Center(
       child: Container(
         padding: const EdgeInsets.all(24),

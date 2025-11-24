@@ -187,7 +187,6 @@ class SetlistImagePicker extends StatelessWidget {
 class ImageEditDialog extends StatefulWidget {
   final Uint8List imageBytes;
 
-  const ImageEditDialog({super.key, required this.imageBytes});
 
   @override
   State<ImageEditDialog> createState() => _ImageEditDialogState();
@@ -200,7 +199,6 @@ class _ImageEditDialogState extends State<ImageEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 500),

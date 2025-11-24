@@ -284,7 +284,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           setlistId: _controller.selectedSetlistId ?? '',
           onBack: () => _controller.navigateToMenu(),
           onAddSong: () => _showAddSongsToSetlist(),
-          onAddDivider: () => _showDividerDialog(),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
         return isPhone
@@ -371,7 +370,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     // Implementation would go here
   }
 
-  void _showDividerDialog() {
     // Implementation would go here
   }
 }

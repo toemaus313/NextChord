@@ -35,7 +35,7 @@ class MidiSendsModal extends StatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (BuildContext context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
         child: MidiSendsModal(
@@ -367,7 +367,6 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
             final formatHint = _getFormatHint(_codeController?.text ?? '');
 
             return Focus(
-              child: AlertDialog(
                 title: Row(
                   children: [
                     const Text('MIDI Sends'),
@@ -592,37 +591,6 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
 
                         const SizedBox(height: 16),
 
-                        // Test button
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () =>
-                                    _showMidiDebugPopup(midiService),
-                                icon: const Icon(Icons.bug_report, size: 16),
-                                label: const Text('Debug MIDI Bytes'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () => _testMidiSends(midiService),
-                                icon: const Icon(Icons.play_arrow, size: 16),
-                                label: const Text('Test MIDI Sends'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: midiService.isConnected
-                                      ? Colors.green
-                                      : Colors.grey,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -661,111 +629,5 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
         );
       },
     );
-  }
-
-  /// Generate debug information for all MIDI commands
-  String _generateMidiDebugInfo(MidiService midiService) {
-    final List<String> debugLines = [];
-
-    // Add timing info
-    if (_timing) {
-      final bytes = midiService.getMidiClockBytes();
-      final formattedBytes = midiService.formatMidiBytes(bytes);
-      debugLines
-          .add('MIDI Clock: $formattedBytes - Real-time message (continuous)');
-    }
-
-    // Add program changes and control changes
-    for (final cc in _controlChanges) {
-      if (cc.controller == -1) {
-        // Program Change
-        final bytes = midiService.getProgramChangeBytes(cc.value);
-        final formattedBytes = midiService.formatMidiBytes(bytes);
-        debugLines.add('PC${cc.value}: $formattedBytes');
-      } else {
-        // Control Change
-        final bytes =
-            midiService.getControlChangeBytes(cc.controller, cc.value);
-        final formattedBytes = midiService.formatMidiBytes(bytes);
-        final description = midiService.getControllerDescription(cc.controller);
-        debugLines.add(
-            'CC${cc.controller}:${cc.value} ($description): $formattedBytes');
-      }
-    }
-
-    return debugLines.join('\n');
-  }
-
-  /// Show debug popup with MIDI byte information
-  void _showMidiDebugPopup(MidiService midiService) {
-    final debugInfo = _generateMidiDebugInfo(midiService);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('MIDI Debug Information'),
-        content: SingleChildScrollView(
-          child: Text(
-            debugInfo,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _testMidiSends(MidiService midiService) async {
-    try {
-      // Send Program Change
-      if (_programChange != null) {
-        await midiService.sendProgramChange(_programChange!,
-            channel: midiService.midiChannel);
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-
-      // Send Control Changes
-      for (final cc in _controlChanges) {
-        // Handle PC commands (stored as controller -1)
-        if (cc.controller == -1) {
-          await midiService.sendProgramChange(cc.value,
-              channel: midiService.midiChannel);
-        } else {
-          await midiService.sendControlChange(cc.controller, cc.value,
-              channel: midiService.midiChannel);
-        }
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-
-      // Send timing if enabled
-      if (_timing) {
-        await midiService.sendMidiClock();
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Test MIDI sends completed successfully on Channel ${midiService.displayMidiChannel}!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }

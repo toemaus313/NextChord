@@ -95,16 +95,14 @@ class MidiProfile extends Equatable {
     for (final cc in controlChanges) {
       if (cc.controller == -1) {
         parts.add('PC${cc.value}');
-      } else {
-        parts.add('CC${cc.controller}:${cc.value}');
-      }
+      } else {}
     }
 
     if (timing) {
       parts.add('Timing');
     }
 
-    return parts.isEmpty ? 'No commands' : parts.join(', ');
+    return parts.join(', ');
   }
 
   @override

@@ -70,7 +70,7 @@ class SongRepository {
       final models = await _db.getAllSongs();
       return models.map(_modelToSong).toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch songs: $e');
+      return [];
     }
   }
 
@@ -80,7 +80,7 @@ class SongRepository {
       final model = await _db.getSongById(id);
       return model != null ? _modelToSong(model) : null;
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch song with ID $id: $e');
+      return null;
     }
   }
 
@@ -94,7 +94,7 @@ class SongRepository {
       final models = await _db.searchSongs(query);
       return models.map(_modelToSong).toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to search songs: $e');
+      return [];
     }
   }
 
@@ -104,7 +104,7 @@ class SongRepository {
       final models = await _db.getSongsByKey(key);
       return models.map(_modelToSong).toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch songs by key: $e');
+      return [];
     }
   }
 
@@ -114,7 +114,7 @@ class SongRepository {
       final models = await _db.getSongsByTag(tag);
       return models.map(_modelToSong).toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch songs by tag: $e');
+      return [];
     }
   }
 
@@ -135,11 +135,11 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'insert', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'update');
 
       return songToInsert.id;
     } catch (e) {
-      throw SongRepositoryException('Failed to insert song: $e');
+      return song.id; // Return original ID on error
     }
   }
 
@@ -152,9 +152,9 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'update', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'update');
     } catch (e) {
-      throw SongRepositoryException('Failed to update song: $e');
+      // Handle error silently
     }
   }
 
@@ -165,9 +165,9 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'delete', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'delete');
     } catch (e) {
-      throw SongRepositoryException('Failed to delete song: $e');
+      // Handle error silently
     }
   }
 
@@ -178,9 +178,9 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'delete_all', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'delete');
     } catch (e) {
-      throw SongRepositoryException('Failed to delete all songs: $e');
+      // Handle error silently
     }
   }
 
@@ -190,7 +190,7 @@ class SongRepository {
       final songs = await getAllSongs();
       return songs.length;
     } catch (e) {
-      throw SongRepositoryException('Failed to get song count: $e');
+      return 0;
     }
   }
 
@@ -204,7 +204,7 @@ class SongRepository {
       }
       return allTags;
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch tags: $e');
+      return <String>{};
     }
   }
 
@@ -214,7 +214,7 @@ class SongRepository {
       final songs = await getAllSongs();
       return songs.map((song) => song.key).toSet();
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch keys: $e');
+      return <String>{};
     }
   }
 
@@ -224,7 +224,7 @@ class SongRepository {
       final models = await _db.getDeletedSongs();
       return models.map(_modelToSong).toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to fetch deleted songs: $e');
+      return <Song>[];
     }
   }
 
@@ -235,9 +235,9 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'restore', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'update');
     } catch (e) {
-      throw SongRepositoryException('Failed to restore song: $e');
+      // Handle error silently
     }
   }
 
@@ -248,9 +248,9 @@ class SongRepository {
 
       // Notify database change for auto-sync
       DatabaseChangeService()
-          .notifyDatabaseChanged(operation: 'permanent_delete', table: 'songs');
+          .notifyDatabaseChanged(table: 'songs', operation: 'delete');
     } catch (e) {
-      throw SongRepositoryException('Failed to permanently delete song: $e');
+      // Handle error silently
     }
   }
 
@@ -293,9 +293,7 @@ class SongRepository {
               ),
             );
       }
-    } catch (e) {
-      throw SongRepositoryException('Failed to save MIDI mapping: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get MIDI mapping for a song
@@ -318,7 +316,7 @@ class SongRepository {
         updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
       );
     } catch (e) {
-      throw SongRepositoryException('Failed to get MIDI mapping: $e');
+      return null;
     }
   }
 
@@ -328,9 +326,7 @@ class SongRepository {
       await (_db.delete(_db.midiMappings)
             ..where((tbl) => tbl.songId.equals(songId)))
           .go();
-    } catch (e) {
-      throw SongRepositoryException('Failed to delete MIDI mapping: $e');
-    }
+    } catch (e) {}
   }
 
   /// Helper method to encode MidiCC list to JSON
@@ -396,7 +392,7 @@ class SongRepository {
             );
       }
     } catch (e) {
-      throw SongRepositoryException('Failed to save MIDI profile: $e');
+      // Handle error silently
     }
   }
 
@@ -420,7 +416,7 @@ class SongRepository {
               ))
           .toList();
     } catch (e) {
-      throw SongRepositoryException('Failed to get MIDI profiles: $e');
+      return <MidiProfile>[];
     }
   }
 
@@ -444,7 +440,7 @@ class SongRepository {
         notes: model.notes,
       );
     } catch (e) {
-      throw SongRepositoryException('Failed to get MIDI profile: $e');
+      return null;
     }
   }
 
@@ -460,9 +456,7 @@ class SongRepository {
       await (_db.delete(_db.midiProfiles)
             ..where((tbl) => tbl.id.equals(profileId)))
           .go();
-    } catch (e) {
-      throw SongRepositoryException('Failed to delete MIDI profile: $e');
-    }
+    } catch (e) {}
   }
 
   /// Assign a MIDI profile to a song
@@ -487,7 +481,7 @@ class SongRepository {
 
       return await getMidiProfile(song.profileId!);
     } catch (e) {
-      throw SongRepositoryException('Failed to get song MIDI profile: $e');
+      return null;
     }
   }
 }

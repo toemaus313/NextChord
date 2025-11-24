@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
@@ -51,12 +51,6 @@ class DriveLibraryMetadata {
         md5Checksum: json['md5Checksum'] as String,
         headRevisionId: json['headRevisionId'] as String,
       );
-}
-
-/// Helper for timestamped debug logging
-String _timestampedLog(String message) {
-  final timestamp = DateTime.now().toIso8601String();
-  return '[$timestamp] $message';
 }
 
 /// JSON model for library export/import
@@ -401,8 +395,7 @@ class MergeDeltaSummary {
       parts.add(
           'Songs: $songsAdded added, $songsDeleted deleted, $songsUpdated updated');
       if (songFieldChanges.isNotEmpty) {
-        parts.add(
-            '  Song changes: ${songFieldChanges.take(5).join(', ')}${songFieldChanges.length > 5 ? '...' : ''}');
+        parts.add('Song changes: ${songFieldChanges.join('; ')}');
       }
     }
 
@@ -410,8 +403,7 @@ class MergeDeltaSummary {
       parts.add(
           'Setlists: $setlistsAdded added, $setlistsDeleted deleted, $setlistsUpdated updated');
       if (setlistFieldChanges.isNotEmpty) {
-        parts.add(
-            '  Setlist changes: ${setlistFieldChanges.take(5).join(', ')}${setlistFieldChanges.length > 5 ? '...' : ''}');
+        parts.add('Setlist changes: ${setlistFieldChanges.join('; ')}');
       }
     }
 
@@ -421,8 +413,8 @@ class MergeDeltaSummary {
       parts.add(
           'MIDI Mappings: $midiMappingsAdded added, $midiMappingsDeleted deleted, $midiMappingsUpdated updated');
       if (midiMappingFieldChanges.isNotEmpty) {
-        parts.add(
-            '  MIDI Mapping changes: ${midiMappingFieldChanges.take(5).join(', ')}${midiMappingFieldChanges.length > 5 ? '...' : ''}');
+        parts
+            .add('MIDI mapping changes: ${midiMappingFieldChanges.join('; ')}');
       }
     }
 
@@ -432,12 +424,12 @@ class MergeDeltaSummary {
       parts.add(
           'MIDI Profiles: $midiProfilesAdded added, $midiProfilesDeleted deleted, $midiProfilesUpdated updated');
       if (midiProfileFieldChanges.isNotEmpty) {
-        parts.add(
-            '  MIDI Profile changes: ${midiProfileFieldChanges.take(5).join(', ')}${midiProfileFieldChanges.length > 5 ? '...' : ''}');
+        parts
+            .add('MIDI profile changes: ${midiProfileFieldChanges.join('; ')}');
       }
     }
 
-    return parts.isEmpty ? 'No changes' : parts.join('\n');
+    return parts.join('\n');
   }
 }
 
@@ -470,7 +462,6 @@ class LibrarySyncService {
       final currentHash = _generateJsonHash(jsonContent);
       return currentHash != syncState!.lastUploadedLibraryHash;
     } catch (e) {
-      debugPrint('Error checking if library changed: $e');
       return true; // Assume changed on error to be safe
     }
   }
@@ -482,7 +473,6 @@ class LibrarySyncService {
 
       // If we have no sync state, any remote file is considered a change
       if (syncState?.lastRemoteFileId == null) {
-        debugPrint('No previous sync state - remote file considered as change');
         return true;
       }
 
@@ -497,14 +487,10 @@ class LibrarySyncService {
       );
 
       if (hasChanged) {
-        debugPrint('Remote file has changed - new MD5 or timestamp detected');
-      } else {
-        debugPrint('Remote file unchanged - same MD5 and timestamp');
-      }
+      } else {}
 
       return hasChanged;
     } catch (e) {
-      debugPrint('Error checking remote changes: $e');
       return true; // Assume changed on error to be safe
     }
   }
@@ -525,14 +511,10 @@ class LibrarySyncService {
 
       final hasChanged = mergedHash != remoteHash;
       if (hasChanged) {
-        debugPrint('⚠️ Library content has changed - upload needed');
-      } else {
-        debugPrint('✅ Library content identical - skipping upload');
-      }
+      } else {}
 
       return hasChanged;
     } catch (e) {
-      debugPrint('Error checking if merged library changed: $e');
       return true; // Assume changed on error to be safe
     }
   }
@@ -555,7 +537,6 @@ class LibrarySyncService {
 
       return jsonEncode(normalized);
     } catch (e) {
-      debugPrint('Error extracting library content: $e');
       return fullJson; // Fallback to full JSON
     }
   }
@@ -565,46 +546,54 @@ class LibrarySyncService {
     final changes = <String>[];
 
     if (local.title != remote.title) {
-      changes.add('${remote.title}: title changed');
+      changes.add('title changed from ${local.title} to ${remote.title}');
     }
     if (local.artist != remote.artist) {
-      changes.add('${remote.title}: artist changed');
+      changes.add('artist changed from ${local.artist} to ${remote.artist}');
     }
     if (local.body != remote.body) {
-      changes.add('${remote.title}: content changed');
+      changes.add('content changed');
     }
     if (local.key != remote.key) {
-      changes.add(
-          '${remote.title}: key changed from ${local.key} to ${remote.key}');
+      changes.add('key changed from ${local.key} to ${remote.key}');
     }
     if (local.capo != remote.capo) {
-      changes.add(
-          '${remote.title}: capo changed from ${local.capo} to ${remote.capo}');
+      changes.add('capo changed from ${local.capo} to ${remote.capo}');
     }
     if (local.bpm != remote.bpm) {
-      changes.add(
-          '${remote.title}: BPM changed from ${local.bpm} to ${remote.bpm}');
+      changes.add('bpm changed from ${local.bpm} to ${remote.bpm}');
     }
     if (local.timeSignature != remote.timeSignature) {
-      changes.add('${remote.title}: time signature changed');
+      changes.add(
+          'time signature changed from ${local.timeSignature} to ${remote.timeSignature}');
     }
     if (local.tags != remote.tags) {
       if (local.tags.isEmpty && remote.tags.isNotEmpty) {
-        changes.add('${remote.title}: tags added');
+        try {
+          final remoteTagsList = List<String>.from(jsonDecode(remote.tags));
+          changes.add('tags added: ${remoteTagsList.join(', ')}');
+        } catch (e) {
+          changes.add('tags added');
+        }
       } else if (local.tags.isNotEmpty && remote.tags.isEmpty) {
-        changes.add('${remote.title}: tags removed');
+        try {
+          final localTagsList = List<String>.from(jsonDecode(local.tags));
+          changes.add('tags removed: ${localTagsList.join(', ')}');
+        } catch (e) {
+          changes.add('tags removed');
+        }
       } else {
-        changes.add('${remote.title}: tags changed');
+        changes.add('tags changed');
       }
     }
     if (local.audioFilePath != remote.audioFilePath) {
-      changes.add('${remote.title}: audio file changed');
+      changes.add('audio file path changed');
     }
     if (local.notes != remote.notes) {
-      changes.add('${remote.title}: notes changed');
+      changes.add('notes changed');
     }
     if (local.profileId != remote.profileId) {
-      changes.add('${remote.title}: MIDI profile changed');
+      changes.add('MIDI profile changed');
     }
 
     return changes;
@@ -622,9 +611,7 @@ class LibrarySyncService {
           lastUploadedLibraryHash: hash,
         );
       }
-    } catch (e) {
-      debugPrint('Error storing uploaded library hash: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get last seen remote metadata from sync state
@@ -642,7 +629,6 @@ class LibrarySyncService {
         headRevisionId: syncState.lastRemoteHeadRevisionId ?? '',
       );
     } catch (e) {
-      debugPrint('Error getting last seen metadata: $e');
       return null;
     }
   }
@@ -748,7 +734,6 @@ class LibrarySyncService {
 
       return jsonEncode(libraryJson.toJson());
     } catch (e) {
-      debugPrint('Error exporting library to JSON: $e');
       rethrow;
     }
   }
@@ -756,15 +741,12 @@ class LibrarySyncService {
   /// Import and merge library from JSON string
   Future<void> importAndMergeLibraryFromJson(String jsonString) async {
     try {
-      debugPrint(
-          _timestampedLog('Merge analysis started - parsing remote JSON'));
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
       final remoteLibrary = LibraryJson.fromJson(jsonData);
 
       // Validate schema version
       if (remoteLibrary.schemaVersion != currentSchemaVersion) {
-        throw Exception(
-            'Incompatible schema version: ${remoteLibrary.schemaVersion}');
+        throw Exception('Schema version mismatch');
       }
 
       await _database.initializeSyncState();
@@ -776,15 +758,6 @@ class LibrarySyncService {
           await _database.select(_database.midiMappings).get();
       final localMidiProfiles =
           await _database.select(_database.midiProfiles).get();
-
-      debugPrint(_timestampedLog(
-          'Local vs Remote comparison - Songs: ${localSongs.length} local vs ${remoteLibrary.songs.length} remote'));
-      debugPrint(_timestampedLog(
-          'Local vs Remote comparison - Setlists: ${localSetlists.length} local vs ${remoteLibrary.setlists.length} remote'));
-      debugPrint(_timestampedLog(
-          'Local vs Remote comparison - MidiMappings: ${localMidiMappings.length} local vs ${remoteLibrary.midiMappings.length} remote'));
-      debugPrint(_timestampedLog(
-          'Local vs Remote comparison - MidiProfiles: ${localMidiProfiles.length} local vs ${remoteLibrary.midiProfiles.length} remote'));
 
       // Create maps for efficient lookup
       final localSongsMap = {for (var s in localSongs) s.id: s};
@@ -802,7 +775,6 @@ class LibrarySyncService {
       };
 
       // Merge songs
-      debugPrint(_timestampedLog('Starting songs merge - analyzing deltas'));
       final deltaSummary = MergeDeltaSummary();
       final mergedSongs = _mergeRecordsWithDeltas<SongJson, SongModel>(
         localMap: localSongsMap,
@@ -830,11 +802,8 @@ class LibrarySyncService {
         deltaSummary: deltaSummary,
         recordType: 'song',
       );
-      debugPrint(_timestampedLog(
-          'Songs merge completed - ${mergedSongs.length} total songs'));
 
       // Merge setlists
-      debugPrint(_timestampedLog('Starting setlists merge - analyzing deltas'));
       final mergedSetlists = _mergeRecords<SetlistJson, SetlistModel>(
         localMap: localSetlistsMap,
         remoteMap: remoteSetlistsMap,
@@ -852,12 +821,8 @@ class LibrarySyncService {
         getTimestamp: (model) => model.updatedAt,
         isDeleted: (model) => model.isDeleted,
       );
-      debugPrint(_timestampedLog(
-          'Setlists merge completed - ${mergedSetlists.length} total setlists'));
 
       // Merge MIDI mappings
-      debugPrint(
-          _timestampedLog('Starting MIDI mappings merge - analyzing deltas'));
       final mergedMidiMappings =
           _mergeRecords<MidiMappingJson, MidiMappingModel>(
         localMap: localMidiMappingsMap,
@@ -876,12 +841,8 @@ class LibrarySyncService {
         getTimestamp: (model) => model.updatedAt,
         isDeleted: (model) => model.isDeleted,
       );
-      debugPrint(_timestampedLog(
-          'MIDI mappings merge completed - ${mergedMidiMappings.length} total mappings'));
 
       // Merge MIDI profiles
-      debugPrint(
-          _timestampedLog('Starting MIDI profiles merge - analyzing deltas'));
       final mergedMidiProfiles =
           _mergeRecords<MidiProfileJson, MidiProfileModel>(
         localMap: localMidiProfilesMap,
@@ -900,12 +861,8 @@ class LibrarySyncService {
         getTimestamp: (model) => model.updatedAt,
         isDeleted: (model) => model.isDeleted,
       );
-      debugPrint(_timestampedLog(
-          'MIDI profiles merge completed - ${mergedMidiProfiles.length} total profiles'));
 
       // Log detailed merge summary
-      debugPrint(_timestampedLog('Merge completed with detailed deltas:'));
-      debugPrint(_timestampedLog(deltaSummary.getSummary()));
 
       // Apply merged data to database in a transaction
       await _database.transaction(() async {
@@ -942,27 +899,13 @@ class LibrarySyncService {
 
       // Emit database change events for all updated songs to trigger UI refresh
       if (deltaSummary.updatedSongIds.isNotEmpty) {
-        debugPrint(_timestampedLog(
-            '📡 Emitting database change events for ${deltaSummary.updatedSongIds.length} updated songs'));
-        debugPrint(_timestampedLog(
-            '📡 Updated song IDs: ${deltaSummary.updatedSongIds.join(", ")}'));
         final dbChangeService = DatabaseChangeService();
         for (final songId in deltaSummary.updatedSongIds) {
-          debugPrint(
-              _timestampedLog('📡 Emitting change event for song ID: $songId'));
           dbChangeService.notifyDatabaseChanged(
               table: 'songs', operation: 'update', recordId: songId);
         }
-        debugPrint(
-            _timestampedLog('📡 All change events emitted successfully'));
-      } else {
-        debugPrint(
-            _timestampedLog('ℹ️  No song IDs to emit change events for'));
       }
-
-      debugPrint('Successfully imported and merged library from JSON');
     } catch (e) {
-      debugPrint('Error importing library from JSON: $e');
       rethrow;
     }
   }
@@ -1056,8 +999,6 @@ class LibrarySyncService {
         if (remoteModel is SongModel)
           recordName = remoteModel.title;
         else if (remoteModel is SetlistModel) recordName = remoteModel.name;
-
-        deltaSummary.addSongChange('$recordName: added');
       } else if (local != null && remote == null) {
         // Only exists locally
         merged.add(local);
@@ -1099,31 +1040,28 @@ class LibrarySyncService {
             // Track song ID for database change notification
             final id = (remoteModel as dynamic).id;
             if (id != null) {
-              debugPrint(_timestampedLog(
-                  '📝 Tracking updated song ID for change event: $id'));
               deltaSummary.addUpdatedSongId(id);
-            } else {
-              debugPrint(_timestampedLog(
-                  '⚠️  WARNING: Song has null ID, cannot track for change event'));
             }
-          } else if (recordType == 'setlist')
+          } else if (recordType == 'setlist') {
             deltaSummary.setlistsUpdated++;
-          else if (recordType == 'midiMapping')
+          } else if (recordType == 'midiMapping') {
             deltaSummary.midiMappingsUpdated++;
-          else if (recordType == 'midiProfile')
+          } else if (recordType == 'midiProfile') {
             deltaSummary.midiProfilesUpdated++;
+          }
 
           // Track specific field changes
           final fieldChanges = compareFields(local, remoteModel);
           for (final change in fieldChanges) {
-            if (recordType == 'song')
+            if (recordType == 'song') {
               deltaSummary.addSongChange(change);
-            else if (recordType == 'setlist')
+            } else if (recordType == 'setlist') {
               deltaSummary.addSetlistChange(change);
-            else if (recordType == 'midiMapping')
+            } else if (recordType == 'midiMapping') {
               deltaSummary.addMidiMappingChange(change);
-            else if (recordType == 'midiProfile')
+            } else if (recordType == 'midiProfile') {
               deltaSummary.addMidiProfileChange(change);
+            }
           }
 
           // Track deletion status changes
@@ -1135,10 +1073,8 @@ class LibrarySyncService {
 
             if (recordType == 'song') {
               deltaSummary.songsDeleted++;
-              deltaSummary.addSongChange('$recordName: deleted');
             } else if (recordType == 'setlist') {
               deltaSummary.setlistsDeleted++;
-              deltaSummary.addSetlistChange('$recordName: deleted');
             }
           }
         }

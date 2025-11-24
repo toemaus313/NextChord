@@ -121,12 +121,12 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
 
   Widget _buildDeviceList(MidiService midiService) {
     if (midiService.isScanning) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
             Text('Scanning for MIDI devices...'),
           ],
         ),
@@ -277,9 +277,9 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showTestMidiDialog(),
+              onPressed: () => _showTestMidiDialog(context),
               icon: const Icon(Icons.music_note),
-              label: const Text('Test MIDI Messages'),
+              label: const Text('Test MIDI Connection'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -291,11 +291,10 @@ class _MidiSettingsScreenState extends State<MidiSettingsScreen> {
     );
   }
 
-  void _showTestMidiDialog() {
+  void _showTestMidiDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Test MIDI Messages'),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

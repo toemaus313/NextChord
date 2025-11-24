@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform, debugPrint;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
 import '../services/sync/cloud_db_backup_service.dart';
@@ -81,7 +80,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       // Small delay to ensure app is fully initialized
       Future.delayed(const Duration(seconds: 5), () async {
         try {
-          debugPrint('🔄 SyncProvider: Starting initial autoSync()');
           await autoSync();
         } catch (e) {}
 
@@ -92,12 +90,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
         // Start metadata polling after initial sync
         try {
-          debugPrint(
-              '🔄 SyncProvider: Starting metadata polling after initial sync');
           _syncService.startMetadataPolling();
-        } catch (e) {
-          debugPrint('🔄 SyncProvider: Failed to start metadata polling: $e');
-        }
+        } catch (e) {}
       });
     }
   }
@@ -107,11 +101,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     try {
       if (!_isSyncEnabled) return;
 
-      debugPrint('🔄 Starting cloud backup maintenance');
       await _backupService.maintainCloudBackup();
-    } catch (e) {
-      debugPrint('⚠️ Cloud backup maintenance failed: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _saveSyncPreference() async {
@@ -143,23 +134,18 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         _isAppInForeground = true;
-        debugPrint('App resumed, starting metadata polling');
         if (_isSyncEnabled) {
           _syncService.startMetadataPolling();
         }
         break;
       case AppLifecycleState.paused:
         _isAppInForeground = false;
-        debugPrint('App paused, checking platform for metadata polling');
         // Only stop polling on mobile platforms (iOS/Android)
         // Windows and Mac continue polling even when unfocused
         if (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.android) {
-          debugPrint('Mobile platform detected, stopping metadata polling');
           _syncService.stopMetadataPolling();
-        } else {
-          debugPrint('Desktop platform detected, continuing metadata polling');
-        }
+        } else {}
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
@@ -195,7 +181,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
       // Trigger UI refresh after successful auto-sync
       if (_onSyncCompleted != null) {
-        debugPrint('🔄 Triggering UI refresh after auto-sync');
         _onSyncCompleted!();
       }
     } catch (e) {
@@ -312,7 +297,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     try {
       return await _backupService.hasCloudBackup();
     } catch (e) {
-      debugPrint('⚠️ Failed to check for cloud backup: $e');
       return false;
     }
   }
@@ -350,34 +334,5 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _isSyncing = false;
       notifyListeners();
     }
-  }
-
-  // Helper method to show migration dialog
-  static Future<bool> showMigrationDialog(
-    BuildContext context, {
-    required String title,
-    required String message,
-    required String confirmText,
-    required String cancelText,
-  }) async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(cancelText),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(confirmText),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }

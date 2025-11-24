@@ -5,22 +5,19 @@ import 'dart:io';
 /// Script to delete ALL NextChord local databases (macOS and iOS simulators)
 /// This script removes the local SQLite database and any backup files from all platforms
 
-void main() {
-  print('🗑️  Deleting ALL NextChord local databases...');
+void main() async {
+  // Deleting ALL NextChord local databases...
 
   // Delete macOS databases
-  print('');
-  print('🍎 Cleaning macOS databases...');
+  // Cleaning macOS databases...
   _deleteMacosDatabases();
 
   // Delete iOS simulator databases
-  print('');
-  print('📱 Cleaning iOS simulator databases...');
+  // Cleaning iOS simulator databases...
   _deleteIosDatabases();
 
-  print('');
-  print('🎉 All NextChord databases have been deleted!');
-  print('💡 Restart your app to create fresh databases.');
+  // All NextChord databases have been deleted!
+  // Restart your app to create fresh databases.
 }
 
 void _deleteMacosDatabases() {
@@ -31,11 +28,8 @@ void _deleteMacosDatabases() {
   // Check if database exists and delete it
   final dbFile = File(macDbPath);
   if (dbFile.existsSync()) {
-    print('📁 Found macOS database at: $macDbPath');
+    // Found and deleted macOS database
     dbFile.deleteSync();
-    print('✅ Deleted macOS database');
-  } else {
-    print('ℹ️  macOS database not found at: $macDbPath');
   }
 
   // Check for backup file and delete it
@@ -43,11 +37,8 @@ void _deleteMacosDatabases() {
       '${Platform.environment['HOME']}/Documents/nextchord_db.sqlite.backup';
   final backupFile = File(macBackupPath);
   if (backupFile.existsSync()) {
-    print('📁 Found macOS backup at: $macBackupPath');
+    // Found and deleted macOS backup
     backupFile.deleteSync();
-    print('✅ Deleted macOS backup');
-  } else {
-    print('ℹ️  macOS backup not found at: $macBackupPath');
   }
 
   // Also check in Library/Application Support (alternative location)
@@ -55,11 +46,8 @@ void _deleteMacosDatabases() {
       '${Platform.environment['HOME']}/Library/Application Support/nextchord_db.sqlite';
   final altDbFile = File(altDbPath);
   if (altDbFile.existsSync()) {
-    print('📁 Found alternative macOS database at: $altDbPath');
+    // Found and deleted alternative macOS database
     altDbFile.deleteSync();
-    print('✅ Deleted alternative macOS database');
-  } else {
-    print('ℹ️  Alternative macOS database not found at: $altDbPath');
   }
 }
 
@@ -70,7 +58,7 @@ void _deleteIosDatabases() {
       Directory('$homeDir/Library/Developer/CoreSimulator/Devices');
 
   if (!simulatorDir.existsSync()) {
-    print('ℹ️  iOS simulator directory not found');
+    // iOS simulator directory not found
     return;
   }
 
@@ -102,42 +90,31 @@ void _deleteIosDatabases() {
   }
 
   if (iosDbs.isEmpty) {
-    print('ℹ️  No iOS simulator databases found');
+    // No iOS simulator databases found
   } else {
-    print('📁 Found iOS simulator databases:');
-    for (final dbPath in iosDbs) {
-      print('  - $dbPath');
-    }
-
-    print('');
-    print('🗑️  Deleting iOS simulator databases...');
+    // Found iOS simulator databases
+    // Deleting iOS simulator databases...
     for (final dbPath in iosDbs) {
       try {
         File(dbPath).deleteSync();
-        print('✅ Deleted: $dbPath');
+        // Deleted: $dbPath
       } catch (e) {
-        print('❌ Failed to delete $dbPath: $e');
+        // Failed to delete database
       }
     }
   }
 
   if (iosBackups.isEmpty) {
-    print('ℹ️  No iOS simulator backup files found');
+    // No iOS simulator backup files found
   } else {
-    print('');
-    print('📁 Found iOS simulator backup files:');
-    for (final backupPath in iosBackups) {
-      print('  - $backupPath');
-    }
-
-    print('');
-    print('🗑️  Deleting iOS simulator backup files...');
+    // Found iOS simulator backup files
+    // Deleting iOS simulator backup files...
     for (final backupPath in iosBackups) {
       try {
         File(backupPath).deleteSync();
-        print('✅ Deleted: $backupPath');
+        // Deleted: $backupPath
       } catch (e) {
-        print('❌ Failed to delete $backupPath: $e');
+        // Failed to delete backup
       }
     }
   }

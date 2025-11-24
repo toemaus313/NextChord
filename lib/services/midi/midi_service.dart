@@ -132,9 +132,7 @@ class MidiService with ChangeNotifier {
       _midiChannel = prefs.getInt('new_midi_channel') ?? 0;
       _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
       _preferredDeviceId = prefs.getString('last_connected_midi_device_id');
-    } catch (e) {
-      _setError('Failed to load settings: $e');
-    }
+    } catch (e) {}
   }
 
   /// Save settings to SharedPreferences
@@ -143,9 +141,7 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('new_midi_channel', _midiChannel);
       await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
-    } catch (e) {
-      _setError('Failed to save settings: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _savePreferredDeviceId(String? deviceId) async {
@@ -156,9 +152,7 @@ class MidiService with ChangeNotifier {
       } else {
         await prefs.setString('last_connected_midi_device_id', deviceId);
       }
-    } catch (e) {
-      _setError('Failed to persist preferred device id: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get the display MIDI channel (1-16)
@@ -172,9 +166,7 @@ class MidiService with ChangeNotifier {
 
       // Start scanning for devices
       await scanForDevices();
-    } catch (e) {
-      _setError('Failed to initialize MIDI: $e');
-    }
+    } catch (e) {}
   }
 
   /// Scan and list available MIDI devices (inputs and outputs)
@@ -193,7 +185,6 @@ class MidiService with ChangeNotifier {
       notifyListeners();
       await _autoConnectToPreferredDevice();
     } catch (e) {
-      _setError('Failed to scan for MIDI devices: $e');
       _setConnectionState(MidiConnectionState.disconnected);
     }
   }
@@ -231,7 +222,6 @@ class MidiService with ChangeNotifier {
         return true;
       }
 
-      _setError('Failed to connect to ${device.name}: $e');
       _setConnectionState(MidiConnectionState.disconnected);
       return false;
     }
@@ -243,9 +233,7 @@ class MidiService with ChangeNotifier {
       if (_connectedDevice != null) {
         _connectedDevice = null;
       }
-    } catch (e) {
-      _setError('Failed to disconnect: $e');
-    }
+    } catch (e) {}
   }
 
   /// Disconnect from the current MIDI device
@@ -291,7 +279,6 @@ class MidiService with ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError('Failed to send Program Change: $e');
       return false;
     }
   }
@@ -342,39 +329,8 @@ class MidiService with ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError('Failed to send Control Change: $e');
       return false;
     }
-  }
-
-  /// Get the MIDI byte data for a Program Change message (for debugging)
-  /// Returns the hex bytes that would be sent on the configured MIDI channel
-  List<int> getProgramChangeBytes(int program) {
-    // Validate input
-    if (program < 0 || program > 127)
-      throw ArgumentError('Program number must be between 0 and 127');
-
-    // MIDI Program Change: 0xC0 | channel, program
-    return [0xC0 | _midiChannel, program];
-  }
-
-  /// Get the MIDI byte data for a Control Change message (for debugging)
-  /// Returns the hex bytes that would be sent on the configured MIDI channel
-  List<int> getControlChangeBytes(int controller, int value) {
-    // Validate inputs
-    if (controller < 0 || controller > 127)
-      throw ArgumentError('Controller number must be between 0 and 127');
-    if (value < 0 || value > 127)
-      throw ArgumentError('Control value must be between 0 and 127');
-
-    // MIDI Control Change: 0xB0 | channel, controller, value
-    return [0xB0 | _midiChannel, controller, value];
-  }
-
-  /// Get the MIDI Clock byte (for debugging)
-  /// MIDI Clock is a real-time message: 0xF8
-  List<int> getMidiClockBytes() {
-    return [0xF8];
   }
 
   /// Format MIDI bytes as hex and decimal string for display
@@ -434,7 +390,6 @@ class MidiService with ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError('Failed to send MIDI Clock: $e');
       return false;
     }
   }
@@ -452,7 +407,6 @@ class MidiService with ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError('Failed to send MIDI Start: $e');
       return false;
     }
   }
@@ -470,7 +424,6 @@ class MidiService with ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError('Failed to send MIDI Stop: $e');
       return false;
     }
   }

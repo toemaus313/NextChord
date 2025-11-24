@@ -109,7 +109,6 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
         }
       });
     } catch (e) {
-      debugPrint('Error loading song counts: $e');
       if (mounted) {
         setState(() {
           _totalSongsCount = 0;
@@ -197,22 +196,17 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   }
 
   Widget _buildSetlistsSection(BuildContext context) {
-    debugPrint('Building setlists section...');
     return SidebarMenuItem(
       icon: Icons.playlist_play,
       title: 'Setlists',
       isSelected: false,
       onTap: () async {
-        debugPrint('Setlists section tapped');
         final wasExpanded = _isSectionExpanded('setlists');
         _expandSection('setlists');
         if (!wasExpanded && _isSectionExpanded('setlists')) {
-          debugPrint('Loading setlists...');
           try {
             await context.read<SetlistProvider>().loadSetlists();
-            debugPrint('Setlists loaded successfully');
           } catch (e) {
-            debugPrint('Error loading setlists: $e');
           }
         }
       },
@@ -365,10 +359,6 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     // Calculate song count by filtering for song items (not dividers)
     final songCount = setlist.items?.whereType<SetlistSongItem>().length ?? 0;
 
-    // Debug logging to verify values
-    debugPrint(
-        'Setlist: ${setlist.name}, items: ${setlist.items?.length ?? 0}, songCount: $songCount, isPhoneMode: ${widget.isPhoneMode}');
-
     return GestureDetector(
       onTap: () {
         // Need to navigate with the specific setlist ID
@@ -458,7 +448,6 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
         title: const Text('Delete Setlist'),
         content: Text(
             'Are you sure you want to delete "${setlist.name}"? This action cannot be undone.'),

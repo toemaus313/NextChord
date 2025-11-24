@@ -7,17 +7,14 @@ import '../../domain/entities/setlist.dart';
 class DividerDialog extends StatefulWidget {
   final SetlistDividerItem? existingDivider;
 
-  const DividerDialog({super.key, this.existingDivider});
 
   static Future<SetlistDividerItem?> show(BuildContext context,
       {SetlistDividerItem? existingDivider}) {
     return showDialog<SetlistDividerItem>(
       context: context,
       barrierDismissible: false, // Prevent accidental dismissal
-      builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
-        child: DividerDialog(existingDivider: existingDivider),
       ),
     );
   }

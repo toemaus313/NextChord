@@ -345,7 +345,6 @@ class SongMetadataForm extends StatelessWidget {
         if (value == null || value.trim().isEmpty) {
           return null;
         }
-        final pattern = RegExp(r'^(\d{1,2}:)?\d{1,2}:\d{2}$');
         if (!pattern.hasMatch(value.trim())) {
           return 'Invalid';
         }

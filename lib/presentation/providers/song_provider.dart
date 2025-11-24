@@ -22,8 +22,6 @@ class SongProvider extends ChangeNotifier {
     //   _dbChangeSubscription =
     //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
     // });
-    debugPrint(
-        '🎵 SongProvider: Database change monitoring temporarily disabled for debugging');
   }
 
   // Public getter for repository access
@@ -123,13 +121,9 @@ class SongProvider extends ChangeNotifier {
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
-    debugPrint(
-        '🎵 SongProvider.loadSongs() called - checking if in build phase');
     _isLoading = true;
     _errorMessage = null;
-    debugPrint('🎵 About to call notifyListeners() in loadSongs()');
     notifyListeners();
-    debugPrint('🎵 notifyListeners() completed in loadSongs()');
     _currentListType = SongListType.all;
     notifyListeners();
 
@@ -158,8 +152,6 @@ class SongProvider extends ChangeNotifier {
       return;
     }
 
-    debugPrint('🎵 SongProvider received DB change: ${event.table}');
-
     // Only refresh if we're currently showing songs or deleted songs
     if (event.table == 'songs' ||
         event.table == 'songs_count' ||
@@ -174,8 +166,6 @@ class SongProvider extends ChangeNotifier {
   /// Refresh data from database change event without disrupting UI state
   Future<void> _refreshFromDatabaseChange() async {
     if (_isLoading) return; // Don't refresh if already loading
-
-    debugPrint('🎵 SongProvider refreshing from database change');
 
     try {
       _isUpdatingFromDatabase = true;
@@ -193,7 +183,6 @@ class SongProvider extends ChangeNotifier {
           break;
       }
     } catch (e) {
-      debugPrint('🎵 Error refreshing from database change: $e');
     } finally {
       _isUpdatingFromDatabase = false;
     }
@@ -206,9 +195,7 @@ class SongProvider extends ChangeNotifier {
       _songs = newSongs;
       _applySearch(); // Reapply current search/filter
       notifyListeners();
-    } catch (e) {
-      debugPrint('🎵 Error refreshing songs list: $e');
-    }
+    } catch (e) {}
   }
 
   /// Refresh deleted songs list without changing loading state
@@ -217,9 +204,7 @@ class SongProvider extends ChangeNotifier {
       final newDeletedSongs = await _repository.getDeletedSongs();
       _deletedSongs = newDeletedSongs;
       notifyListeners();
-    } catch (e) {
-      debugPrint('🎵 Error refreshing deleted songs list: $e');
-    }
+    } catch (e) {}
   }
 
   /// Search songs by title or artist with debouncing
@@ -343,11 +328,8 @@ class SongProvider extends ChangeNotifier {
   Future<int> getDeletedSongsCount() async {
     try {
       final deletedSongs = await _repository.getDeletedSongs();
-      debugPrint(
-          '🎵 getDeletedSongsCount: Found ${deletedSongs.length} deleted songs');
       return deletedSongs.length;
     } catch (e) {
-      debugPrint('🎵 getDeletedSongsCount error: $e');
       return 0;
     }
   }
@@ -356,12 +338,9 @@ class SongProvider extends ChangeNotifier {
   Future<void> loadDeletedSongs() async {
     try {
       _deletedSongs = await _repository.getDeletedSongs();
-      debugPrint(
-          '🎵 loadDeletedSongs: Loaded ${_deletedSongs.length} deleted songs');
       _currentListType = SongListType.deleted;
       notifyListeners();
     } catch (e) {
-      debugPrint('🎵 loadDeletedSongs error: $e');
       _errorMessage = 'Failed to load deleted songs: $e';
       notifyListeners();
     }

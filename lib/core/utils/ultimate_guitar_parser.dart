@@ -1,13 +1,18 @@
 /// Parser for Ultimate Guitar chord format
 /// Converts Ultimate Guitar's format to ChordPro format
 class UltimateGuitarParser {
+  /// Regex to parse "Artist - Title (Album, Year)" format from Ultimate Guitar
+  static final titleArtistRegex = RegExp(
+      r'^\s*([^-]+?)\s*-\s*([^(]+?)(?:\s*\([^)]*\))?\s*$',
+      caseSensitive: false);
+
   /// Converts Ultimate Guitar format to ChordPro format
-  /// 
+  ///
   /// Ultimate Guitar uses:
   /// - [ch]ChordName[/ch] for chords
   /// - [tab]...[/tab] for lines with chords and lyrics
   /// - [Verse], [Chorus], etc. for sections
-  /// 
+  ///
   /// ChordPro uses:
   /// - [ChordName] for chords
   /// - {start_of_verse}, {end_of_verse}, etc. for sections
@@ -49,7 +54,8 @@ class UltimateGuitarParser {
 
     String result = content;
     for (var entry in sectionMap.entries) {
-      result = result.replaceAll(RegExp(entry.key, caseSensitive: false), entry.value);
+      result = result.replaceAll(
+          RegExp(entry.key, caseSensitive: false), entry.value);
     }
 
     return result;
@@ -90,16 +96,16 @@ class UltimateGuitarParser {
         // Extract chords and their positions
         final chords = <int, String>{};
         var cleanLine = line;
-        
+
         // Find all chord positions
         final chordRegex = RegExp(r'\[ch\](.*?)\[/ch\]');
         var offset = 0;
-        
+
         for (var match in chordRegex.allMatches(line)) {
           final chordName = match.group(1) ?? '';
           final position = match.start - offset;
           chords[position] = chordName;
-          
+
           // Remove the chord tag from the line
           cleanLine = cleanLine.replaceFirst(match.group(0)!, '');
           offset += match.group(0)!.length;
@@ -113,9 +119,7 @@ class UltimateGuitarParser {
           processedLines.add(result);
         } else if (chords.isNotEmpty) {
           // Chord-only line
-          final chordLine = chords.entries
-              .map((e) => '[${e.value}]')
-              .join(' ');
+          final chordLine = chords.entries.map((e) => '[${e.value}]').join(' ');
           processedLines.add(chordLine);
         }
       } else {
@@ -131,13 +135,13 @@ class UltimateGuitarParser {
   static String _insertChordsInline(String lyrics, Map<int, String> chords) {
     // Sort chords by position
     final sortedPositions = chords.keys.toList()..sort();
-    
+
     final result = StringBuffer();
     var lastPos = 0;
 
     for (var pos in sortedPositions) {
       final chord = chords[pos]!;
-      
+
       // Find the best insertion point in the lyrics
       // Try to insert before a word boundary
       var insertPos = pos;
@@ -167,7 +171,7 @@ class UltimateGuitarParser {
   /// Returns a map with title and artist if found in the first line
   static Map<String, String> extractMetadata(String ugContent) {
     final metadata = <String, String>{};
-    
+
     if (ugContent.isEmpty) return metadata;
 
     // First line often contains: "SongName - ArtistName (Album, Year)"
@@ -175,11 +179,10 @@ class UltimateGuitarParser {
     if (lines.isEmpty) return metadata;
 
     final firstLine = lines.first.trim();
-    
+
     // Try to parse "Title - Artist (Album, Year)" format
-    final titleArtistRegex = RegExp(r'^(.+?)\s*-\s*(.+?)(?:\s*\(.*\))?$');
     final match = titleArtistRegex.firstMatch(firstLine);
-    
+
     if (match != null) {
       metadata['title'] = match.group(2)?.trim() ?? '';
       metadata['artist'] = match.group(1)?.trim() ?? '';

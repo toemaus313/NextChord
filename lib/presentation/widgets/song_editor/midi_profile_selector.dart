@@ -108,7 +108,6 @@ class _MidiProfileSelectorState extends State<MidiProfileSelector> {
                   ],
                   onChanged: (value) async {
                     if (value == 'manage') {
-                      await _showManageProfilesDialog();
                       return;
                     }
 
@@ -132,7 +131,6 @@ class _MidiProfileSelectorState extends State<MidiProfileSelector> {
     );
   }
 
-  Future<void> _showManageProfilesDialog() async {
     setState(() => _isLoadingProfiles = true);
 
     try {

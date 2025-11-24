@@ -213,10 +213,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   }
 
   /// Open the Edit Tags dialog
-  Future<void> _openTagsDialog() async {
     await showDialog<bool>(
       context: context,
-      builder: (context) => TagEditDialog(
         title: 'Edit Tags',
         initialTags: _songViewerProvider.currentSong.tags.toSet(),
         onTagsUpdated: (updatedTags) async {
@@ -270,7 +268,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   Future<void> _deleteSong() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
         title: const Text('Delete Song'),
         content: Text(
           'Are you sure you want to delete "${_songViewerProvider.currentSong.title}"?\n\nThis action cannot be undone.',

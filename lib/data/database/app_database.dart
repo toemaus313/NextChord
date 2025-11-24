@@ -108,7 +108,7 @@ class AppDatabase extends _$AppDatabase {
 
     // Notify database change service for auto-sync
     DatabaseChangeService()
-        .notifyDatabaseChanged(operation: 'softDelete', table: 'songs');
+        .notifyDatabaseChanged(table: 'songs', operation: 'update');
   }
 
   /// Restore a soft-deleted song
@@ -120,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
 
     // Notify database change service for auto-sync
     DatabaseChangeService()
-        .notifyDatabaseChanged(operation: 'restore', table: 'songs');
+        .notifyDatabaseChanged(table: 'songs', operation: 'update');
   }
 
   /// Permanently delete a song
@@ -129,7 +129,7 @@ class AppDatabase extends _$AppDatabase {
 
     // Notify database change service for auto-sync
     DatabaseChangeService()
-        .notifyDatabaseChanged(operation: 'permanentDelete', table: 'songs');
+        .notifyDatabaseChanged(table: 'songs', operation: 'delete');
   }
 
   /// Get all unique keys from non-deleted songs

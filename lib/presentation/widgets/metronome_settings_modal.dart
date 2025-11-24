@@ -86,7 +86,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
                     title: 'Metronome Settings',
                     onCancel: () => _cancelChanges(context, settingsProvider),
                     onOk: _midiSendError == null
-                        ? () => _saveChanges(context, settingsProvider)
+                        ? () => _saveChanges(context)
                         : () {},
                     okEnabled: _midiSendError == null,
                   ),
@@ -204,19 +204,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
         const SizedBox(height: 8),
         Consumer<MidiService>(
           builder: (context, midiService, child) {
-            final hasText = _midiSendController.text.trim().isNotEmpty;
-            final isConnected = midiService.isConnected;
-            final hasNoError = _midiSendError == null;
-            final canTest = hasText && isConnected && hasNoError;
-
-            return StandardModalTemplate.buildButton(
-              label: 'Test',
-              icon: Icons.play_arrow,
-              onPressed: canTest
-                  ? () => _testMidiCommand(
-                      context.read<MetronomeSettingsProvider>(), midiService)
-                  : null,
-            );
+            return const SizedBox.shrink(); // Test button removed
           },
         ),
       ],
@@ -282,96 +270,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
   }
 
   /// Save changes and close modal
-  void _saveChanges(
-      BuildContext context, MetronomeSettingsProvider settingsProvider) {
+  void _saveChanges(BuildContext context) {
     Navigator.of(context).pop();
-  }
-
-  /// Test MIDI command by sending 8 metronome ticks at 120bpm
-  Future<void> _testMidiCommand(MetronomeSettingsProvider settingsProvider,
-      MidiService midiService) async {
-    final midiCommand = settingsProvider.midiSendOnTick;
-    if (midiCommand.isEmpty || !midiService.isConnected) return;
-
-    try {
-      // Send 8 ticks at 120bpm (500ms intervals)
-      for (int i = 1; i <= 8; i++) {
-        await _sendMidiCommand(midiCommand, midiService, i);
-        if (i < 8) {
-          await Future.delayed(
-              const Duration(milliseconds: 500)); // 120bpm interval
-        }
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Test completed: 8 MIDI ticks sent'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Test failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  /// Send a single MIDI command (reused from test dialog logic)
-  Future<void> _sendMidiCommand(
-      String commandText, MidiService midiService, int tickCount) async {
-    final messages = commandText
-        .split(',')
-        .map((msg) => msg.trim())
-        .where((msg) => msg.isNotEmpty);
-
-    for (final message in messages) {
-      final lowerMessage = message.toLowerCase();
-
-      // Check timing command
-      if (lowerMessage == 'timing') {
-        await midiService.sendMidiClock();
-      }
-      // Parse Program Change: "PC10" or "PC:10"
-      else if (lowerMessage.startsWith('pc')) {
-        final pcMatch =
-            RegExp(r'^pc(\d+)$', caseSensitive: false).firstMatch(message) ??
-                RegExp(r'^pc:(\d+)$', caseSensitive: false).firstMatch(message);
-
-        if (pcMatch != null) {
-          final pcValue = int.tryParse(pcMatch.group(1)!);
-          if (pcValue != null && pcValue >= 0 && pcValue <= 127) {
-            await midiService.sendProgramChange(pcValue,
-                channel: midiService.midiChannel);
-          }
-        }
-      }
-      // Parse Control Change: "CC7:100"
-      else if (lowerMessage.startsWith('cc')) {
-        final ccMatch = RegExp(r'^cc(\d+):(\d+)$', caseSensitive: false)
-            .firstMatch(message);
-
-        if (ccMatch != null) {
-          final controller = int.tryParse(ccMatch.group(1)!);
-          final value = int.tryParse(ccMatch.group(2)!);
-
-          if (controller != null &&
-              controller >= 0 &&
-              controller <= 119 &&
-              value != null &&
-              value >= 0 &&
-              value <= 127) {
-            await midiService.sendControlChange(controller, value,
-                channel: midiService.midiChannel);
-          }
-        }
-      }
-    }
   }
 }
