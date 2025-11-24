@@ -284,6 +284,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           setlistId: _controller.selectedSetlistId ?? '',
           onBack: () => _controller.navigateToMenu(),
           onAddSong: () => _showAddSongsToSetlist(),
+          onAddDivider: () {}, // TODO: Implement add divider functionality
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
         return isPhone
@@ -367,9 +368,6 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   }
 
   void _showAddSongsToSetlist() {
-    // Implementation would go here
-  }
-
     // Implementation would go here
   }
 }

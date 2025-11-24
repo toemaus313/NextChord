@@ -74,16 +74,15 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     if (_initError != null) {
       return StandardModalTemplate.buildModalContainer(
         context: context,
-        child: Center(
-            title: const Text('MIDI Error'),
-            content: Text('Failed to initialize MIDI service: $_initError'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
+        child: AlertDialog(
+          title: const Text('MIDI Error'),
+          content: Text('Failed to initialize MIDI service: $_initError'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
         ),
       );
     }

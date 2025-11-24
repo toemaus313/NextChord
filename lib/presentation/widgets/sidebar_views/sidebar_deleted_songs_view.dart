@@ -275,6 +275,7 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
   void _permanentlyDeleteSong(BuildContext context, dynamic song) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      builder: (context) => AlertDialog(
         title: const Text('Permanently Delete Song'),
         content: Text(
             'Are you sure you want to permanently delete "${song.title}"? This action cannot be undone.'),
@@ -342,6 +343,7 @@ class _SidebarDeletedSongsViewState extends State<SidebarDeletedSongsView> {
   void _bulkPermanentlyDeleteSongs(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      builder: (context) => AlertDialog(
         title: const Text('Permanently Delete Songs'),
         content: const Text(
             'Are you sure you want to permanently delete all selected songs? This action cannot be undone.'),

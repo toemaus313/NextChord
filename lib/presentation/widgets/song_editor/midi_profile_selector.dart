@@ -131,6 +131,7 @@ class _MidiProfileSelectorState extends State<MidiProfileSelector> {
     );
   }
 
+  Future<void> _showMidiProfilesDialog() async {
     setState(() => _isLoadingProfiles = true);
 
     try {

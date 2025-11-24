@@ -111,7 +111,7 @@ DEPENDENCIES:
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
 
 SPEC REPOS:
-  trunk:
+  file:///Users/antonovt/.cocoapods/repos/trunk-ssh:
     - AppAuth
     - AppCheckCore
     - GoogleSignIn
@@ -178,6 +178,6 @@ SPEC CHECKSUMS:
   universal_ble: ff19787898040d721109c6324472e5dd4bc86adc
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
 
-PODFILE CHECKSUM: b89418e64eda74436ebcf1be82b0c0ca1aeb57be
+PODFILE CHECKSUM: 1a5352050a62733c42188f97171d4fd05dc7194a
 
 COCOAPODS: 1.16.2

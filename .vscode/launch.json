@@ -4,20 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-    {
-      "name": "Flutter Windows",
+     {
+      "name": "Flutter iPhone(workMac)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "deviceId": "windows"
-    },
-    {
-      "name": "Flutter iPhone",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "257ED20B-7545-44DA-8703-0BB3EF9CDEED"
-    },    
+      "deviceId": "278738C9-EB08-4BE8-8E7C-3D103964F491"
+    },      
     {
       "name": "Flutter macOS",
       "request": "launch",
@@ -35,9 +28,9 @@
   ],
   "compounds": [
     {
-      "name": "Flutter Windows + Android",
+      "name": "Flutter Macos + Android",
       "configurations": [
-        "Flutter Windows",
+        "Flutter macOS",
         "Flutter Android"
       ]
     },
@@ -45,7 +38,7 @@
       "name": "Flutter Macos+iPhone",
       "configurations": [
         "Flutter macOS",
-        "Flutter iPhone"
+        "Flutter iPhone(workMac)"
       ]
     }    
   ]

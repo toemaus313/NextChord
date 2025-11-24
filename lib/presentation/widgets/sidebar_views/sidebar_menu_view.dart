@@ -206,8 +206,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
         if (!wasExpanded && _isSectionExpanded('setlists')) {
           try {
             await context.read<SetlistProvider>().loadSetlists();
-          } catch (e) {
-          }
+          } catch (e) {}
         }
       },
       isExpanded: _isSectionExpanded('setlists'),
@@ -448,6 +447,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
 
     final confirmed = await showDialog<bool>(
       context: context,
+      builder: (context) => AlertDialog(
         title: const Text('Delete Setlist'),
         content: Text(
             'Are you sure you want to delete "${setlist.name}"? This action cannot be undone.'),

@@ -329,6 +329,7 @@ class SongMetadataForm extends StatelessWidget {
   }
 
   Widget _buildDurationField(double width) {
+    final pattern = RegExp(r'^\d{1,3}:\d{2}$'); // MM:SS or M:SS format
     return TextFormField(
       controller: durationController,
       style: const TextStyle(fontSize: 14),
@@ -346,7 +347,7 @@ class SongMetadataForm extends StatelessWidget {
           return null;
         }
         if (!pattern.hasMatch(value.trim())) {
-          return 'Invalid';
+          return 'Invalid duration format (use M:SS or MM:SS)';
         }
         return null;
       },

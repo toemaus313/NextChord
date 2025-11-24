@@ -1,4 +1,7 @@
-**PROMPT TO SAVE AND REUSE IN WINDSURF**
+---
+description: Code Cleanup
+auto_execution_mode: 1
+---
 
 > **Context**  
 > I’m building a production Flutter/Dart app called **NextChord**. I’m not an experienced developer, so I rely on you to keep the codebase aligned with solid, modern Flutter/Dart best practices.  

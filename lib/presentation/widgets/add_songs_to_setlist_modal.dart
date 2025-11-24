@@ -25,6 +25,7 @@ class AddSongsToSetlistModal extends StatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
         child: AddSongsToSetlistModal(songs: [song]),
@@ -37,6 +38,7 @@ class AddSongsToSetlistModal extends StatefulWidget {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
         child: AddSongsToSetlistModal(songs: songs),
@@ -90,16 +92,15 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-          title: const Text('Error'),
-          content: Text('Failed to load setlists: $_errorMessage'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
+      return AlertDialog(
+        title: const Text('Error'),
+        content: Text('Failed to load setlists: $_errorMessage'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       );
     }
 

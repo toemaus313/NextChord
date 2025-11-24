@@ -50,6 +50,7 @@ macos/Pods/
 macos/Runner.xcworkspace/
 macos/Flutter/ephemeral/
 macos/build/
+.vscode/launch.json
 
 # Obfuscation
 app.*.map.json
@@ -71,3 +72,4 @@ desktop.ini
 .env.*
 lib/env_local_*.dart
 SCRATCHPAD.md
+.vscode/launch.json

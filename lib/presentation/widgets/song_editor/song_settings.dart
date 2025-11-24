@@ -117,6 +117,7 @@ class SongSettings extends StatelessWidget {
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add'),
+                  onPressed: () => _showAddTagDialog(),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
                     padding:
@@ -304,6 +305,7 @@ class SongSettings extends StatelessWidget {
     );
   }
 
+  void _showAddTagDialog() {
     // Implementation would show tag input dialog
     // For now, just a placeholder
   }

@@ -83,8 +83,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           _profiles = profiles;
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   void _selectProfile(MidiProfile? profile) {
@@ -140,8 +139,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       });
       _controlChangeController.clear();
       _notesController.clear();
-    } else {
-    }
+    } else {}
   }
 
   void _removeControlChange(int index) {
@@ -199,11 +197,27 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   Future<void> _deleteProfile() async {
     if (_selectedProfile == null) return;
 
-      'Delete Profile',
-      'Are you sure you want to delete "${_selectedProfile!.name}"? This will remove it from any songs that use it.',
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Profile'),
+        content: Text(
+            'Are you sure you want to delete "${_selectedProfile!.name}"? This will remove it from any songs that use it.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    if (!confirmed || !mounted) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _isLoading = true);
     try {
@@ -266,27 +280,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         ),
       );
     }
-  }
-
-    if (!mounted) return false;
-
-    final result = await showDialog<bool>(
-      context: context,
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
   }
 
   @override

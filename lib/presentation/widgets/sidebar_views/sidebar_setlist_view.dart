@@ -667,8 +667,10 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
     }
   }
 
+  Future<void> _editSongTags(BuildContext context, dynamic song) async {
     await showDialog<bool>(
       context: context,
+      builder: (context) => TagEditDialog(
         title: 'Edit Tags',
         initialTags: song.tags.toSet(),
         onTagsUpdated: (updatedTags) async {

@@ -1,3 +1,8 @@
+---
+description: Debug Cleanup - Iterative loop
+auto_execution_mode: 1
+---
+
 You are an expert Flutter/Dart engineer working in my NextChord app. I want you to perform a one-time, thorough cleanup of ALL debugging code in this repo and leave the project in a clean, compiling state.
 
 This is an **iterative loop task**: you must keep running analysis and fixing errors until **no analyzer errors remain**, and then perform a final analysis AFTER a short delay.

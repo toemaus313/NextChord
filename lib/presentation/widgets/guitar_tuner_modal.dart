@@ -69,11 +69,9 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitializing) {
-    }
+    if (_isInitializing) {}
 
-    if (_initError != null) {
-    }
+    if (_initError != null) {}
 
     return ChangeNotifierProvider.value(
       value: _tunerService,
@@ -93,87 +91,6 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
             ],
           );
         },
-      ),
-    );
-  }
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
-            Text(
-              'Initializing Tuner...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 400),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.white,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tuner Error',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _initError!,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  side: const BorderSide(color: Colors.white24),
-                ),
-              ),
-              child: const Text('Close', style: TextStyle(fontSize: 14)),
-            ),
-          ],
-        ),
       ),
     );
   }

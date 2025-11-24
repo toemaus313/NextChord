@@ -366,8 +366,9 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
             // Get format hint based on current input
             final formatHint = _getFormatHint(_codeController?.text ?? '');
 
-            return Focus(
-                title: Row(
+            return Column(
+              children: [
+                Row(
                   children: [
                     const Text('MIDI Sends'),
                     const Spacer(),
@@ -392,7 +393,7 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
                     ),
                   ],
                 ),
-                content: SizedBox(
+                SizedBox(
                   width: 500,
                   child: SingleChildScrollView(
                     child: Column(
@@ -590,40 +591,43 @@ class _MidiSendsModalState extends State<MidiSendsModal> {
                         ),
 
                         const SizedBox(height: 16),
-
                       ],
                     ),
                   ),
                 ),
-                actions: [
-                  Focus(
-                    focusNode: _okButtonFocusNode,
-                    canRequestFocus: false,
-                    skipTraversal: true,
-                    child: FilledButton(
-                      onPressed: () {
-                        _saveAndClose(setState);
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: primaryGradientTop,
-                        foregroundColor: Colors.white,
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Focus(
+                      focusNode: _okButtonFocusNode,
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      child: FilledButton(
+                        onPressed: () {
+                          _saveAndClose(setState);
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: primaryGradientTop,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('OK'),
                       ),
-                      child: const Text('OK'),
                     ),
-                  ),
-                  Focus(
-                    canRequestFocus: false,
-                    skipTraversal: true,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: primaryGradientBottom,
+                    Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: primaryGradientBottom,
+                        ),
+                        child: const Text('Cancel'),
                       ),
-                      child: const Text('Cancel'),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             );
           },
         );

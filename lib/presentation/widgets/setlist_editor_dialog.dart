@@ -13,6 +13,7 @@ import 'setlist_editor/image_picker.dart';
 class SetlistEditorDialog extends StatefulWidget {
   final Setlist? setlist;
 
+  const SetlistEditorDialog({Key? key, this.setlist}) : super(key: key);
 
   static Future<bool?> show(
     BuildContext context, {
@@ -23,8 +24,10 @@ class SetlistEditorDialog extends StatefulWidget {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(4),
+        child: SetlistEditorDialog(setlist: setlist),
       ),
     );
   }
@@ -45,6 +48,7 @@ class SetlistEditorDialog extends StatefulWidget {
 
     final result = await showDialog<List<String>>(
       context: context,
+      builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           constraints: const BoxConstraints(maxHeight: 800),
@@ -400,6 +404,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(maxHeight: 800),
