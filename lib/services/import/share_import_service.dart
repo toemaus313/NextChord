@@ -81,9 +81,10 @@ class ShareImportService {
           'ShareImportService: Converted to ChordPro, length=${chordProText.length}');
 
       // Create Song entity from parsed content
+      // Leave title blank if not in ChordPro metadata - user must fill it in
       final song = Song(
         id: const Uuid().v4(),
-        title: metadata['title'] ?? 'Imported from Ultimate Guitar',
+        title: metadata['title'] ?? '',
         artist: metadata['artist'] ?? '',
         body: chordProText,
         key: metadata['key'] ?? 'C',
@@ -93,7 +94,7 @@ class ShareImportService {
             ? int.tryParse(metadata['bpm']!) ?? 120
             : 120,
         timeSignature: metadata['timeSignature'] ?? '4/4',
-        tags: const ['Imported from Ultimate Guitar'],
+        tags: const [],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -123,12 +124,13 @@ class ShareImportService {
       final metadata = _extractBasicMetadata(rawText);
 
       // Create Song entity from tab content
+      // Leave title blank if not in metadata - user must fill it in
       final song = Song(
         id: const Uuid().v4(),
-        title: metadata['title'] ?? 'Imported UG Tab',
+        title: metadata['title'] ?? '',
         artist: metadata['artist'] ?? '',
         body: chordProText,
-        tags: const ['Imported from Ultimate Guitar', 'Tab'],
+        tags: const [],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

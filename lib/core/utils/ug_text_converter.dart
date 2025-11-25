@@ -17,6 +17,7 @@ class UGTextConverter {
     String? timeSignature;
 
     // Parse metadata from the beginning
+    // ONLY extract metadata from explicit ChordPro tags like {title:}, {artist:}, etc.
     int contentStartIndex = 0;
     int? firstNonMetadataIndex;
 
@@ -27,67 +28,29 @@ class UGTextConverter {
       if (line.isEmpty) continue;
       if (_isPageMarker(line)) continue;
 
-      // Extract title and artist (check for "Title by Artist" pattern on first line)
-      if (title == null && artist == null && line.isNotEmpty) {
-        // Check if line contains " by " pattern (e.g., "Whitehouse Road Official by Tyler Childers")
-        final byPattern = RegExp(r'\s+by\s+', caseSensitive: false);
-        if (byPattern.hasMatch(line)) {
-          final parts = line.split(byPattern);
-          if (parts.length >= 2) {
-            // First part is title, second part is artist
-            final titlePart = parts[0]
-                .replaceAll(RegExp(r'\s+Official', caseSensitive: false), '')
-                .replaceAll(RegExp(r'\s+Tab', caseSensitive: false), '')
-                .trim();
-            final artistPart = parts[1].trim();
-
-            if (titlePart.isNotEmpty && artistPart.isNotEmpty) {
-              title = titlePart;
-              artist = artistPart;
-              continue;
-            }
-          }
-        }
-
-        // Otherwise, check if line looks like a title (no "by" pattern found)
-        if (line.toLowerCase().contains('official') ||
-            line.toLowerCase().contains('tab') ||
-            (!line.toLowerCase().startsWith('by') && !line.contains(':'))) {
-          final cleanTitle = line
-              .replaceAll(RegExp(r'\s+Official', caseSensitive: false), '')
-              .replaceAll(RegExp(r'\s+Tab', caseSensitive: false), '')
-              .trim();
-          if (cleanTitle.isNotEmpty && cleanTitle.length > 2) {
-            title = cleanTitle;
-            continue;
-          }
-        }
-      }
-
-      // Extract artist (line starting with "by" as a separate line)
-      if (artist == null && line.toLowerCase().startsWith('by ')) {
-        artist = line.substring(3).trim();
+      // Extract title from ChordPro {title:} or {t:} directive
+      final titleMatch =
+          RegExp(r'^\{(?:title|t):\s*([^}]+)\}', caseSensitive: false)
+              .firstMatch(line);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)?.trim();
         continue;
       }
 
-      // Extract tuning (skip it, we don't need it)
-      if (line.toLowerCase().startsWith('tuning:')) {
+      // Extract artist from ChordPro {artist:} or {subtitle:} or {st:} directive
+      final artistMatch = RegExp(r'^\{(?:artist|subtitle|st):\s*([^}]+)\}',
+              caseSensitive: false)
+          .firstMatch(line);
+      if (artistMatch != null) {
+        artist = artistMatch.group(1)?.trim();
         continue;
       }
 
-      // Extract capo
-      if (line.toLowerCase().startsWith('capo:')) {
-        final capoMatch = RegExp(r'(\d+)').firstMatch(line);
-        if (capoMatch != null) {
-          capo = int.tryParse(capoMatch.group(1)!);
-        }
-        continue;
-      }
-
-      // Extract key
-      if (line.toLowerCase().startsWith('key:')) {
-        // Extract everything after "Key:" and trim
-        final keyPart = line.substring(line.indexOf(':') + 1).trim();
+      // Extract key from ChordPro {key:} directive
+      final keyDirectiveMatch =
+          RegExp(r'^\{key:\s*([^}]+)\}', caseSensitive: false).firstMatch(line);
+      if (keyDirectiveMatch != null) {
+        final keyPart = keyDirectiveMatch.group(1)?.trim() ?? '';
         if (keyPart.isNotEmpty) {
           // Match key pattern: root note + optional sharp/flat + optional minor/major
           final keyMatch =
@@ -105,7 +68,6 @@ class UGTextConverter {
                     : '');
 
             // Convert flats to sharps (enharmonic equivalents)
-            // Our app only uses sharps in the key dropdown
             const flatToSharp = {
               'Db': 'C#',
               'Eb': 'D#',
@@ -133,40 +95,31 @@ class UGTextConverter {
         continue;
       }
 
-      // Extract BPM (tempo)
-      if (line.toLowerCase().contains('bpm') ||
-          line.toLowerCase().contains('tempo')) {
-        // Match patterns like "90 bpm", "Whole song 90 bpm", "tempo: 120"
-        final bpmMatch = RegExp(r'(\d+)\s*(?:bpm|beats)', caseSensitive: false)
-            .firstMatch(line);
-        if (bpmMatch != null) {
-          bpm = int.tryParse(bpmMatch.group(1)!);
-        }
+      // Extract capo from ChordPro {capo:} directive
+      final capoMatch =
+          RegExp(r'^\{capo:\s*(\d+)\}', caseSensitive: false).firstMatch(line);
+      if (capoMatch != null) {
+        capo = int.tryParse(capoMatch.group(1)!);
         continue;
       }
 
-      // Extract time signature
-      if (line.toLowerCase().contains('time') && line.contains('/')) {
-        final timeMatch = RegExp(r'(\d+/\d+)').firstMatch(line);
-        if (timeMatch != null) {
-          timeSignature = timeMatch.group(1);
-        }
+      // Extract BPM from ChordPro {tempo:} directive
+      final tempoMatch =
+          RegExp(r'^\{tempo:\s*(\d+)\}', caseSensitive: false).firstMatch(line);
+      if (tempoMatch != null) {
+        bpm = int.tryParse(tempoMatch.group(1)!);
         continue;
       }
 
-      // Skip chord chart labels (but continue processing lines for metadata)
-      if (line.toLowerCase() == 'chords' ||
-          line.toLowerCase() == 'strumming pattern') {
-        // Just skip this label line and continue processing subsequent lines
+      // Extract time signature from ChordPro {time:} directive
+      final timeMatch = RegExp(r'^\{time:\s*(\d+/\d+)\}', caseSensitive: false)
+          .firstMatch(line);
+      if (timeMatch != null) {
+        timeSignature = timeMatch.group(1);
         continue;
       }
 
-      // Skip chord diagrams and strumming pattern numbers
-      // (single chord names or single digits/symbols on their own line)
-      if (line.length <= 6 &&
-          (_looksLikeChord(line) || RegExp(r'^[\d&]+$').hasMatch(line))) {
-        continue;
-      }
+      // No heuristic-based metadata extraction - only ChordPro directives above
 
       // Check if we've reached content (section markers or chord lines)
       if (line.startsWith('[') && line.contains(']')) {

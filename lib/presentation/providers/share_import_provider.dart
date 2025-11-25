@@ -4,6 +4,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import '../../domain/entities/shared_import_payload.dart';
 import '../../domain/entities/song.dart';
 import '../../services/import/share_import_service.dart';
+import '../../core/widgets/loading_wait.dart';
 import '../../../main.dart' as main; // Import for myDebug and navigatorKey
 import '../screens/song_editor_screen_refactored.dart';
 
@@ -93,6 +94,24 @@ class ShareImportProvider extends ChangeNotifier {
     _isProcessingShare = true;
     notifyListeners();
 
+    // Wait a frame to ensure UI is ready, then show loading overlay
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    final context = main.navigatorKey.currentContext;
+    if (context != null && context.mounted) {
+      await LoadingWait.show(context);
+      // Give dialog a moment to actually render
+      await Future.delayed(const Duration(milliseconds: 100));
+      main.myDebug(
+          'ShareImportProvider: Loading overlay displayed and rendered');
+    } else {
+      main.myDebug(
+          'ShareImportProvider: WARNING - Context not available for loading overlay');
+    }
+
+    // Track when loading was shown to ensure minimum display time
+    final loadingStartTime = DateTime.now();
+
     try {
       for (final media in sharedMedia) {
         main.myDebug(
@@ -103,19 +122,52 @@ class ShareImportProvider extends ChangeNotifier {
           final song = await _shareImportService.handleSharedContent(payload);
           if (song != null) {
             main.myDebug(
-                'ShareImportProvider: Successfully imported song, navigating to editor');
+                'ShareImportProvider: Successfully imported song, preparing editor');
+
+            // Ensure loading overlay is displayed for at least 800ms so user sees it
+            final elapsedMs =
+                DateTime.now().difference(loadingStartTime).inMilliseconds;
+            final remainingMs = 800 - elapsedMs;
+            if (remainingMs > 0) {
+              main.myDebug(
+                  'ShareImportProvider: Waiting ${remainingMs}ms to ensure loading is visible');
+              await Future.delayed(Duration(milliseconds: remainingMs));
+            }
+
+            // Hide loading overlay
+            if (context != null && context.mounted) {
+              LoadingWait.hide(context);
+              main.myDebug('ShareImportProvider: Loading overlay hidden');
+            }
+
+            // Small delay before navigation for smooth transition
+            await Future.delayed(const Duration(milliseconds: 100));
+
+            // Navigate to editor
             _navigateToEditor(song);
           } else {
             main.myDebug(
                 'ShareImportProvider: Import returned null (unsupported content)');
+            // Hide loading on failure (no minimum time for failures)
+            if (context != null && context.mounted) {
+              LoadingWait.hide(context);
+            }
           }
         } else {
           main.myDebug(
               'ShareImportProvider: Failed to create payload from media');
+          // Hide loading on failure
+          if (context != null && context.mounted) {
+            LoadingWait.hide(context);
+          }
         }
       }
     } catch (e) {
       main.myDebug('ShareImportProvider: Error processing shared media: $e');
+      // Hide loading on error
+      if (context != null && context.mounted) {
+        LoadingWait.hide(context);
+      }
     } finally {
       _isProcessingShare = false;
       notifyListeners();

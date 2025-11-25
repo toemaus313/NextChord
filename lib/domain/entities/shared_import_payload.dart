@@ -78,20 +78,32 @@ class SharedImportPayload {
 
   /// Helper to detect if text looks like guitar chords or tabs
   bool _looksLikeGuitarContent(String text) {
-    // Check for common chord patterns
-    final hasChordPattern = text.contains(RegExp(r'\[([A-G][#b]?m?[0-9]?)\]'));
+    // Check for chords in brackets (some formats): [Am], [G], [C#m]
+    final hasBracketedChords =
+        text.contains(RegExp(r'\[([A-G][#b]?m?[0-9]?)\]'));
 
     // Check for tab notation (e|B|G|D|A|E strings)
     final hasTabPattern = text.contains(RegExp(r'[eEbBgGdDaA]\|'));
 
-    // Check for "Capo", "Tuning", etc.
+    // Check for section markers (Ultimate Guitar format): [Intro], [Verse 1], [Chorus], [Bridge], [Outro]
+    final hasSectionMarkers = text.contains('[intro]') ||
+        text.contains('[verse') ||
+        text.contains('[chorus]') ||
+        text.contains('[bridge]') ||
+        text.contains('[outro]') ||
+        text.contains('[interlude]');
+
+    // Check for guitar-specific terms
     final hasGuitarTerms = text.contains('capo') ||
         text.contains('tuning') ||
         text.contains('intro:') ||
         text.contains('verse:') ||
         text.contains('chorus:');
 
-    return hasChordPattern || hasTabPattern || hasGuitarTerms;
+    return hasBracketedChords ||
+        hasTabPattern ||
+        hasSectionMarkers ||
+        hasGuitarTerms;
   }
 
   /// Check if the URL indicates a tab page (vs chord/pro page)

@@ -3,7 +3,7 @@
 ## Status: ACTIVE DEBUG LOGGING 
 
 **Updated**: 2025-11-25  
-**Purpose**: UG Import Flow troubleshooting + Existing sync functionality + Global error handling
+**Purpose**: UG Import Flow with loading UI + Existing sync functionality + Global error handling
 
 ---
 
@@ -87,7 +87,17 @@
   - `"ContentTypeDetector: Found [N] tab-like lines out of [total] total"`
   - `"ContentTypeDetector: Content classified as: TAB"` or `"CHORD"`
 - **Trigger**: When UG import service analyzes shared content to determine if it's tab or chord notation
-- **Description**: Traces content analysis and classification logic for routing to correct parser
+- **Description**: Logs content analysis and classification decisions for troubleshooting import routing
+
+### Loading Overlay Debug Logging
+- **File**: `lib/presentation/providers/share_import_provider.dart`
+- **Location**: Lines 101, 121 in `_handleSharedMediaList`
+- **Messages**:
+  - `"ShareImportProvider: Loading overlay displayed"`
+  - `"ShareImportProvider: Loading overlay hidden"`
+  - `"ShareImportProvider: Successfully imported song, preparing editor"`
+- **Trigger**: When loading overlay is shown/hidden during UG import process
+- **Description**: Tracks loading UI display timing and coordination with import completion
 
 ### App Control Modal MIDI Learn Debug Logging
 - **File**: `lib/presentation/widgets/app_control_modal.dart`
@@ -153,7 +163,10 @@
 ## Debug Behavior
 
 ### What Gets Logged:
-1. **UG Import Flow**: Complete trace from iOS Share Extension to Flutter processing to database saving
+1. **UG Import Flow**: Complete trace from iOS Share Extension to Flutter processing to Editor navigation with loading overlay
+   - Loading overlay shown/hidden events
+   - Song entity creation and preparation
+   - Navigation to Editor screen
 2. **Global Errors**: All unhandled exceptions including SQLite constraint failures
 3. **Framework Errors**: Flutter framework errors and exceptions
 4. **Local Change Detection**: When local database changes are detected and scheduled for cloud sync
