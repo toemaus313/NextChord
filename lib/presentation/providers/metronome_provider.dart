@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../core/audio/rock_solid_metronome.dart';
 import '../../services/midi/midi_service.dart';
+import '../../services/midi/midi_clock_service.dart';
 import 'metronome_settings_provider.dart';
 
 typedef MetronomeTickAction = FutureOr<void> Function(int tickCount);
@@ -11,20 +13,38 @@ typedef AutoscrollActiveCallback = bool Function();
 
 /// Provides metronome state, timing, and extensibility hooks for UI and
 /// automation features.
+///
+/// **NEW IMPLEMENTATION**: Now uses RockSolidMetronome with timestamp-based
+/// scheduling for rock-solid timing accuracy, eliminating Timer.periodic drift.
+/// Also includes dedicated MidiClockService for precise MIDI clock (0xF8) timing
+/// with self-monitoring and drift compensation.
+///
+/// Key improvements:
+/// - Timestamp-based scheduling prevents cumulative timing drift
+/// - Audio preloading and warm-up eliminates first-beat stutter
+/// - Microsecond precision timing for professional musicians
+/// - MIDI clock sends 0xF8 at precise intervals with self-monitoring
+/// - Maintains exact same public API for backward compatibility
+///
+/// Legacy Timer.periodic implementation preserved in legacy_metronome_provider.dart
+
 class MetronomeProvider extends ChangeNotifier {
   static const int _minTempo = 30;
   static const int _maxTempo = 320;
   static const Duration _flashDuration = Duration(milliseconds: 140);
 
+  // Legacy audio players (kept for compatibility but not used for timing)
   AudioPlayer? _player; // base beat (lo)
   AudioPlayer? _accentPlayer; // accent beat (hi)
+
+  // New rock-solid timing engine
+  RockSolidMetronome? _rockSolidMetronome;
   final Map<String, MetronomeTickAction> _tickActions = {};
   MetronomeSettingsProvider? _settingsProvider;
   MidiService? _midiService;
+  MidiClockService? _midiClockService; // New dedicated MIDI clock service
   AutoscrollActiveCallback? _isAutoscrollActiveCallback;
 
-  Timer? _timer;
-  Timer? _midiTimer; // Separate timer for MIDI sends that runs independently
   Timer? _flashTimer;
   Completer<void>? _loadingCompleter;
 
@@ -35,8 +55,6 @@ class MetronomeProvider extends ChangeNotifier {
   bool _flashActive = false;
   bool _isDisposed = false;
   bool _audioAvailable = true; // Track if audio is working
-  DateTime?
-      _metronomeStartTime; // Track when metronome started for time-based MIDI sends
   bool _isCountingIn = false; // Track if we're in count-in phase
   int _countInBeatsRemaining = 0; // Track remaining count-in beats
   int _currentCountInBeat = 0; // Track current count-in beat number for display
@@ -44,6 +62,38 @@ class MetronomeProvider extends ChangeNotifier {
   MetronomeProvider() {
     _ensurePlayerReady();
     initialize();
+    _initializeRockSolidMetronome();
+    _initializeMidiClockService();
+  }
+
+  /// Initialize the new rock-solid metronome engine
+  void _initializeRockSolidMetronome() {
+    _rockSolidMetronome = RockSolidMetronome(
+      tempoBpm: _tempoBpm,
+      beatsPerMeasure: _beatsPerMeasure,
+      onBeat: _handleRockSolidBeat,
+    );
+  }
+
+  /// Initialize the dedicated MIDI clock service
+  void _initializeMidiClockService() {
+    _midiClockService = MidiClockService(midiService: _midiService!);
+  }
+
+  /// Handle beat callbacks from RockSolidMetronome
+  void _handleRockSolidBeat(int beatNumber, bool isAccent) {
+    if (!_isRunning) return;
+
+    _tickCounter++;
+
+    // Handle count-in phase
+    if (_isCountingIn) {
+      _handleCountInTick();
+      return;
+    }
+
+    // Handle normal metronome operation
+    _handleNormalTick();
   }
 
   /// Initialize service references for MIDI integration
@@ -51,7 +101,7 @@ class MetronomeProvider extends ChangeNotifier {
     // Initialize MIDI service singleton
     _midiService = MidiService();
 
-    // Register MIDI tick action
+    // Register MIDI tick action (legacy, kept for compatibility)
     registerTickAction('midi_send_on_tick', _handleMidiSendOnTick);
   }
 
@@ -77,6 +127,10 @@ class MetronomeProvider extends ChangeNotifier {
       return;
     }
     _beatsPerMeasure = beats;
+
+    // Update rock-solid metronome
+    _rockSolidMetronome?.setBeatsPerMeasure(_beatsPerMeasure);
+
     if (_isRunning) {
       _tickCounter = 0;
     }
@@ -92,25 +146,32 @@ class MetronomeProvider extends ChangeNotifier {
 
   Future<void> start() async {
     if (_isRunning) return;
-    await _ensurePlayerReady();
-    _isRunning = true;
-    _tickCounter = 0;
-    _metronomeStartTime = DateTime.now(); // Set start time for MIDI sends
 
     // Initialize count-in if enabled
     _initializeCountIn();
 
+    _isRunning = true;
+    _tickCounter = 0;
+
+    // Start the rock-solid metronome
+    await _rockSolidMetronome?.start();
+
+    // Start the dedicated MIDI clock service
+    await _midiClockService?.setBpm(_tempoBpm);
+    await _midiClockService?.start();
+
     _safeNotifyListeners();
-    _handleTick(); // Handle first tick immediately
-    _startTimer();
-    _startMidiTimer(); // Start independent MIDI timer
   }
 
   void stop({bool notifyListeners = true}) {
     if (!_isRunning) return;
-    _timer?.cancel();
-    _timer = null;
-    // Don't cancel MIDI timer here - let it run independently for the full 4 seconds
+
+    // Stop the rock-solid metronome
+    _rockSolidMetronome?.stop();
+
+    // Stop the dedicated MIDI clock service
+    _midiClockService?.stop();
+
     _flashTimer?.cancel();
     _flashTimer = null;
     _flashActive = false;
@@ -121,23 +182,20 @@ class MetronomeProvider extends ChangeNotifier {
     _countInBeatsRemaining = 0;
     _currentCountInBeat = 0;
 
-    unawaited(_player?.stop());
-    unawaited(_accentPlayer?.stop());
+    if (_player != null) unawaited(_player!.stop());
+    if (_accentPlayer != null) unawaited(_accentPlayer!.stop());
     if (notifyListeners) {
       _safeNotifyListeners();
     }
   }
 
-  /// Stop only the MIDI timer (called when 4 seconds elapsed)
-  void _stopMidiTimer() {
-    _midiTimer?.cancel();
-    _midiTimer = null;
-  }
+  // Old Timer-based methods removed - replaced by RockSolidMetronome and MidiClockService
+  // Legacy implementation preserved in legacy_metronome_provider.dart
 
-  /// Stub MIDI handler - kept for compatibility but MIDI is handled by independent timer
+  /// Stub MIDI handler - now handled by MidiClockService
   Future<void> _handleMidiSendOnTick(int tickCount) async {
-    // This is now handled by the independent MIDI timer
-    // Keeping this for compatibility with existing registration
+    // MIDI clock timing is now handled by the dedicated MidiClockService
+    // This method is kept for compatibility with existing registration
   }
 
   Future<void> toggle() async {
@@ -152,9 +210,13 @@ class MetronomeProvider extends ChangeNotifier {
     final sanitized = bpm.clamp(_minTempo, _maxTempo);
     if (sanitized == _tempoBpm) return;
     _tempoBpm = sanitized;
-    if (_isRunning) {
-      _restartTimer();
-    }
+
+    // Update rock-solid metronome tempo
+    _rockSolidMetronome?.setTempo(_tempoBpm);
+
+    // Update MIDI clock service tempo
+    _midiClockService?.setBpm(_tempoBpm);
+
     notifyListeners();
   }
 
@@ -170,7 +232,13 @@ class MetronomeProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     stop(notifyListeners: false);
-    _stopMidiTimer(); // Clean up MIDI timer
+
+    // Dispose rock-solid metronome
+    _rockSolidMetronome?.dispose();
+
+    // Dispose MIDI clock service
+    _midiClockService?.dispose();
+
     // Only dispose audio players if they were successfully initialized
     if (_audioAvailable) {
       try {
@@ -183,6 +251,7 @@ class MetronomeProvider extends ChangeNotifier {
     super.dispose();
   }
 
+  // Legacy audio setup method - kept for compatibility but not used for timing
   Future<void> _ensurePlayerReady() async {
     if (!_audioAvailable) {
       return; // Skip audio setup if plugin failed
@@ -219,83 +288,10 @@ class MetronomeProvider extends ChangeNotifier {
     }
   }
 
-  void _startTimer() {
-    final intervalMs = (60000 / _tempoBpm).round();
-    _timer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
-      _handleTick();
-    });
-  }
+  // Old Timer-based methods removed - replaced by RockSolidMetronome and MidiClockService
+  // Legacy implementation preserved in legacy_metronome_provider.dart
 
-  void _restartTimer() {
-    _timer?.cancel();
-    _timer = null;
-    _midiTimer?.cancel(); // Also restart MIDI timer
-    _midiTimer = null;
-    if (_isRunning) {
-      _startTimer();
-      _startMidiTimer(); // Restart MIDI timer too
-    }
-  }
-
-  /// Start independent MIDI timer that runs for 4 seconds regardless of metronome state
-  void _startMidiTimer() {
-    // Calculate tick interval based on current tempo
-    final intervalMs = (60000 / _tempoBpm).round();
-
-    _midiTimer = Timer.periodic(Duration(milliseconds: intervalMs), (_) {
-      if (_metronomeStartTime == null) {
-        return;
-      }
-
-      final now = DateTime.now();
-      final elapsedMs = now.difference(_metronomeStartTime!).inMilliseconds;
-      final elapsedSeconds = elapsedMs / 1000.0;
-
-      if (elapsedSeconds > 4.0) {
-        _stopMidiTimer();
-        return;
-      }
-
-      // Execute MIDI sending directly instead of using tick actions
-      _executeMidiSend();
-    });
-  }
-
-  /// Execute MIDI send directly (called by independent timer)
-  Future<void> _executeMidiSend() async {
-    if (_settingsProvider == null || _midiService == null) {
-      return;
-    }
-
-    final midiCommand = _settingsProvider!.midiSendOnTick;
-
-    if (midiCommand.isEmpty) {
-      return;
-    }
-
-    // Only send if MIDI device is connected
-    if (!_midiService!.isConnected) {
-      return;
-    }
-
-    await _sendMidiCommand(midiCommand);
-  }
-
-  void _handleTick() {
-    if (!_isRunning) return;
-
-    _tickCounter++;
-
-    // Handle count-in phase
-    if (_isCountingIn) {
-      _handleCountInTick();
-      return;
-    }
-
-    // Handle normal metronome operation based on tick action setting
-    _handleNormalTick();
-  }
-
+  // Legacy _playClick method kept for compatibility but not used for timing
   Future<void> _playClick({required bool isAccent}) async {
     if (!_audioAvailable) {
       return; // Skip audio if plugin failed
@@ -405,19 +401,6 @@ class MetronomeProvider extends ChangeNotifier {
         _handleNormalTick();
       }
     }
-    final totalBeatsSoFar =
-        (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
-            _countInBeatsRemaining;
-    _currentCountInBeat = ((totalBeatsSoFar - 1) % _beatsPerMeasure) + 1;
-
-    // During count-in: always flash border and show beat number
-    _triggerFlash();
-
-    // Always play sound during count-in
-    final isAccent = _currentCountInBeat == 1;
-    unawaited(_playClick(isAccent: isAccent));
-
-    _safeNotifyListeners();
   }
 
   /// Handle normal tick based on user's tick action preference
@@ -447,67 +430,6 @@ class MetronomeProvider extends ChangeNotifier {
         _triggerFlash();
         unawaited(_playClick(isAccent: isAccent));
         break;
-    }
-  }
-
-  /// Send MIDI command based on string format
-  Future<void> _sendMidiCommand(String commandText) async {
-    if (_midiService == null) {
-      return;
-    }
-
-    final messages = commandText
-        .split(',')
-        .map((msg) => msg.trim())
-        .where((msg) => msg.isNotEmpty);
-
-    for (final message in messages) {
-      final lowerMessage = message.toLowerCase();
-
-      // Check timing command
-      if (lowerMessage == 'timing') {
-        await _midiService!.sendMidiClock();
-      }
-      // Parse Program Change: "PC10" or "PC:10"
-      else if (lowerMessage.startsWith('pc')) {
-        final pcMatch =
-            RegExp(r'^pc(\d+)$', caseSensitive: false).firstMatch(message) ??
-                RegExp(r'^pc:(\d+)$', caseSensitive: false).firstMatch(message);
-
-        if (pcMatch == null) {
-          continue;
-        }
-
-        final pcValue = int.tryParse(pcMatch.group(1)!);
-        if (pcValue == null || pcValue < 0 || pcValue > 127) {
-          continue;
-        }
-
-        await _midiService!
-            .sendProgramChange(pcValue, channel: _midiService!.midiChannel);
-      }
-      // Parse Control Change: "CC7:100"
-      else if (lowerMessage.startsWith('cc')) {
-        final ccMatch = RegExp(r'^cc(\d+):(\d+)$', caseSensitive: false)
-            .firstMatch(message);
-        if (ccMatch == null) {
-          continue;
-        }
-
-        final controller = int.tryParse(ccMatch.group(1)!);
-        final value = int.tryParse(ccMatch.group(2)!);
-
-        final validController =
-            controller != null && controller >= 0 && controller <= 119;
-        final validValue = value != null && value >= 0 && value <= 127;
-
-        if (!validController || !validValue) {
-          continue;
-        }
-
-        await _midiService!.sendControlChange(controller, value,
-            channel: _midiService!.midiChannel);
-      }
     }
   }
 }

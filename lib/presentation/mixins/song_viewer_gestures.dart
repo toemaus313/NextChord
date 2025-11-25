@@ -5,13 +5,21 @@ import '../../core/constants/song_viewer_constants.dart';
 import '../providers/song_viewer_provider.dart';
 
 /// Mixin for handling song viewer gestures
+///
+/// TEXT SIZING: Supports pinch-to-zoom on touch devices and Shift+scroll on desktop.
+/// Pinch gestures use onScaleStart/Update/End with smooth scaling. Shift+scroll detects
+/// HardwareKeyboard.instance.isShiftPressed during PointerScrollEvent and adjusts font
+/// size by small increments for precise control. Both methods clamp between min/max sizes.
 mixin SongViewerGestures<T extends StatefulWidget> on State<T> {
   late SongViewerProvider _songViewerProvider;
   final ScrollController _scrollController = ScrollController();
+  double _baseScaleFontSize = 18.0; // Track base font size for pinch gestures
 
   /// Initialize the gesture mixin with required dependencies
   void initializeGestures(SongViewerProvider songViewerProvider) {
     _songViewerProvider = songViewerProvider;
+    _baseScaleFontSize =
+        songViewerProvider.fontSize; // Initialize base font size
   }
 
   /// Get the scroll controller
@@ -36,14 +44,23 @@ mixin SongViewerGestures<T extends StatefulWidget> on State<T> {
   }
 
   /// Handle pinch to zoom gesture
-  void handlePinchToZoom(ScaleUpdateDetails details, double baseFontSize) {
-    final newFontSize = baseFontSize * details.scale;
+  void handlePinchToZoom(ScaleUpdateDetails details) {
+    final newFontSize = _baseScaleFontSize * details.scale;
     _songViewerProvider.updateFontSize(newFontSize);
   }
 
-  /// Handle scroll wheel zoom with Ctrl key
+  /// Handle scale start for pinch gesture
+  void handleScaleStartForPinch() {
+    _baseScaleFontSize = _songViewerProvider.fontSize;
+  }
+
+  /// Handle scroll wheel zoom with Shift key (desktop) or Ctrl key (legacy)
   void handleScrollWheelZoom(PointerScrollEvent event) {
-    if (HardwareKeyboard.instance.isControlPressed) {
+    // Check for Shift key (new preferred method) or Ctrl key (legacy support)
+    final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+    final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
+    if (isShiftPressed || isCtrlPressed) {
       final delta = event.scrollDelta.dy;
       // Scroll down = negative delta = increase font size
       // Scroll up = positive delta = decrease font size
@@ -77,6 +94,13 @@ mixin SongViewerGestures<T extends StatefulWidget> on State<T> {
     // Don't handle gestures if certain flyouts are open
     // Note: We allow horizontal swipe gestures even when autoscroll flyout is open
     // to enable song navigation during autoscroll
+    return !_songViewerProvider.showTransposeFlyout &&
+        !_songViewerProvider.showCapoFlyout;
+  }
+
+  /// Check if text sizing gestures should be handled (more permissive)
+  bool shouldHandleTextSizingGesture() {
+    // Allow text sizing even when some flyouts are open, but block for critical ones
     return !_songViewerProvider.showTransposeFlyout &&
         !_songViewerProvider.showCapoFlyout;
   }

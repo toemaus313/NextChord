@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
@@ -36,6 +38,7 @@ class _SongEditorScreenRefactoredState
   final _bpmController = TextEditingController();
   final _durationController = TextEditingController();
   final FocusNode _bodyFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   String _selectedKey = 'C';
   int _selectedCapo = 0;
@@ -44,6 +47,13 @@ class _SongEditorScreenRefactoredState
   bool _isSaving = false;
   String _lastBodyText = '';
   bool _isAutoCompleting = false;
+
+  // Text sizing state for editor
+  double _editorFontSize = 14.0;
+  double _baseScaleFontSize = 14.0; // Track base font size for pinch gestures
+  static const double _minEditorFontSize = 8.0;
+  static const double _maxEditorFontSize = 32.0;
+  static const double _scrollZoomSensitivity = 0.05;
 
   // MIDI Profile state
   List<MidiProfile> _midiProfiles = [];
@@ -496,7 +506,47 @@ class _SongEditorScreenRefactoredState
     _bpmController.dispose();
     _durationController.dispose();
     _bodyFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Update editor font size with clamping
+  void _updateEditorFontSize(double newSize) {
+    setState(() {
+      _editorFontSize = newSize.clamp(_minEditorFontSize, _maxEditorFontSize);
+    });
+  }
+
+  /// Handle pinch to zoom gesture in editor
+  void _handlePinchToZoom(ScaleUpdateDetails details) {
+    final newSize = _baseScaleFontSize * details.scale;
+    _updateEditorFontSize(newSize);
+  }
+
+  /// Handle scale start for pinch gesture in editor
+  void _handleScaleStart() {
+    _baseScaleFontSize = _editorFontSize;
+  }
+
+  /// Handle scroll wheel zoom with Shift/Ctrl in editor
+  void _handleScrollWheelZoom(PointerScrollEvent event) {
+    final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+    final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
+
+    if (isShiftPressed || isCtrlPressed) {
+      final delta = event.scrollDelta.dy;
+      // Scroll down = negative delta = increase font size
+      // Scroll up = positive delta = decrease font size
+      final fontSizeChange = -delta * _scrollZoomSensitivity;
+      final newSize = _editorFontSize + fontSizeChange;
+      _updateEditorFontSize(newSize);
+    }
+  }
+
+  /// Check if text sizing gestures should be handled in editor
+  bool _shouldHandleTextSizingGesture() {
+    // Allow text sizing in editor unless a dialog is showing
+    return ModalRoute.of(context)?.isCurrent ?? true;
   }
 
   @override
@@ -653,32 +703,50 @@ class _SongEditorScreenRefactoredState
                     flex: 3,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: TextFormField(
-                        controller: _bodyController,
-                        focusNode: _bodyFocusNode,
-                        style: const TextStyle(
-                            fontSize: 14, fontFamily: 'monospace'),
-                        decoration: InputDecoration(
-                          hintText:
-                              '[C]Amazing [G]grace, how [Am]sweet the [F]sound\n[C]That saved a [G]wretch like [C]me',
-                          hintStyle: TextStyle(
-                              fontSize: 13,
-                              color: textColor.withValues(alpha: 0.3)),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        maxLines: null,
-                        expands: true,
-                        textAlignVertical: TextAlignVertical.top,
-                        textCapitalization: TextCapitalization.sentences,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Song body is required';
+                      child: Listener(
+                        onPointerSignal: (event) {
+                          if (event is PointerScrollEvent &&
+                              _shouldHandleTextSizingGesture()) {
+                            _handleScrollWheelZoom(event);
                           }
-                          return null;
                         },
+                        child: GestureDetector(
+                          onScaleStart: (_) =>
+                              _handleScaleStart(), // Track base font size
+                          onScaleUpdate: (details) {
+                            if (_shouldHandleTextSizingGesture()) {
+                              _handlePinchToZoom(details);
+                            }
+                          },
+                          child: TextFormField(
+                            controller: _bodyController,
+                            focusNode: _bodyFocusNode,
+                            style: TextStyle(
+                                fontSize: _editorFontSize,
+                                fontFamily: 'monospace'),
+                            decoration: InputDecoration(
+                              hintText:
+                                  '[C]Amazing [G]grace, how [Am]sweet the [F]sound\n[C]That saved a [G]wretch like [C]me',
+                              hintStyle: TextStyle(
+                                  fontSize: _editorFontSize - 1,
+                                  color: textColor.withValues(alpha: 0.3)),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            maxLines: null,
+                            expands: true,
+                            textAlignVertical: TextAlignVertical.top,
+                            textCapitalization: TextCapitalization.sentences,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Song body is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),

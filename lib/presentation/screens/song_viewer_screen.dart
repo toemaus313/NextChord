@@ -31,6 +31,11 @@ import 'song_editor_screen_refactored.dart';
 
 /// Full-screen song viewer for live performance
 /// Displays lyrics/chords with adjustable font size and theme toggle
+///
+/// SETLIST NAVIGATION: Currently uses PageView with PageController for smooth sliding
+/// transitions between songs in a setlist. Horizontal swipes and keyboard navigation
+/// trigger animateToPage() calls with ~250ms duration. The PageView wraps the main
+/// song content area, while headers and floating UI remain outside the page transition.
 class SongViewerScreen extends StatefulWidget {
   final Song song;
   final VoidCallback? onSongEdit;
@@ -48,16 +53,24 @@ class SongViewerScreen extends StatefulWidget {
 }
 
 class _SongViewerScreenState extends State<SongViewerScreen>
-    with SongViewerGestures {
+    with SongViewerGestures, TickerProviderStateMixin {
   late SongViewerProvider _songViewerProvider;
   late MidiIntegrationService _midiIntegrationService;
   late SetlistNavigationService _setlistNavigationService;
   late MetronomeProvider _metronome;
   final FocusNode _focusNode = FocusNode();
 
+  // PageView controller for smooth setlist transitions
+  late PageController _pageController;
+  int _currentPageIndex = 0;
+  bool _isPageAnimating = false;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize PageView controller for smooth transitions
+    _pageController = PageController();
 
     // Initialize providers and services
     final songRepository = context.read<SongRepository>();
@@ -106,6 +119,21 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     _initializeAutoscroll();
     _sendMidiMappingOnOpen();
     _focusNode.requestFocus();
+    _initializePageViewIndex();
+  }
+
+  /// Initialize PageView index to match current setlist position
+  void _initializePageViewIndex() {
+    final setlistProvider = context.read<SetlistProvider>();
+    if (setlistProvider.isSetlistActive) {
+      _currentPageIndex = setlistProvider.currentSongIndex;
+      if (_currentPageIndex >= 0) {
+        _pageController.jumpToPage(_currentPageIndex);
+      }
+    } else {
+      _currentPageIndex = 0;
+      _pageController.jumpToPage(0);
+    }
   }
 
   /// Send MIDI mapping when song is opened in viewer
@@ -169,7 +197,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Handle horizontal swipe gestures for setlist navigation
   void _handleHorizontalSwipeEnd(DragEndDetails details) {
-    if (!shouldHandleHorizontalSwipe()) return;
+    if (!shouldHandleHorizontalSwipe() || _isPageAnimating) return;
     handleHorizontalSwipeEnd(details, _handleSetlistNavigation);
   }
 
@@ -181,7 +209,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Handle setlist navigation (both swipe and keyboard)
   void _handleSetlistNavigation(bool isNext) async {
-    if (!_setlistNavigationService.canNavigate) return;
+    if (!_setlistNavigationService.canNavigate || _isPageAnimating) return;
 
     // Stop autoscroll when navigating to a new song
     final autoscroll = context.read<AutoscrollProvider>();
@@ -197,13 +225,123 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     }
 
     if (newSong != null && mounted) {
-      _songViewerProvider.updateSong(newSong);
-      _songViewerProvider.closeAllFlyouts();
-      resetScrollPosition();
-      _syncMetronomeSettings();
-      _initializeAutoscroll();
-      _sendMidiMappingOnOpen();
+      // Use the actual setlist provider index as target page
+      final setlistProvider = context.read<SetlistProvider>();
+      final targetPage = setlistProvider.currentSongIndex;
+      _animateToPage(targetPage, newSong);
     }
+  }
+
+  /// Animate to a specific page with smooth transition
+  void _animateToPage(int targetPage, Song newSong) async {
+    if (_isPageAnimating) return;
+
+    _isPageAnimating = true;
+
+    // Update song provider before animation starts
+    _songViewerProvider.updateSong(newSong);
+    _songViewerProvider.closeAllFlyouts();
+
+    // Animate to the target page
+    await _pageController.animateToPage(
+      targetPage,
+      duration: const Duration(milliseconds: 250), // Smooth transition duration
+      curve: Curves.easeInOutCubic,
+    );
+
+    // Check if widget is still mounted before accessing context
+    if (!mounted) return;
+
+    // Sync local page index from setlist provider after animation completes
+    final setlistProvider = context.read<SetlistProvider>();
+    _currentPageIndex = setlistProvider.currentSongIndex;
+    _isPageAnimating = false;
+
+    // Check if widget is still mounted before continuing operations
+    if (!mounted) return;
+
+    // Reset scroll and sync settings after animation completes
+    resetScrollPosition();
+    _syncMetronomeSettings();
+    _initializeAutoscroll();
+    _sendMidiMappingOnOpen();
+  }
+
+  /// Get the total number of songs in the current setlist for PageView
+  int _getPageViewItemCount() {
+    final setlistProvider = context.read<SetlistProvider>();
+    if (!setlistProvider.isSetlistActive) {
+      return 1; // Just the current song
+    }
+
+    // Return the number of song items in the setlist
+    final songItems = setlistProvider.activeSetlist?.items
+            .whereType<SetlistSongItem>()
+            .toList() ??
+        [];
+    return songItems.length;
+  }
+
+  /// Build a song page for PageView at the given index
+  Widget _buildSongPage(BuildContext context, int index) {
+    final setlistProvider = context.read<SetlistProvider>();
+
+    // If no setlist is active, always show the current song
+    if (!setlistProvider.isSetlistActive) {
+      return _buildSongContent(_songViewerProvider.currentSong, context);
+    }
+
+    // Get the song at the specified index in the setlist
+    final songItems = setlistProvider.activeSetlist?.items
+            .whereType<SetlistSongItem>()
+            .toList() ??
+        [];
+
+    if (index < 0 || index >= songItems.length) {
+      return _buildSongContent(_songViewerProvider.currentSong, context);
+    }
+
+    // For now, we'll update the song content dynamically during navigation
+    // This keeps the PageView simple while allowing smooth transitions
+    return _buildSongContent(_songViewerProvider.currentSong, context);
+  }
+
+  /// Build the actual song content widget
+  Widget _buildSongContent(Song song, BuildContext context) {
+    final themeProvider = Theme.of(context);
+    final isDarkMode = themeProvider.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
+    return SingleChildScrollView(
+      controller: scrollController,
+      padding: const EdgeInsets.all(SongViewerConstants.contentPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Song metadata section
+          SongMetadataSection(
+            song: song,
+            currentCapo: _songViewerProvider.currentCapo,
+            keyDisplayLabel: _songViewerProvider.keyDisplayLabel,
+            tags: song.tags,
+            hasTags: song.tags.isNotEmpty,
+            textColor: textColor,
+            onRemoveTag: _removeTag,
+            onEditTags: _openTagsDialog,
+            onReorderTags: _reorderTags,
+            getTagColors: (tag) => _getTagColors(tag, context),
+          ),
+          const SizedBox(height: 24),
+          // Song content
+          ChordRenderer(
+            chordProText: song.body,
+            fontSize: _songViewerProvider.fontSize,
+            isDarkMode: isDarkMode,
+            transposeSteps: _songViewerProvider.effectiveTransposeSteps,
+          ),
+        ],
+      ),
+    );
   }
 
   /// Get color for a tag based on whether it's an instrument tag
@@ -362,8 +500,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   @override
   void dispose() {
     _metronome.stop();
+    _isPageAnimating = false; // Reset animation state
     disposeGestures();
     _focusNode.dispose();
+    _pageController.dispose();
 
     // Reset to portrait only when leaving
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -474,10 +614,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                         }
                       },
                       child: GestureDetector(
-                        onScaleStart: (_) => handleScaleStart(),
+                        onScaleStart: (_) => handleScaleStartForPinch(),
                         onScaleUpdate: (details) {
                           if (shouldHandleGesture()) {
-                            handlePinchToZoom(details, provider.fontSize);
+                            handlePinchToZoom(details);
                           }
                         },
                         child: Stack(
@@ -500,44 +640,16 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                                         ? _buildActionButtons(context)
                                         : null,
                                   ),
-                                  // Scrollable content
+                                  // PageView for smooth setlist transitions
                                   Expanded(
-                                    child: SingleChildScrollView(
-                                      controller: scrollController,
-                                      padding: const EdgeInsets.all(
-                                          SongViewerConstants.contentPadding),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          // Song metadata section
-                                          SongMetadataSection(
-                                            song: provider.currentSong,
-                                            currentCapo: provider.currentCapo,
-                                            keyDisplayLabel:
-                                                provider.keyDisplayLabel,
-                                            tags: provider.currentSong.tags,
-                                            hasTags: provider
-                                                .currentSong.tags.isNotEmpty,
-                                            textColor: textColor,
-                                            onRemoveTag: _removeTag,
-                                            onEditTags: _openTagsDialog,
-                                            onReorderTags: _reorderTags,
-                                            getTagColors: (tag) =>
-                                                _getTagColors(tag, context),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          // Song content
-                                          ChordRenderer(
-                                            chordProText:
-                                                provider.currentSong.body,
-                                            fontSize: provider.fontSize,
-                                            isDarkMode: isDarkMode,
-                                            transposeSteps: provider
-                                                .effectiveTransposeSteps,
-                                          ),
-                                        ],
-                                      ),
+                                    child: PageView.builder(
+                                      controller: _pageController,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(), // Disable built-in swipe to avoid conflicts
+                                      itemCount: _getPageViewItemCount(),
+                                      itemBuilder: (context, index) {
+                                        return _buildSongPage(context, index);
+                                      },
                                     ),
                                   ),
                                 ],

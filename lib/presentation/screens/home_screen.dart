@@ -69,6 +69,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Always show welcome screen now since we navigate to song viewer
     // Welcome screen when no song is selected
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
+    // Calculate responsive logo size (max 70% of screen width, max 300px height)
+    final logoWidth = (screenWidth * 0.7).clamp(200.0, 700.0);
+    final logoHeight = (screenHeight * 0.3).clamp(100.0, 300.0);
+
     return Container(
       color: isDarkMode ? Colors.grey[900] : Colors.white,
       child: SafeArea(
@@ -80,52 +87,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             24 + viewInsets.bottom,
           ),
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/images/NextChord-Logo-transparent.png',
-                  width: 700,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'NextChord logo',
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'NextChord',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: screenWidth * 0.9, // Limit max width to 90% of screen
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Responsive logo
+                  Image.asset(
+                    'assets/images/NextChord-Logo-transparent.png',
+                    width: logoWidth,
+                    height: logoHeight,
+                    fit: BoxFit.contain,
+                    semanticLabel: 'NextChord logo',
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Select a song from the library to get started',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      context.read<GlobalSidebarProvider>().toggleSidebar(),
-                  icon: const Icon(Icons.menu),
-                  label: const Text('Open Library'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0468cc),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
+                  const SizedBox(height: 24),
+                  // Responsive title text
+                  Text(
+                    'NextChord',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.08)
+                          .clamp(24.0, 48.0), // Responsive font size
                       fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  // Responsive subtitle text
+                  Text(
+                    'Select a song from the library to get started',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: (screenWidth * 0.04)
+                          .clamp(14.0, 18.0), // Responsive font size
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Responsive button
+                  ElevatedButton.icon(
+                    onPressed: () =>
+                        context.read<GlobalSidebarProvider>().toggleSidebar(),
+                    icon: const Icon(Icons.menu),
+                    label: const Text('Open Library'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0468cc),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: (screenWidth * 0.06).clamp(16.0, 32.0),
+                        vertical: (screenHeight * 0.02).clamp(12.0, 16.0),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: (screenWidth * 0.03).clamp(12.0, 16.0),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
