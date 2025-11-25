@@ -165,7 +165,10 @@ class StandardModalTemplate {
           ),
         ),
         const Spacer(),
-        control,
+        Expanded(
+          flex: 2,
+          child: control,
+        ),
       ],
     );
   }
@@ -223,7 +226,7 @@ class StandardModalTemplate {
           errorStyle: const TextStyle(color: Colors.red, fontSize: 11),
           border: InputBorder.none,
           isDense: true,
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
         ),
       ),
     );

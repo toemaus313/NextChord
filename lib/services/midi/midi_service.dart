@@ -34,10 +34,10 @@ class MidiService with ChangeNotifier {
 
   // Connection state
   MidiConnectionState _connectionState = MidiConnectionState.disconnected;
-  MidiDevice? _connectedDevice;
+  List<MidiDevice> _connectedDevices = [];
   List<MidiDevice> _availableDevices = [];
   String? _errorMessage;
-  String? _preferredDeviceId;
+  List<String> _preferredDeviceIds = [];
 
   // MIDI Configuration
   int _midiChannel = 0; // Internal storage: 0-15 (displayed as 1-16)
@@ -46,14 +46,17 @@ class MidiService with ChangeNotifier {
 
   // Getters
   MidiConnectionState get connectionState => _connectionState;
-  MidiDevice? get connectedDevice => _connectedDevice;
+  List<MidiDevice> get connectedDevices => List.unmodifiable(_connectedDevices);
+  MidiDevice? get connectedDevice =>
+      _connectedDevices.isNotEmpty ? _connectedDevices.first : null;
   List<MidiDevice> get availableDevices => List.unmodifiable(_availableDevices);
   String? get errorMessage => _errorMessage;
-  bool get isConnected => _connectionState == MidiConnectionState.connected;
+  bool get isConnected => _connectedDevices.isNotEmpty;
   bool get isScanning => _connectionState == MidiConnectionState.scanning;
   int get midiChannel => _midiChannel;
   bool get sendMidiClockEnabled => _sendMidiClockEnabled;
   bool get isDisposed => _isDisposed;
+  int get connectedDeviceCount => _connectedDevices.length;
 
   /// Set the MIDI channel (1-16, displayed to user)
   void setMidiChannel(int channel) {
@@ -85,7 +88,7 @@ class MidiService with ChangeNotifier {
       return;
     }
 
-    if (!isConnected || _connectedDevice == null) {
+    if (_connectedDevices.isEmpty) {
       return;
     }
 
@@ -131,7 +134,8 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _midiChannel = prefs.getInt('new_midi_channel') ?? 0;
       _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
-      _preferredDeviceId = prefs.getString('last_connected_midi_device_id');
+      final preferredIds = prefs.getStringList('preferred_midi_device_ids');
+      _preferredDeviceIds = preferredIds ?? [];
     } catch (e) {}
   }
 
@@ -141,17 +145,16 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('new_midi_channel', _midiChannel);
       await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
+      await prefs.setStringList(
+          'preferred_midi_device_ids', _preferredDeviceIds);
     } catch (e) {}
   }
 
-  Future<void> _savePreferredDeviceId(String? deviceId) async {
+  Future<void> _savePreferredDeviceIds() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (deviceId == null) {
-        await prefs.remove('last_connected_midi_device_id');
-      } else {
-        await prefs.setString('last_connected_midi_device_id', deviceId);
-      }
+      await prefs.setStringList(
+          'preferred_midi_device_ids', _preferredDeviceIds);
     } catch (e) {}
   }
 
@@ -189,56 +192,77 @@ class MidiService with ChangeNotifier {
     }
   }
 
-  /// Connect to a selected MIDI device
+  /// Connect to a selected MIDI device (adds to existing connections)
   Future<bool> connectToDevice(MidiDevice device) async {
     try {
-      _setConnectionState(MidiConnectionState.connecting);
       _clearError();
 
-      // Disconnect from current device if connected
-      if (_connectedDevice != null) {
-        await _disconnectDevice();
+      // Check if already connected
+      if (_connectedDevices.any((d) => d.id == device.id)) {
+        return true; // Already connected
       }
 
       // Connect to the new device
       await _midiCommand.connectToDevice(device);
 
-      _connectedDevice = device;
-      _setConnectionState(MidiConnectionState.connected);
-      _preferredDeviceId = device.id;
-      await _savePreferredDeviceId(device.id);
+      _connectedDevices.add(device);
+
+      // Update preferred devices list
+      if (!_preferredDeviceIds.contains(device.id)) {
+        _preferredDeviceIds.add(device.id);
+        await _savePreferredDeviceIds();
+      }
+
+      // Update connection state
+      if (_connectedDevices.isNotEmpty) {
+        _setConnectionState(MidiConnectionState.connected);
+      }
 
       notifyListeners();
-
       return true;
     } catch (e) {
       final message = e is PlatformException ? e.message ?? '' : e.toString();
       if (message.contains('Device already connected')) {
-        _connectedDevice = device;
-        _setConnectionState(MidiConnectionState.connected);
-        _preferredDeviceId = device.id;
-        await _savePreferredDeviceId(device.id);
-        notifyListeners();
+        // Device is already connected at the system level
+        if (!_connectedDevices.any((d) => d.id == device.id)) {
+          _connectedDevices.add(device);
+          if (!_preferredDeviceIds.contains(device.id)) {
+            _preferredDeviceIds.add(device.id);
+            await _savePreferredDeviceIds();
+          }
+          if (_connectedDevices.isNotEmpty) {
+            _setConnectionState(MidiConnectionState.connected);
+          }
+          notifyListeners();
+        }
         return true;
       }
 
-      _setConnectionState(MidiConnectionState.disconnected);
+      _setError('Failed to connect to ${device.name}: $message');
       return false;
     }
   }
 
-  /// Disconnect from the current MIDI device
-  Future<void> _disconnectDevice() async {
+  /// Disconnect from a specific MIDI device
+  Future<bool> disconnectFromDevice(MidiDevice device) async {
     try {
-      if (_connectedDevice != null) {
-        _connectedDevice = null;
+      _connectedDevices.removeWhere((d) => d.id == device.id);
+
+      if (_connectedDevices.isEmpty) {
+        _setConnectionState(MidiConnectionState.disconnected);
       }
-    } catch (e) {}
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Failed to disconnect from ${device.name}: $e');
+      return false;
+    }
   }
 
-  /// Disconnect from the current MIDI device
+  /// Disconnect from all MIDI devices
   Future<void> disconnect() async {
-    await _disconnectDevice();
+    _connectedDevices.clear();
     _setConnectionState(MidiConnectionState.disconnected);
     notifyListeners();
   }
@@ -248,15 +272,15 @@ class MidiService with ChangeNotifier {
   /// [program]: Program number (0-127) - selects different presets/sounds on the device
   /// [channel]: MIDI channel (0-15, default 0) - which channel to send the message on
   ///
-  /// Example: sendProgramChange(1) selects preset 1 on the connected device
+  /// Example: sendProgramChange(1) selects preset 1 on all connected devices
   Future<bool> sendProgramChange(int program, {int channel = 0}) async {
     if (_isDisposed) {
       return false;
     }
 
     try {
-      if (!isConnected || _connectedDevice == null) {
-        _setError('No MIDI device connected');
+      if (_connectedDevices.isEmpty) {
+        _setError('No MIDI devices connected');
         return false;
       }
 
@@ -272,7 +296,7 @@ class MidiService with ChangeNotifier {
         return false;
       }
 
-      // Send Program Change message
+      // Send Program Change message to all connected devices
       // MIDI Program Change: 0xC0 | channel, program
       final midiData = Uint8List.fromList([0xC0 | channel, program]);
       _midiCommand.sendData(midiData);
@@ -290,8 +314,8 @@ class MidiService with ChangeNotifier {
   /// [value]: Controller value (0-127) - the parameter value
   /// [channel]: MIDI channel (0-15, default 0) - which channel to send the message on
   ///
-  /// Example: sendControlChange(7, 100) sets volume to ~78% on channel 0
-  /// Example: sendControlChange(64, 127) enables sustain pedal on channel 0
+  /// Example: sendControlChange(7, 100) sets volume to ~78% on all devices
+  /// Example: sendControlChange(64, 127) enables sustain pedal on all devices
   Future<bool> sendControlChange(int controller, int value,
       {int channel = 0}) async {
     if (_isDisposed) {
@@ -299,8 +323,8 @@ class MidiService with ChangeNotifier {
     }
 
     try {
-      if (!isConnected || _connectedDevice == null) {
-        _setError('No MIDI device connected');
+      if (_connectedDevices.isEmpty) {
+        _setError('No MIDI devices connected');
         return false;
       }
 
@@ -322,7 +346,7 @@ class MidiService with ChangeNotifier {
         return false;
       }
 
-      // Send Control Change message
+      // Send Control Change message to all connected devices
       // MIDI Control Change: 0xB0 | channel, controller, value
       final midiData = Uint8List.fromList([0xB0 | channel, controller, value]);
       _midiCommand.sendData(midiData);
@@ -379,8 +403,8 @@ class MidiService with ChangeNotifier {
     }
 
     try {
-      if (!isConnected || _connectedDevice == null) {
-        _setError('No MIDI device connected');
+      if (_connectedDevices.isEmpty) {
+        _setError('No MIDI devices connected');
         return false;
       }
 
@@ -397,8 +421,8 @@ class MidiService with ChangeNotifier {
   /// Send MIDI Start message (0xFA)
   Future<bool> sendMidiStart() async {
     try {
-      if (!isConnected || _connectedDevice == null) {
-        _setError('No MIDI device connected');
+      if (_connectedDevices.isEmpty) {
+        _setError('No MIDI devices connected');
         return false;
       }
 
@@ -414,8 +438,8 @@ class MidiService with ChangeNotifier {
   /// Send MIDI Stop message (0xFC)
   Future<bool> sendMidiStop() async {
     try {
-      if (!isConnected || _connectedDevice == null) {
-        _setError('No MIDI device connected');
+      if (_connectedDevices.isEmpty) {
+        _setError('No MIDI devices connected');
         return false;
       }
 
@@ -463,22 +487,19 @@ class MidiService with ChangeNotifier {
       return;
     }
 
-    if (_connectedDevice != null) {
+    if (_connectedDevices.isNotEmpty) {
       return;
     }
 
-    MidiDevice? targetDevice;
-    if (_preferredDeviceId != null) {
+    // Connect to all preferred devices that are available
+    for (final preferredId in _preferredDeviceIds) {
       for (final device in _availableDevices) {
-        if (device.id == _preferredDeviceId) {
-          targetDevice = device;
-          break;
+        if (device.id == preferredId) {
+          await connectToDevice(device);
+          break; // Move to next preferred device
         }
       }
     }
-
-    targetDevice ??= _availableDevices.first;
-    await connectToDevice(targetDevice);
   }
 }
 

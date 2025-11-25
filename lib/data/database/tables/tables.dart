@@ -118,6 +118,20 @@ class PedalMappings extends Table {
   TextColumn get description =>
       text().nullable()(); // User-friendly description
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
+
+  // MIDI-specific fields for enhanced control
+  TextColumn get deviceId =>
+      text().nullable()(); // Specific MIDI device ID, null = any device
+  TextColumn get messageType =>
+      text().nullable()(); // 'cc' or 'pc', null = legacy keyboard mapping
+  IntColumn get channel =>
+      integer().nullable()(); // MIDI channel 0-15, null = any
+  IntColumn get number => integer().nullable()(); // CC/PC number 0-127
+  IntColumn get valueMin =>
+      integer().nullable()(); // Minimum CC value for range matching
+  IntColumn get valueMax =>
+      integer().nullable()(); // Maximum CC value for range matching
+
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();

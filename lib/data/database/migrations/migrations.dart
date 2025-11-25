@@ -114,6 +114,28 @@ class DatabaseMigrations {
               await m.createTable(db.pedalMappings);
             } catch (e) {}
           }
+          if (from <= 10 && to >= 11) {
+            // Add MIDI-specific fields to pedal_mappings table
+            final db = m.database as AppDatabase;
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.deviceId);
+            } catch (e) {}
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.messageType);
+            } catch (e) {}
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.channel);
+            } catch (e) {}
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.number);
+            } catch (e) {}
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.valueMin);
+            } catch (e) {}
+            try {
+              await m.addColumn(db.pedalMappings, db.pedalMappings.valueMax);
+            } catch (e) {}
+          }
         },
       );
 

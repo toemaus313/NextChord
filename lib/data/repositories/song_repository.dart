@@ -1,11 +1,22 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+
+// Debug setup
+bool isDebug = true;
+
+void myDebug(String message) {
+  if (isDebug) {
+    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+    debugPrint('[$timestamp] $message');
+  }
+}
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -482,6 +493,79 @@ class SongRepository {
       return await getMidiProfile(song.profileId!);
     } catch (e) {
       return null;
+    }
+  }
+
+  // Pedal Mapping CRUD methods
+
+  /// Get all pedal mappings
+  Future<List<PedalMappingModel>> getAllPedalMappings() async {
+    try {
+      final mappings = await (_db.select(_db.pedalMappings)
+            ..where((tbl) => tbl.isDeleted.equals(false)))
+          .get();
+      return mappings;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get a pedal mapping by ID
+  Future<PedalMappingModel?> getPedalMappingById(String id) async {
+    try {
+      final mapping = await (_db.select(_db.pedalMappings)
+            ..where((tbl) => tbl.id.equals(id)))
+          .getSingleOrNull();
+      return mapping;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Insert a new pedal mapping
+  Future<void> insertPedalMapping(PedalMappingModel mapping) async {
+    try {
+      await _db.into(_db.pedalMappings).insert(mapping);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'pedal_mappings', operation: 'update');
+    } catch (e) {
+      // Log SQLite errors for debugging
+      myDebug('REPOSITORY ERROR: SQLite insert failed - $e');
+      throw SongRepositoryException('Failed to insert pedal mapping: $e');
+    }
+  }
+
+  /// Update an existing pedal mapping
+  Future<void> updatePedalMapping(PedalMappingModel mapping) async {
+    try {
+      await (_db.update(_db.pedalMappings)
+            ..where((tbl) => tbl.id.equals(mapping.id)))
+          .write(mapping);
+
+      // Notify database change for auto-sync
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'pedal_mappings', operation: 'update');
+    } catch (e) {
+      throw SongRepositoryException('Failed to update pedal mapping: $e');
+    }
+  }
+
+  /// Delete a pedal mapping (soft delete)
+  Future<void> deletePedalMapping(String id) async {
+    try {
+      await (_db.update(_db.pedalMappings)..where((tbl) => tbl.id.equals(id)))
+          .write(PedalMappingsCompanion(
+        isDeleted: const Value(true),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ));
+
+      // Notify database change for auto-sync
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'pedal_mappings', operation: 'update');
+    } catch (e) {
+      throw SongRepositoryException('Failed to delete pedal mapping: $e');
     }
   }
 }

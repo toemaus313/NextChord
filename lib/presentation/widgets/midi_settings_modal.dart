@@ -167,32 +167,18 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
     String statusText;
     IconData statusIcon;
 
-    switch (midiService.connectionState) {
-      case MidiConnectionState.connected:
-        statusColor = Colors.green;
-        statusText =
-            'Connected to ${midiService.connectedDevice?.name ?? 'Unknown'}';
-        statusIcon = Icons.check_circle;
-        break;
-      case MidiConnectionState.connecting:
-        statusColor = Colors.orange;
-        statusText = 'Connecting...';
-        statusIcon = Icons.sync;
-        break;
-      case MidiConnectionState.scanning:
-        statusColor = Colors.blue;
-        statusText = 'Scanning for devices...';
-        statusIcon = Icons.search;
-        break;
-      case MidiConnectionState.error:
-        statusColor = Colors.red;
-        statusText = midiService.errorMessage ?? 'Error';
-        statusIcon = Icons.error;
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusText = 'Disconnected';
-        statusIcon = Icons.bluetooth_disabled;
+    if (midiService.connectedDevices.isEmpty) {
+      statusColor = Colors.grey;
+      statusText = 'Disconnected';
+      statusIcon = Icons.bluetooth_disabled;
+    } else if (midiService.connectedDevices.length == 1) {
+      statusColor = Colors.green;
+      statusText = 'Connected to ${midiService.connectedDevices.first.name}';
+      statusIcon = Icons.check_circle;
+    } else {
+      statusColor = Colors.green;
+      statusText = 'Connected to ${midiService.connectedDeviceCount} devices';
+      statusIcon = Icons.check_circle;
     }
 
     return StandardModalTemplate.buildInfoBox(
@@ -282,7 +268,8 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         const SizedBox(height: 8),
         ...List.generate(midiService.availableDevices.length, (index) {
           final device = midiService.availableDevices[index];
-          final isConnected = midiService.connectedDevice?.id == device.id;
+          final isConnected =
+              midiService.connectedDevices.any((d) => d.id == device.id);
           return _buildDeviceTile(device, isConnected, midiService);
         }),
       ],
@@ -304,10 +291,17 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: Icon(
-          device.type == 'input' ? Icons.keyboard : Icons.speaker,
-          color: isConnected ? Colors.white : Colors.white70,
-          size: 20,
+        leading: Checkbox(
+          value: isConnected,
+          onChanged: (bool? value) async {
+            if (value == true) {
+              await midiService.connectToDevice(device);
+            } else {
+              await midiService.disconnectFromDevice(device);
+            }
+          },
+          activeColor: const Color(0xFF0468cc),
+          checkColor: Colors.white,
         ),
         title: Text(
           device.name,
@@ -324,7 +318,7 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
         trailing: isConnected
             ? TextButton.icon(
                 onPressed: () async {
-                  await midiService.disconnect();
+                  await midiService.disconnectFromDevice(device);
                 },
                 icon: const Icon(Icons.link_off, size: 14),
                 label: const Text('Disconnect'),

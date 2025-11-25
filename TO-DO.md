@@ -32,4 +32,4 @@ SETTINGS
 - Not refreshing quickly on db changes
 - No back button once in a Tag in Songs
 - Capo reminder when loading song 
-
+ - Tools: MIDI Sender and MIDI Viewer 

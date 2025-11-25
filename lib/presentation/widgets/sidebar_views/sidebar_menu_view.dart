@@ -21,6 +21,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToMetronomeSettings;
   final VoidCallback onNavigateToGuitarTuner;
   final VoidCallback onNavigateToStorageSettings;
+  final VoidCallback onNavigateToAppControl;
   final bool isPhoneMode;
   final bool showHeader;
 
@@ -37,6 +38,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToMetronomeSettings,
     required this.onNavigateToGuitarTuner,
     required this.onNavigateToStorageSettings,
+    required this.onNavigateToAppControl,
     this.isPhoneMode = false,
     this.showHeader = true,
   }) : super(key: key);
@@ -342,6 +344,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
                 title: 'Storage',
                 isSelected: false,
                 onTap: widget.onNavigateToStorageSettings,
+                isPhoneMode: widget.isPhoneMode,
+              ),
+              SidebarSubMenuItem(
+                title: 'App Control',
+                isSelected: false,
+                onTap: widget.onNavigateToAppControl,
                 isPhoneMode: widget.isPhoneMode,
               ),
             ]

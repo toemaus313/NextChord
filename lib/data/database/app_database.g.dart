@@ -2187,6 +2187,41 @@ class $PedalMappingsTable extends PedalMappings
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_enabled" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _deviceIdMeta =
+      const VerificationMeta('deviceId');
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+      'device_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _messageTypeMeta =
+      const VerificationMeta('messageType');
+  @override
+  late final GeneratedColumn<String> messageType = GeneratedColumn<String>(
+      'message_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _channelMeta =
+      const VerificationMeta('channel');
+  @override
+  late final GeneratedColumn<int> channel = GeneratedColumn<int>(
+      'channel', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _numberMeta = const VerificationMeta('number');
+  @override
+  late final GeneratedColumn<int> number = GeneratedColumn<int>(
+      'number', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _valueMinMeta =
+      const VerificationMeta('valueMin');
+  @override
+  late final GeneratedColumn<int> valueMin = GeneratedColumn<int>(
+      'value_min', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _valueMaxMeta =
+      const VerificationMeta('valueMax');
+  @override
+  late final GeneratedColumn<int> valueMax = GeneratedColumn<int>(
+      'value_max', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -2216,6 +2251,12 @@ class $PedalMappingsTable extends PedalMappings
         action,
         description,
         isEnabled,
+        deviceId,
+        messageType,
+        channel,
+        number,
+        valueMin,
+        valueMax,
         createdAt,
         updatedAt,
         isDeleted
@@ -2257,6 +2298,32 @@ class $PedalMappingsTable extends PedalMappings
       context.handle(_isEnabledMeta,
           isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta));
     }
+    if (data.containsKey('device_id')) {
+      context.handle(_deviceIdMeta,
+          deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta));
+    }
+    if (data.containsKey('message_type')) {
+      context.handle(
+          _messageTypeMeta,
+          messageType.isAcceptableOrUnknown(
+              data['message_type']!, _messageTypeMeta));
+    }
+    if (data.containsKey('channel')) {
+      context.handle(_channelMeta,
+          channel.isAcceptableOrUnknown(data['channel']!, _channelMeta));
+    }
+    if (data.containsKey('number')) {
+      context.handle(_numberMeta,
+          number.isAcceptableOrUnknown(data['number']!, _numberMeta));
+    }
+    if (data.containsKey('value_min')) {
+      context.handle(_valueMinMeta,
+          valueMin.isAcceptableOrUnknown(data['value_min']!, _valueMinMeta));
+    }
+    if (data.containsKey('value_max')) {
+      context.handle(_valueMaxMeta,
+          valueMax.isAcceptableOrUnknown(data['value_max']!, _valueMaxMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -2292,6 +2359,18 @@ class $PedalMappingsTable extends PedalMappings
           .read(DriftSqlType.string, data['${effectivePrefix}description']),
       isEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_enabled'])!,
+      deviceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_id']),
+      messageType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message_type']),
+      channel: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}channel']),
+      number: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}number']),
+      valueMin: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}value_min']),
+      valueMax: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}value_max']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -2314,6 +2393,12 @@ class PedalMappingModel extends DataClass
   final String action;
   final String? description;
   final bool isEnabled;
+  final String? deviceId;
+  final String? messageType;
+  final int? channel;
+  final int? number;
+  final int? valueMin;
+  final int? valueMax;
   final int createdAt;
   final int updatedAt;
   final bool isDeleted;
@@ -2323,6 +2408,12 @@ class PedalMappingModel extends DataClass
       required this.action,
       this.description,
       required this.isEnabled,
+      this.deviceId,
+      this.messageType,
+      this.channel,
+      this.number,
+      this.valueMin,
+      this.valueMax,
       required this.createdAt,
       required this.updatedAt,
       required this.isDeleted});
@@ -2336,6 +2427,24 @@ class PedalMappingModel extends DataClass
       map['description'] = Variable<String>(description);
     }
     map['is_enabled'] = Variable<bool>(isEnabled);
+    if (!nullToAbsent || deviceId != null) {
+      map['device_id'] = Variable<String>(deviceId);
+    }
+    if (!nullToAbsent || messageType != null) {
+      map['message_type'] = Variable<String>(messageType);
+    }
+    if (!nullToAbsent || channel != null) {
+      map['channel'] = Variable<int>(channel);
+    }
+    if (!nullToAbsent || number != null) {
+      map['number'] = Variable<int>(number);
+    }
+    if (!nullToAbsent || valueMin != null) {
+      map['value_min'] = Variable<int>(valueMin);
+    }
+    if (!nullToAbsent || valueMax != null) {
+      map['value_max'] = Variable<int>(valueMax);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -2351,6 +2460,23 @@ class PedalMappingModel extends DataClass
           ? const Value.absent()
           : Value(description),
       isEnabled: Value(isEnabled),
+      deviceId: deviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceId),
+      messageType: messageType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(messageType),
+      channel: channel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(channel),
+      number:
+          number == null && nullToAbsent ? const Value.absent() : Value(number),
+      valueMin: valueMin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(valueMin),
+      valueMax: valueMax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(valueMax),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
@@ -2366,6 +2492,12 @@ class PedalMappingModel extends DataClass
       action: serializer.fromJson<String>(json['action']),
       description: serializer.fromJson<String?>(json['description']),
       isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      deviceId: serializer.fromJson<String?>(json['deviceId']),
+      messageType: serializer.fromJson<String?>(json['messageType']),
+      channel: serializer.fromJson<int?>(json['channel']),
+      number: serializer.fromJson<int?>(json['number']),
+      valueMin: serializer.fromJson<int?>(json['valueMin']),
+      valueMax: serializer.fromJson<int?>(json['valueMax']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -2380,6 +2512,12 @@ class PedalMappingModel extends DataClass
       'action': serializer.toJson<String>(action),
       'description': serializer.toJson<String?>(description),
       'isEnabled': serializer.toJson<bool>(isEnabled),
+      'deviceId': serializer.toJson<String?>(deviceId),
+      'messageType': serializer.toJson<String?>(messageType),
+      'channel': serializer.toJson<int?>(channel),
+      'number': serializer.toJson<int?>(number),
+      'valueMin': serializer.toJson<int?>(valueMin),
+      'valueMax': serializer.toJson<int?>(valueMax),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
@@ -2392,6 +2530,12 @@ class PedalMappingModel extends DataClass
           String? action,
           Value<String?> description = const Value.absent(),
           bool? isEnabled,
+          Value<String?> deviceId = const Value.absent(),
+          Value<String?> messageType = const Value.absent(),
+          Value<int?> channel = const Value.absent(),
+          Value<int?> number = const Value.absent(),
+          Value<int?> valueMin = const Value.absent(),
+          Value<int?> valueMax = const Value.absent(),
           int? createdAt,
           int? updatedAt,
           bool? isDeleted}) =>
@@ -2401,6 +2545,12 @@ class PedalMappingModel extends DataClass
         action: action ?? this.action,
         description: description.present ? description.value : this.description,
         isEnabled: isEnabled ?? this.isEnabled,
+        deviceId: deviceId.present ? deviceId.value : this.deviceId,
+        messageType: messageType.present ? messageType.value : this.messageType,
+        channel: channel.present ? channel.value : this.channel,
+        number: number.present ? number.value : this.number,
+        valueMin: valueMin.present ? valueMin.value : this.valueMin,
+        valueMax: valueMax.present ? valueMax.value : this.valueMax,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
@@ -2413,6 +2563,13 @@ class PedalMappingModel extends DataClass
       description:
           data.description.present ? data.description.value : this.description,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      messageType:
+          data.messageType.present ? data.messageType.value : this.messageType,
+      channel: data.channel.present ? data.channel.value : this.channel,
+      number: data.number.present ? data.number.value : this.number,
+      valueMin: data.valueMin.present ? data.valueMin.value : this.valueMin,
+      valueMax: data.valueMax.present ? data.valueMax.value : this.valueMax,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -2427,6 +2584,12 @@ class PedalMappingModel extends DataClass
           ..write('action: $action, ')
           ..write('description: $description, ')
           ..write('isEnabled: $isEnabled, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('messageType: $messageType, ')
+          ..write('channel: $channel, ')
+          ..write('number: $number, ')
+          ..write('valueMin: $valueMin, ')
+          ..write('valueMax: $valueMax, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted')
@@ -2436,7 +2599,20 @@ class PedalMappingModel extends DataClass
 
   @override
   int get hashCode => Object.hash(
-      id, key, action, description, isEnabled, createdAt, updatedAt, isDeleted);
+      id,
+      key,
+      action,
+      description,
+      isEnabled,
+      deviceId,
+      messageType,
+      channel,
+      number,
+      valueMin,
+      valueMax,
+      createdAt,
+      updatedAt,
+      isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2446,6 +2622,12 @@ class PedalMappingModel extends DataClass
           other.action == this.action &&
           other.description == this.description &&
           other.isEnabled == this.isEnabled &&
+          other.deviceId == this.deviceId &&
+          other.messageType == this.messageType &&
+          other.channel == this.channel &&
+          other.number == this.number &&
+          other.valueMin == this.valueMin &&
+          other.valueMax == this.valueMax &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted);
@@ -2457,6 +2639,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
   final Value<String> action;
   final Value<String?> description;
   final Value<bool> isEnabled;
+  final Value<String?> deviceId;
+  final Value<String?> messageType;
+  final Value<int?> channel;
+  final Value<int?> number;
+  final Value<int?> valueMin;
+  final Value<int?> valueMax;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<bool> isDeleted;
@@ -2467,6 +2655,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
     this.action = const Value.absent(),
     this.description = const Value.absent(),
     this.isEnabled = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.messageType = const Value.absent(),
+    this.channel = const Value.absent(),
+    this.number = const Value.absent(),
+    this.valueMin = const Value.absent(),
+    this.valueMax = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
@@ -2478,6 +2672,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
     required String action,
     this.description = const Value.absent(),
     this.isEnabled = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.messageType = const Value.absent(),
+    this.channel = const Value.absent(),
+    this.number = const Value.absent(),
+    this.valueMin = const Value.absent(),
+    this.valueMax = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.isDeleted = const Value.absent(),
@@ -2493,6 +2693,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
     Expression<String>? action,
     Expression<String>? description,
     Expression<bool>? isEnabled,
+    Expression<String>? deviceId,
+    Expression<String>? messageType,
+    Expression<int>? channel,
+    Expression<int>? number,
+    Expression<int>? valueMin,
+    Expression<int>? valueMax,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<bool>? isDeleted,
@@ -2504,6 +2710,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
       if (action != null) 'action': action,
       if (description != null) 'description': description,
       if (isEnabled != null) 'is_enabled': isEnabled,
+      if (deviceId != null) 'device_id': deviceId,
+      if (messageType != null) 'message_type': messageType,
+      if (channel != null) 'channel': channel,
+      if (number != null) 'number': number,
+      if (valueMin != null) 'value_min': valueMin,
+      if (valueMax != null) 'value_max': valueMax,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
@@ -2517,6 +2729,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
       Value<String>? action,
       Value<String?>? description,
       Value<bool>? isEnabled,
+      Value<String?>? deviceId,
+      Value<String?>? messageType,
+      Value<int?>? channel,
+      Value<int?>? number,
+      Value<int?>? valueMin,
+      Value<int?>? valueMax,
       Value<int>? createdAt,
       Value<int>? updatedAt,
       Value<bool>? isDeleted,
@@ -2527,6 +2745,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
       action: action ?? this.action,
       description: description ?? this.description,
       isEnabled: isEnabled ?? this.isEnabled,
+      deviceId: deviceId ?? this.deviceId,
+      messageType: messageType ?? this.messageType,
+      channel: channel ?? this.channel,
+      number: number ?? this.number,
+      valueMin: valueMin ?? this.valueMin,
+      valueMax: valueMax ?? this.valueMax,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -2552,6 +2776,24 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
     if (isEnabled.present) {
       map['is_enabled'] = Variable<bool>(isEnabled.value);
     }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (messageType.present) {
+      map['message_type'] = Variable<String>(messageType.value);
+    }
+    if (channel.present) {
+      map['channel'] = Variable<int>(channel.value);
+    }
+    if (number.present) {
+      map['number'] = Variable<int>(number.value);
+    }
+    if (valueMin.present) {
+      map['value_min'] = Variable<int>(valueMin.value);
+    }
+    if (valueMax.present) {
+      map['value_max'] = Variable<int>(valueMax.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -2575,6 +2817,12 @@ class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
           ..write('action: $action, ')
           ..write('description: $description, ')
           ..write('isEnabled: $isEnabled, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('messageType: $messageType, ')
+          ..write('channel: $channel, ')
+          ..write('number: $number, ')
+          ..write('valueMin: $valueMin, ')
+          ..write('valueMax: $valueMax, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
@@ -4157,6 +4405,12 @@ typedef $$PedalMappingsTableCreateCompanionBuilder = PedalMappingsCompanion
   required String action,
   Value<String?> description,
   Value<bool> isEnabled,
+  Value<String?> deviceId,
+  Value<String?> messageType,
+  Value<int?> channel,
+  Value<int?> number,
+  Value<int?> valueMin,
+  Value<int?> valueMax,
   required int createdAt,
   required int updatedAt,
   Value<bool> isDeleted,
@@ -4169,6 +4423,12 @@ typedef $$PedalMappingsTableUpdateCompanionBuilder = PedalMappingsCompanion
   Value<String> action,
   Value<String?> description,
   Value<bool> isEnabled,
+  Value<String?> deviceId,
+  Value<String?> messageType,
+  Value<int?> channel,
+  Value<int?> number,
+  Value<int?> valueMin,
+  Value<int?> valueMax,
   Value<int> createdAt,
   Value<int> updatedAt,
   Value<bool> isDeleted,
@@ -4198,6 +4458,24 @@ class $$PedalMappingsTableFilterComposer
 
   ColumnFilters<bool> get isEnabled => $composableBuilder(
       column: $table.isEnabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get messageType => $composableBuilder(
+      column: $table.messageType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get channel => $composableBuilder(
+      column: $table.channel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get number => $composableBuilder(
+      column: $table.number, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get valueMin => $composableBuilder(
+      column: $table.valueMin, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get valueMax => $composableBuilder(
+      column: $table.valueMax, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4233,6 +4511,24 @@ class $$PedalMappingsTableOrderingComposer
   ColumnOrderings<bool> get isEnabled => $composableBuilder(
       column: $table.isEnabled, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get messageType => $composableBuilder(
+      column: $table.messageType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get channel => $composableBuilder(
+      column: $table.channel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get number => $composableBuilder(
+      column: $table.number, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get valueMin => $composableBuilder(
+      column: $table.valueMin, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get valueMax => $composableBuilder(
+      column: $table.valueMax, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -4266,6 +4562,24 @@ class $$PedalMappingsTableAnnotationComposer
 
   GeneratedColumn<bool> get isEnabled =>
       $composableBuilder(column: $table.isEnabled, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get messageType => $composableBuilder(
+      column: $table.messageType, builder: (column) => column);
+
+  GeneratedColumn<int> get channel =>
+      $composableBuilder(column: $table.channel, builder: (column) => column);
+
+  GeneratedColumn<int> get number =>
+      $composableBuilder(column: $table.number, builder: (column) => column);
+
+  GeneratedColumn<int> get valueMin =>
+      $composableBuilder(column: $table.valueMin, builder: (column) => column);
+
+  GeneratedColumn<int> get valueMax =>
+      $composableBuilder(column: $table.valueMax, builder: (column) => column);
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4308,6 +4622,12 @@ class $$PedalMappingsTableTableManager extends RootTableManager<
             Value<String> action = const Value.absent(),
             Value<String?> description = const Value.absent(),
             Value<bool> isEnabled = const Value.absent(),
+            Value<String?> deviceId = const Value.absent(),
+            Value<String?> messageType = const Value.absent(),
+            Value<int?> channel = const Value.absent(),
+            Value<int?> number = const Value.absent(),
+            Value<int?> valueMin = const Value.absent(),
+            Value<int?> valueMax = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
@@ -4319,6 +4639,12 @@ class $$PedalMappingsTableTableManager extends RootTableManager<
             action: action,
             description: description,
             isEnabled: isEnabled,
+            deviceId: deviceId,
+            messageType: messageType,
+            channel: channel,
+            number: number,
+            valueMin: valueMin,
+            valueMax: valueMax,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
@@ -4330,6 +4656,12 @@ class $$PedalMappingsTableTableManager extends RootTableManager<
             required String action,
             Value<String?> description = const Value.absent(),
             Value<bool> isEnabled = const Value.absent(),
+            Value<String?> deviceId = const Value.absent(),
+            Value<String?> messageType = const Value.absent(),
+            Value<int?> channel = const Value.absent(),
+            Value<int?> number = const Value.absent(),
+            Value<int?> valueMin = const Value.absent(),
+            Value<int?> valueMax = const Value.absent(),
             required int createdAt,
             required int updatedAt,
             Value<bool> isDeleted = const Value.absent(),
@@ -4341,6 +4673,12 @@ class $$PedalMappingsTableTableManager extends RootTableManager<
             action: action,
             description: description,
             isEnabled: isEnabled,
+            deviceId: deviceId,
+            messageType: messageType,
+            channel: channel,
+            number: number,
+            valueMin: valueMin,
+            valueMax: valueMax,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,

@@ -34,6 +34,24 @@ void myDebug(String message) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Set up global error handlers to catch SQLite errors and other exceptions
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (isDebug) {
+      final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+      debugPrint('[$timestamp] FRAMEWORK ERROR: ${details.exception}');
+      debugPrint('[$timestamp] Stack trace: ${details.stack}');
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (isDebug) {
+      final timestamp = DateTime.now().toIso8601String().substring(11, 19);
+      debugPrint('[$timestamp] GLOBAL ERROR: $error');
+      debugPrint('[$timestamp] Stack trace: $stack');
+    }
+    return true; // Prevent default error handling
+  };
+
   // Configure system UI for all platforms
   if (Platform.isIOS || Platform.isAndroid) {
     // iOS (including iPad) and Android: Show status bar

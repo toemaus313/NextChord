@@ -6,12 +6,14 @@ import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/setlist_provider.dart';
 import '../controllers/global_sidebar_controller.dart';
+import '../../services/midi/midi_device_manager.dart';
 import '../screens/song_editor_screen_refactored.dart';
 import 'midi_settings_modal.dart';
 import 'midi_profiles_modal.dart';
 import 'metronome_settings_modal.dart';
 import 'guitar_tuner_modal.dart';
 import 'storage_settings_modal.dart';
+import 'app_control_modal.dart';
 import 'sidebar_views/sidebar_menu_view.dart';
 import 'sidebar_views/sidebar_all_songs_view.dart';
 import 'sidebar_views/sidebar_setlist_view.dart';
@@ -334,6 +336,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToMetronomeSettings: () => _showMetronomeSettings(),
           onNavigateToGuitarTuner: () => _showGuitarTuner(),
           onNavigateToStorageSettings: () => _showStorageSettings(),
+          onNavigateToAppControl: () => _showAppControl(),
           isPhoneMode: _isActualPhone(context),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
@@ -386,6 +389,11 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   void _showStorageSettings() {
     StorageSettingsModal.show(context);
+  }
+
+  void _showAppControl() {
+    // Use singleton instance since Provider is not available in this context
+    AppControlModal.show(context, deviceManager: MidiDeviceManager());
   }
 
   void _showAddSongsToSetlist() {
