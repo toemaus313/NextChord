@@ -14,10 +14,12 @@ import 'presentation/providers/autoscroll_provider.dart';
 import 'presentation/providers/metadata_visibility_provider.dart';
 import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/setlist_provider.dart';
+import 'presentation/providers/share_import_provider.dart';
 import 'providers/sync_provider.dart';
 import 'presentation/widgets/app_wrapper.dart';
 import 'core/services/database_change_service.dart';
 import 'core/services/sync_service_locator.dart';
+import 'services/import/share_import_service.dart';
 import 'services/midi/midi_service.dart';
 
 // Global debug configuration
@@ -30,6 +32,9 @@ void myDebug(String message) {
     debugPrint('[$timestamp] $message');
   }
 }
+
+// Global navigator key for navigation from providers/services
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +77,13 @@ void main() async {
 
   // Initialize database
   final database = AppDatabase();
+
+  myDebug('MAIN: App initialized, database created');
+
+  // Initialize services that depend on the database
+  ShareImportService().initialize(database);
+
+  myDebug('MAIN: ShareImportService initialized');
 
   // Initialize database change monitoring service
   DatabaseChangeService().initialize();
@@ -150,11 +162,14 @@ class NextChordApp extends StatelessWidget {
   }
 
   Future<void> _initializeApp() async {
+    myDebug('MAIN: _initializeApp called');
     // Wait for next frame to ensure build phase is complete
     await Future.delayed(Duration.zero);
+    myDebug('MAIN: _initializeApp completed');
   }
 
   Widget _buildProviderTree(BuildContext context) {
+    myDebug('MAIN: _buildProviderTree called - Building provider tree');
     return MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: database),
@@ -184,6 +199,11 @@ class NextChordApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MetadataVisibilityProvider(),
         ),
+        ChangeNotifierProvider(
+          create: (_) => ShareImportProvider(),
+          lazy:
+              false, // Must be non-lazy to initialize immediately and listen for share intents
+        ),
         ChangeNotifierProvider.value(
           value: syncProvider,
         ),
@@ -194,6 +214,7 @@ class NextChordApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'NextChord',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,

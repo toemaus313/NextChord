@@ -2,8 +2,8 @@
 
 ## Status: ACTIVE DEBUG LOGGING 
 
-**Updated**: 2025-11-24  
-**Purpose**: Minimal debug logging for Google sync functionality + Global error handling
+**Updated**: 2025-11-25  
+**Purpose**: UG Import Flow troubleshooting + Existing sync functionality + Global error handling
 
 ---
 
@@ -22,6 +22,72 @@
 - **Message**: `"[$timestamp] GLOBAL ERROR: $error"` and `"[$timestamp] FRAMEWORK ERROR: $error"`
 - **Trigger**: Catches all unhandled exceptions including SQLite errors throughout the app
 - **Description**: App-wide error catching to capture SQLite constraint failures and similar exceptions
+
+### UG Import Flow Debug Logging
+
+#### ShareImportProvider (Flutter)
+- **File**: `lib/presentation/providers/share_import_provider.dart`
+- **Functions**: `_initializeShareHandling()`, `_checkInitialIntents()`, `_handleSharedMediaList()`, `_createPayloadFromSharedMedia()`
+- **Messages**: 
+  - `"ShareImportProvider: Initializing share handling"`
+  - `"ShareImportProvider: Checking initial intents"`
+  - `"ShareImportProvider: Found [N] initial media items"`
+  - `"ShareImportProvider: Initial media [i]: type=[type], path="[path]""`
+  - `"ShareImportProvider: Handling [N] shared media items"`
+  - `"ShareImportProvider: Processing media: type=[type], path="[path]""`
+  - `"ShareImportProvider: Created payload: [payload]"`
+  - `"ShareImportProvider: Creating payload from media type=[type]"`
+- **Trigger**: When shared content is received from iOS Share Extension
+- **Description**: Traces the complete flow of shared content from iOS to Flutter processing
+
+#### ShareImportService (Flutter)
+- **File**: `lib/services/import/share_import_service.dart`
+- **Functions**: `handleSharedContent()`, `importFromSharedContent()`, `importUltimateGuitarChordSong()`, `importUltimateGuitarTabSong()`
+- **Messages**:
+  - `"ShareImportService: handleSharedContent called with payload: [payload]"`
+  - `"ShareImportService: importFromSharedContent starting"`
+  - `"ShareImportService: UG payload detected"`
+  - `"ShareImportService: UG TAB import triggered"`
+  - `"ShareImportService: UG chord-over-lyric import triggered"`
+  - `"ShareImportService: Importing UG chord song, text length=[length]"`
+  - `"ShareImportService: Extracted metadata: [metadata]"`
+  - `"ShareImportService: Created song entity: title="[title]", artist="[artist]""`
+  - `"ShareImportService: Successfully saved song to database"`
+- **Trigger**: When shared content is processed and routed to appropriate parsers
+- **Description**: Traces content routing, parsing, and database saving for UG imports
+
+#### ShareViewController (iOS)
+- **File**: `ios/NextChord/ShareViewController.swift`
+- **Functions**: `viewDidLoad()`, `handleSharedContent()`, `saveAndRedirect()`, `openURL()`, `completeRequest()`
+- **Messages**:
+  - `"ShareViewController: viewDidLoad called"`
+  - `"ShareViewController: handleSharedContent called"`
+  - `"ShareViewController: Found [N] extension items"`
+  - `"ShareViewController: Found [N] attachments"`
+  - `"ShareViewController: Loading URL content"`
+  - `"ShareViewController: Loaded URL: [url]"`
+  - `"ShareViewController: Detected file URL, attempting to read content"`
+  - `"ShareViewController: Successfully read file, content length: [N]"`
+  - `"ShareViewController: Failed to read file: [error]"`
+  - `"ShareViewController: Loading text content"`
+  - `"ShareViewController: Loaded text: [text]..."`
+  - `"ShareViewController: saveAndRedirect called with [N] items"`
+  - `"ShareViewController: Using app group ID: [appGroupId]"`
+  - `"ShareViewController: Saved shared data to UserDefaults"`
+  - `"ShareViewController: Opening URL: [url]"`
+- **Trigger**: When iOS Share Extension processes shared content from Ultimate Guitar app
+- **Description**: Traces iOS Share Extension content extraction, file reading (for file URLs), saving, and app redirection. When UG shares a file URL, the extension reads the file content and passes TEXT to the main app.
+
+### Content Type Detector Debug Logging
+- **File**: `lib/services/import/content_type_detector.dart`
+- **Location**: Lines throughout `isTabContent` method
+- **Messages**: 
+  - `"ContentTypeDetector: Analyzing content ([N] chars)"`
+  - `"ContentTypeDetector: Found tab line pattern: [line preview]..."`
+  - `"ContentTypeDetector: Found [N] tab-like lines out of [total] total"`
+  - `"ContentTypeDetector: Content classified as: TAB"` or `"CHORD"`
+- **Trigger**: When UG import service analyzes shared content to determine if it's tab or chord notation
+- **Description**: Traces content analysis and classification logic for routing to correct parser
 
 ### App Control Modal MIDI Learn Debug Logging
 - **File**: `lib/presentation/widgets/app_control_modal.dart`
@@ -87,12 +153,13 @@
 ## Debug Behavior
 
 ### What Gets Logged:
-1. **Global Errors**: All unhandled exceptions including SQLite constraint failures
-2. **Framework Errors**: Flutter framework errors and exceptions
-3. **Local Change Detection**: When local database changes are detected and scheduled for cloud sync
-4. **Remote Change Detection**: When the metadata polling detects changes in Google Drive
-5. **Successful Sync Application**: When remote changes are successfully applied to the local database
-6. **Successful Local Upload**: When local changes are successfully uploaded to Google Drive
+1. **UG Import Flow**: Complete trace from iOS Share Extension to Flutter processing to database saving
+2. **Global Errors**: All unhandled exceptions including SQLite constraint failures
+3. **Framework Errors**: Flutter framework errors and exceptions
+4. **Local Change Detection**: When local database changes are detected and scheduled for cloud sync
+5. **Remote Change Detection**: When the metadata polling detects changes in Google Drive
+6. **Successful Sync Application**: When remote changes are successfully applied to the local database
+7. **Successful Local Upload**: When local changes are successfully uploaded to Google Drive
 
 ### What Does NOT Get Logged:
 - Normal sync operations without changes
@@ -105,10 +172,12 @@
 ## Implementation Notes
 
 - Uses standardized `myDebug()` function with timestamps (HH:MM:SS format)
+- iOS Share Extension uses equivalent Swift `myDebug()` function with same format
 - Debug output can be toggled globally via `isDebug` flag in `main.dart`
 - Global error handlers catch all unhandled exceptions app-wide
-- Minimal logging approach - only logs key sync events with precise timing
-- No performance impact on normal sync operations
+- UG import debug provides complete visibility into share flow from iOS to database
+- Minimal logging approach - only logs key events with precise timing
+- No performance impact on normal operations
 - Provides complete visibility into sync flow in both directions with timing information
 - SQLite errors and similar database exceptions are now captured globally
 
@@ -117,12 +186,12 @@
 ## Future Debug Guidelines
 
 If adding more debug code:
-1. Use the standardized `myDebug()` function from `main.dart`
+1. Use the standardized `myDebug()` function from `main.dart` (or equivalent in iOS)
 2. Update this file to document new debug statements
 3. Keep debug logging minimal and focused on key events
 4. Ensure debug code can be easily removed via automated cleanup
 
 ---
 
-*Last Updated: 2025-11-24*  
-*Status: Active - Complete sync debug logging + global error handling enabled*
+*Last Updated: 2025-11-25 12:22 PM PST*  
+*Status: Debugging UG Import Flow + Content Type Detection*

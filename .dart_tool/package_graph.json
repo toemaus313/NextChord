@@ -31,6 +31,7 @@
         "pitch_detector_dart",
         "pitchupdart",
         "provider",
+        "receive_sharing_intent",
         "record",
         "shared_preferences",
         "shelf",
@@ -160,6 +161,14 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "receive_sharing_intent",
+      "version": "1.8.1",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface"
       ]
     },
     {
@@ -916,6 +925,13 @@
       ]
     },
     {
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
       "name": "csslib",
       "version": "1.0.2",
       "dependencies": [
@@ -1088,13 +1104,6 @@
       "name": "ffi",
       "version": "2.1.4",
       "dependencies": []
-    },
-    {
-      "name": "plugin_platform_interface",
-      "version": "2.1.8",
-      "dependencies": [
-        "meta"
-      ]
     },
     {
       "name": "flutter_plugin_android_lifecycle",

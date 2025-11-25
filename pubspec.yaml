@@ -77,6 +77,9 @@ dependencies:
   # HTTP & Web Scraping
   http: ^1.1.0
   html: ^0.15.4
+  
+  # Share Handling
+  receive_sharing_intent: ^1.8.0
 
 dev_dependencies:
   flutter_test:

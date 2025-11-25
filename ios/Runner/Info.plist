@@ -2,14 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>NextChord</string>
+	<key>AppGroupId</key>
+	<string>$(CUSTOM_GROUP_ID)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -33,9 +33,23 @@
 			</array>
 		</dict>
 		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>nextchord</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>nextchord</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ShareMedia</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			</array>
 		</dict>
 	</array>
@@ -43,18 +57,24 @@
 	<string>8</string>
 	<key>GIDClientID</key>
 	<string>466612959108-fheda65jpk2i2se9pfdloi8a24nm5rki.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>NextChord may use Bluetooth to connect with external audio devices and MIDI controllers for enhanced music functionality.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NextChord uses the microphone to tune your guitar and other instruments by analyzing the pitch of the notes you play.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NextChord needs access to your photo library to let you choose images for songs and setlists in your music collection.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
-	<key>UIStatusBarHidden</key>
-	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIStatusBarHidden</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -68,11 +88,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>NextChord needs access to your photo library to let you choose images for songs and setlists in your music collection.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>NextChord uses the microphone to tune your guitar and other instruments by analyzing the pitch of the notes you play.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>NextChord may use Bluetooth to connect with external audio devices and MIDI controllers for enhanced music functionality.</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
 </dict>
 </plist>
