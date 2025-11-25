@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -6,7 +7,7 @@ import '../../domain/entities/shared_import_payload.dart';
 import '../../domain/entities/song.dart';
 import '../../services/import/share_import_service.dart';
 import '../../core/widgets/loading_wait.dart';
-import '../../../main.dart' as main; // Import for myDebug and navigatorKey
+import '../../../main.dart' as main; // Import for navigatorKey
 import '../screens/song_editor_screen_refactored.dart';
 import 'song_provider.dart';
 
@@ -21,20 +22,23 @@ class ShareImportProvider extends ChangeNotifier {
   bool get isProcessingShare => _isProcessingShare;
 
   ShareImportProvider() {
-    _initializeShareHandling();
+    initialize();
   }
 
-  void _initializeShareHandling() {
-    // Listen for shared media (text, URLs)
-    _intentDataStreamSubscription = ReceiveSharingIntent.instance
-        .getMediaStream()
-        .listen(_handleSharedMedia, onError: (error) {
-      _isProcessingShare = false;
-      notifyListeners();
-    });
+  void initialize() {
+    // Only initialize sharing intent on mobile platforms (iOS/Android)
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      _intentDataStreamSubscription = ReceiveSharingIntent.instance
+          .getMediaStream()
+          .listen(_handleSharedMedia, onError: (error) {
+        _isProcessingShare = false;
+        notifyListeners();
+      });
 
-    // Check for any pending intents when app starts
-    _checkInitialIntents();
+      // Check for any pending intents when app starts
+      _checkInitialIntents();
+    }
   }
 
   Future<void> _checkInitialIntents() async {
@@ -120,30 +124,21 @@ class ShareImportProvider extends ChangeNotifier {
     // Use the global navigator key to navigate
     final context = main.navigatorKey.currentContext;
     if (context != null) {
-      main.myDebug(
-          'ShareImportProvider: Opening song editor for imported song ID: ${song.id}');
       final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => SongEditorScreenRefactored(song: song),
         ),
       );
-      main.myDebug('ShareImportProvider: Song editor returned result: $result');
 
       // Refresh the song list if the song was saved successfully
       if (result == true && context.mounted) {
-        main.myDebug(
-            'ShareImportProvider: Refreshing song list after successful save');
         try {
           final songProvider =
               Provider.of<SongProvider>(context, listen: false);
           await songProvider.loadSongs();
-          main.myDebug('ShareImportProvider: Song list refresh completed');
         } catch (e) {
-          main.myDebug('ShareImportProvider: Error refreshing song list: $e');
+          // Error refreshing song list
         }
-      } else {
-        main.myDebug(
-            'ShareImportProvider: Not refreshing - result was not true or context not mounted');
       }
     }
   }

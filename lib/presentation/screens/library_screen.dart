@@ -8,7 +8,6 @@ import '../widgets/tag_edit_dialog.dart';
 import '../widgets/sidebar_select_all_bar.dart';
 import '../widgets/add_songs_to_setlist_modal.dart';
 import 'song_editor_screen_refactored.dart';
-import '../../../main.dart' as main;
 import 'song_viewer_screen.dart';
 import '../../core/widgets/responsive_config.dart';
 
@@ -718,8 +717,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 title: const Text('Edit'),
                 onTap: () async {
                   Navigator.pop(context);
-                  main.myDebug(
-                      'LibraryScreen: Opening song editor for song ID: ${song.id}');
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -728,15 +725,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     ),
                   );
                   // Refresh the list if the song was updated
-                  main.myDebug(
-                      'LibraryScreen: Song editor returned result: $result, mounted: ${context.mounted}');
                   if (result == true && context.mounted) {
-                    main.myDebug(
-                        'LibraryScreen: Refreshing song list after edit');
                     context.read<SongProvider>().loadSongs();
-                  } else {
-                    main.myDebug(
-                        'LibraryScreen: NOT refreshing song list - result was not true or context not mounted');
                   }
                 },
               ),

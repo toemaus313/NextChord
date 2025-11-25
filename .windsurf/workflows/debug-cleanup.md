@@ -10,6 +10,7 @@ This is an **iterative loop task**: you must keep running analysis and fixing er
 ### High-Level Goal
 
 - Remove **all debugging / troubleshooting code** that was added during development.
+     -EXCEPTION! Look in the debugs_active.md document for the START OF EXCEPTIONS and END OF EXCEPTIONS areas. ANything in that section needs to NOT be removed when a debug cleanup is run
 - Fix **all resulting compilation and analysis errors** so the project builds cleanly again.
 - Do **not** change real app behavior, business logic, or UI beyond what is strictly necessary to remove debug noise.
 - Respect my preference: **do not run `flutter run` automatically**, but you MAY run other Flutter/Dart commands (see below).

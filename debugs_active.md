@@ -1,13 +1,13 @@
 # Active Debug Logs - NextChord Codebase
 
-## Status: ACTIVE DEBUG LOGGING 
+## Status: DEBUG CLEANUP COMPLETED
 
 **Updated**: 2025-11-25  
-**Purpose**: Existing sync functionality + Global error handling + MIDI device management
+**Purpose**: SQLite and sync debugging only (general debugging removed)
 
 ---
 
-## Current Active Debug Statements
+## Current Active Debug Statements (SQLite/Sync Only)
 
 ### Global Debug Foundation
 - **File**: `lib/main.dart`
@@ -22,22 +22,6 @@
 - **Message**: `"[$timestamp] GLOBAL ERROR: $error"` and `"[$timestamp] FRAMEWORK ERROR: $error"`
 - **Trigger**: Catches all unhandled exceptions including SQLite errors throughout the app
 - **Description**: App-wide error catching to capture SQLite constraint failures and similar exceptions
-
-### App Control Modal MIDI Learn Debug Logging
-- **File**: `lib/presentation/widgets/app_control_modal.dart`
-- **Location**: Lines 184-194 (_handleMidiLearn method)
-- **Messages**: 
-  - `"[$timestamp] MIDI Learn: Discarded event from [device name] ([device id]) - Only accepting from selected device ID: [selected id]"`
-  - `"[$timestamp] MIDI Learn: Accepted event from [device name] ([device id])"`
-- **Trigger**: When MIDI Learn mode is active and MIDI messages are received
-- **Description**: Logs device filtering for MIDI Learn - shows which events are accepted vs discarded based on selected device
-
-### App Control Modal Device Detection Debug Logging
-- **File**: `lib/presentation/widgets/app_control_modal.dart`
-- **Location**: Lines 599-608 (_buildDeviceSelection method)
-- **Message**: `"[$timestamp] Device selection: Found [N] available devices"` and `"[$timestamp] Device: [device name] (ID: [device id])"`
-- **Trigger**: When the device selection dropdown is built/rebuilt
-- **Description**: Shows available MIDI devices detected by the system for the device dropdown
 
 ### Google Sync Service Debug Logging
 - **File**: `lib/services/sync/google_drive_sync_service.dart`
@@ -61,26 +45,33 @@
 - **Message**: `"[$timestamp] Local db change successfully sent to cloud"`
 - **Trigger**: When local changes are successfully uploaded to Google Drive
 
-### Metronome Count-In Debug Logging
-- **File**: `lib/presentation/providers/metronome_provider.dart`
-- **Location**: Lines 419, 427, 441, 445 (_handleCountInTick method)
-- **Messages**: 
-  - `"[$timestamp] COUNT-IN: _countInBeatsRemaining=[value], _beatsPerMeasure=[value]"`
-  - `"[$timestamp] COUNT-IN: totalBeatsSoFar=[value], _currentCountInBeat=[value]"`
-  - `"[$timestamp] COUNT-IN: After decrement _countInBeatsRemaining=[value]"`
-  - `"[$timestamp] COUNT-IN: Finished, transitioning to normal operation"`
-- **Trigger**: During metronome count-in sequence on each tick
-- **Description**: Tracks beat calculation and counting logic to troubleshoot count-in beat numbering issues
+### Song Repository Database Debug Logging
+- **File**: `lib/data/repositories/song_repository.dart`
+- **Function**: Local `myDebug(String message)` function
+- **Messages**: Database operation tracking and SQLite error reporting
+- **Trigger**: During database insert/update operations and SQLite failures
 
-### Metronome Warm-up Debug Logging
-- **File**: `lib/presentation/providers/metronome_provider.dart`
-- **Location**: Lines 114, 120, 162, 259 (warm-up phase)
-- **Messages**:
-  - `"WARM-UP: Starting [N]-beat warm-up phase for timing stabilization"`
-  - `"WARM-UP: Beat [N]/[total] (silent, timing stabilization)"`
-  - `"WARM-UP: Complete! Starting MIDI clock and count-in/playback"`
-- **Trigger**: During metronome startup warm-up phase before count-in
-- **Description**: Tracks the silent warm-up period where timing engine stabilizes before starting MIDI clock and count-in
+---
+
+## What Was Removed (Debug Cleanup)
+
+### General Debugging Removed:
+- **Song Editor**: All conversion, save, and validation debugging
+- **Song Persistence Service**: All save/update operation debugging
+- **Song Metadata Form**: All form validation debugging
+- **Share Import Provider**: All import flow debugging
+- **Song Provider**: All song loading debugging
+- **Library Screen**: All navigation and refresh debugging
+- **Main App Initialization**: All app startup debugging
+
+### Files Cleaned:
+- `lib/presentation/screens/song_editor_screen_refactored.dart`
+- `lib/services/song_editor/song_persistence_service.dart`
+- `lib/presentation/widgets/song_editor/song_metadata_form.dart`
+- `lib/presentation/providers/share_import_provider.dart`
+- `lib/presentation/providers/song_provider.dart`
+- `lib/presentation/screens/library_screen.dart`
+- `lib/main.dart`
 
 ---
 
@@ -93,14 +84,15 @@
 4. **Remote Change Detection**: When the metadata polling detects changes in Google Drive
 5. **Successful Sync Application**: When remote changes are successfully applied to the local database
 6. **Successful Local Upload**: When local changes are successfully uploaded to Google Drive
-7. **MIDI Device Management**: Device detection, selection, and MIDI Learn filtering
-8. **Metronome Timing**: Count-in beat calculations and warm-up phase tracking
+7. **Database Operations**: SQLite insert/update operations and errors in song repository
 
 ### What Does NOT Get Logged:
 - Normal sync operations without changes
 - Network errors or authentication issues (handled silently)
 - Metadata polling when no changes are found
 - Manual sync operations without underlying changes
+- Song editor operations, form validation, file imports
+- App initialization and provider setup
 
 ---
 
@@ -110,23 +102,19 @@
 - iOS Share Extension uses equivalent Swift `myDebug()` function with same format
 - Debug output can be toggled globally via `isDebug` flag in `main.dart`
 - Global error handlers catch all unhandled exceptions app-wide
-- UG import debug provides complete visibility into share flow from iOS to database
-- Minimal logging approach - only logs key events with precise timing
+- Minimal logging approach - only logs key SQLite/sync events with precise timing
 - No performance impact on normal operations
 - Provides complete visibility into sync flow in both directions with timing information
 - SQLite errors and similar database exceptions are now captured globally
 
 ---
 
-## Future Debug Guidelines
-
-If adding more debug code:
-1. Use the standardized `myDebug()` function from `main.dart` (or equivalent in iOS)
-2. Update this file to document new debug statements
-3. Keep debug logging minimal and focused on key events
-4. Ensure debug code can be easily removed via automated cleanup
-
----
+*Last Updated: 2025-11-25 4:05 PM PST*  
+*Status: Debug Cleanup Completed - SQLite/Sync debugging preserved*
+- **Location**: Line 184 (sync completion)
+- **Message**: `"[$timestamp] Local db change successfully sent to cloud"`
+- **Trigger**: When local changes are successfully uploaded to Google Drive
+**END OF EXCEPTIONS SECTION**
 
 *Last Updated: 2025-11-25 12:22 PM PST*  
 *Status: Debugging UG Import Flow + Content Type Detection*

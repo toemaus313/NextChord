@@ -5,7 +5,6 @@ import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../core/services/database_change_service.dart';
-import '../../../main.dart' as main;
 
 /// Enum to track what type of song list is currently loaded
 enum SongListType { all, deleted, filtered }
@@ -122,7 +121,6 @@ class SongProvider extends ChangeNotifier {
 
   /// Load all songs from the repository
   Future<void> loadSongs() async {
-    main.myDebug('SongProvider: loadSongs called');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -131,28 +129,19 @@ class SongProvider extends ChangeNotifier {
 
     try {
       _songs = await _repository.getAllSongs();
-      main.myDebug('SongProvider: Loaded ${_songs.length} songs from database');
-      main.myDebug(
-          'SongProvider: Song IDs: ${_songs.map((s) => s.id).take(10).join(", ")}${_songs.length > 10 ? "..." : ""}');
       _applySearch();
-      main.myDebug(
-          'SongProvider: After _applySearch, filtered songs count: ${_filteredSongs.length}');
       _errorMessage = null;
     } on SongRepositoryException catch (e) {
-      main.myDebug(
-          'SongProvider: Load error (SongRepositoryException): ${e.message}');
       _errorMessage = e.message;
       _songs = [];
       _filteredSongs = [];
     } catch (e) {
-      main.myDebug('SongProvider: Load error (unexpected): $e');
       _errorMessage = 'An unexpected error occurred: $e';
       _songs = [];
       _filteredSongs = [];
     } finally {
       _isLoading = false;
       notifyListeners();
-      main.myDebug('SongProvider: loadSongs completed, notifyListeners called');
     }
   }
 

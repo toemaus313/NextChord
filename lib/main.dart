@@ -78,12 +78,8 @@ void main() async {
   // Initialize database
   final database = AppDatabase();
 
-  myDebug('MAIN: App initialized, database created');
-
   // Initialize services that depend on the database
   ShareImportService().initialize(database);
-
-  myDebug('MAIN: ShareImportService initialized');
 
   // Initialize database change monitoring service
   DatabaseChangeService().initialize();
@@ -162,14 +158,11 @@ class NextChordApp extends StatelessWidget {
   }
 
   Future<void> _initializeApp() async {
-    myDebug('MAIN: _initializeApp called');
     // Wait for next frame to ensure build phase is complete
     await Future.delayed(Duration.zero);
-    myDebug('MAIN: _initializeApp completed');
   }
 
   Widget _buildProviderTree(BuildContext context) {
-    myDebug('MAIN: _buildProviderTree called - Building provider tree');
     return MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: database),
