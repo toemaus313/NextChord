@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
@@ -132,40 +131,55 @@ class SongRepository {
   /// Insert a new song
   /// If no ID is provided, generates a UUID
   Future<String> insertSong(Song song) async {
+    myDebug(
+        'SongRepository: insertSong called - title="${song.title}", artist="${song.artist}"');
     try {
       final songToInsert = song.id.isEmpty
           ? song.copyWith(
-              id: const Uuid().v4(),
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             )
           : song.copyWith(updatedAt: DateTime.now());
 
+      myDebug(
+          'SongRepository: Created songToInsert with ID: ${songToInsert.id}');
       final model = _songToModel(songToInsert);
+      myDebug('SongRepository: Calling database.insertSong');
       await _db.insertSong(model);
+      myDebug('SongRepository: database.insertSong completed successfully');
 
       // Notify database change for auto-sync
       DatabaseChangeService()
           .notifyDatabaseChanged(table: 'songs', operation: 'update');
 
+      myDebug(
+          'SongRepository: insertSong successful, returning ID: ${songToInsert.id}');
       return songToInsert.id;
     } catch (e) {
+      myDebug('SongRepository: insertSong failed with error: $e');
       return song.id; // Return original ID on error
     }
   }
 
   /// Update an existing song
   Future<void> updateSong(Song song) async {
+    myDebug(
+        'SongRepository: updateSong called - ID="${song.id}", title="${song.title}"');
     try {
       final updatedSong = song.copyWith(updatedAt: DateTime.now());
       final model = _songToModel(updatedSong);
+      myDebug('SongRepository: Calling database.updateSong');
       await _db.updateSong(model);
+      myDebug('SongRepository: database.updateSong completed successfully');
 
       // Notify database change for auto-sync
       DatabaseChangeService()
           .notifyDatabaseChanged(table: 'songs', operation: 'update');
+      myDebug('SongRepository: updateSong successful');
     } catch (e) {
-      // Handle error silently
+      myDebug('SongRepository: updateSong failed with error: $e');
+      // Silently handle update errors for now
     }
   }
 

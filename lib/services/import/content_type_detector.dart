@@ -1,5 +1,3 @@
-import '../../../main.dart' as main;
-
 /// Service to detect the type of guitar content (tab vs chord-over-lyric)
 /// Used to route imported content to the appropriate parser
 class ContentTypeDetector {
@@ -10,12 +8,7 @@ class ContentTypeDetector {
   /// Our importers add those tags during conversion. Mixed content (mostly chords with
   /// some inline tab snippets) will be classified as CHORD format, which is correct.
   static bool isTabContent(String content) {
-    main.myDebug(
-        'ContentTypeDetector: Analyzing content (${content.length} chars)');
-
     if (content.isEmpty) {
-      main.myDebug(
-          'ContentTypeDetector: Empty content, defaulting to chord format');
       return false;
     }
 
@@ -43,8 +36,6 @@ class ContentTypeDetector {
       // Check for explicit tab string notation (e|B|G|D|A|E format)
       if (tabStringPattern.hasMatch(trimmed)) {
         tabLineCount++;
-        main.myDebug(
-            'ContentTypeDetector: Found tab line pattern: ${trimmed.substring(0, trimmed.length > 40 ? 40 : trimmed.length)}...');
       }
 
       // Check for lines with multiple pipes (very common in tabs, rare in chords)
@@ -62,11 +53,6 @@ class ContentTypeDetector {
     //   - Decrease threshold (e.g., 0.1 = 10%) to classify as TAB more aggressively
     final threshold = (totalLines * 0.2).round();
     final isTab = tabLineCount >= threshold && tabLineCount >= 3;
-
-    main.myDebug(
-        'ContentTypeDetector: Found $tabLineCount tab-like lines out of $totalLines total');
-    main.myDebug(
-        'ContentTypeDetector: Content classified as: ${isTab ? "TAB" : "CHORD"}');
 
     return isTab;
   }

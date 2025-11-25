@@ -1,6 +1,7 @@
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../../data/repositories/song_repository.dart';
+import '../../../main.dart' as main;
 
 /// Service for handling song persistence operations (create, update, delete)
 class SongPersistenceService {
@@ -10,12 +11,17 @@ class SongPersistenceService {
     required String? midiProfileId,
     required SongRepository repository,
   }) async {
+    main.myDebug(
+        'SongPersistenceService: saveSong called - title="${song.title}", artist="${song.artist}"');
     try {
       // Ensure database schema is up to date before operations
       // await repository.database.ensureMidiProfilesTable(); // MIDI profiles removed during refactoring
 
       // Save the song
+      main.myDebug('SongPersistenceService: Calling repository.insertSong');
       final newSongId = await repository.insertSong(song);
+      main.myDebug(
+          'SongPersistenceService: insertSong returned ID: $newSongId');
       final savedSong = song.copyWith(id: newSongId);
 
       // Assign MIDI profile if provided
@@ -23,8 +29,11 @@ class SongPersistenceService {
         await repository.assignMidiProfileToSong(newSongId, midiProfileId);
       }
 
+      main.myDebug(
+          'SongPersistenceService: Save successful, returning success result');
       return SongPersistenceResult.success(savedSong);
     } catch (e) {
+      main.myDebug('SongPersistenceService: Save failed with error: $e');
       return SongPersistenceResult.failure('Failed to save song: $e');
     }
   }
@@ -35,18 +44,29 @@ class SongPersistenceService {
     required String? midiProfileId,
     required SongRepository repository,
   }) async {
+    main.myDebug(
+        'SongPersistenceService: updateSong called - ID="${song.id}", title="${song.title}"');
     try {
       // Ensure database schema is up to date before operations
       // await repository.database.ensureMidiProfilesTable(); // MIDI profiles removed during refactoring
 
       // Update the song
+      main.myDebug('SongPersistenceService: Calling repository.updateSong');
       await repository.updateSong(song);
+      main.myDebug('SongPersistenceService: repository.updateSong completed');
 
       // Update MIDI profile assignment
-      await repository.assignMidiProfileToSong(song.id, midiProfileId);
+      if (midiProfileId != null) {
+        main.myDebug(
+            'SongPersistenceService: Assigning MIDI profile: $midiProfileId');
+        await repository.assignMidiProfileToSong(song.id, midiProfileId);
+      }
 
+      main.myDebug(
+          'SongPersistenceService: Update successful, returning success result');
       return SongPersistenceResult.success(song);
     } catch (e) {
+      main.myDebug('SongPersistenceService: Update failed with error: $e');
       return SongPersistenceResult.failure('Failed to update song: $e');
     }
   }

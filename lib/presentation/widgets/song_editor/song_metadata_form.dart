@@ -3,6 +3,7 @@ import '../../../services/song_editor/transposition_service.dart';
 import 'package:flutter/services.dart';
 import 'capo_icon_painter.dart';
 import 'metronome_icon_painter.dart';
+import '../../../main.dart' as main;
 
 /// Form widget for song metadata fields (title, artist, key, BPM, capo, etc.)
 class SongMetadataForm extends StatelessWidget {
@@ -20,10 +21,22 @@ class SongMetadataForm extends StatelessWidget {
   final ValueChanged<int> onCapoChanged;
   final ValueChanged<String> onTimeSignatureChanged;
 
-  /// Normalize flat keys to sharp keys for dropdown compatibility
-  static String _normalizeKey(String key) {
-    return TranspositionService.flatToSharpMap[key] ?? key;
-  }
+  const SongMetadataForm({
+    super.key,
+    required this.titleController,
+    required this.artistController,
+    required this.bpmController,
+    required this.durationController,
+    required this.selectedKey,
+    required this.selectedCapo,
+    required this.selectedTimeSignature,
+    required this.textColor,
+    required this.isDarkMode,
+    required this.hasSetlistContext,
+    required this.onKeyChanged,
+    required this.onCapoChanged,
+    required this.onTimeSignatureChanged,
+  });
 
   static const List<String> keys = [
     'C',
@@ -54,22 +67,10 @@ class SongMetadataForm extends StatelessWidget {
 
   static const List<String> timeSignatures = ['4/4', '3/4', '6/8', '2/4'];
 
-  const SongMetadataForm({
-    super.key,
-    required this.titleController,
-    required this.artistController,
-    required this.bpmController,
-    required this.durationController,
-    required this.selectedKey,
-    required this.selectedCapo,
-    required this.selectedTimeSignature,
-    required this.textColor,
-    required this.isDarkMode,
-    required this.hasSetlistContext,
-    required this.onKeyChanged,
-    required this.onCapoChanged,
-    required this.onTimeSignatureChanged,
-  });
+  /// Normalize flat keys to sharp keys for dropdown compatibility
+  static String _normalizeKey(String key) {
+    return TranspositionService.flatToSharpMap[key] ?? key;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,8 +93,12 @@ class SongMetadataForm extends StatelessWidget {
           textCapitalization: TextCapitalization.words,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
+              main.myDebug(
+                  'SongMetadataForm: Title validation failed - value: "$value"');
               return 'Title is required';
             }
+            main.myDebug(
+                'SongMetadataForm: Title validation passed - value: "$value"');
             return null;
           },
         ),
@@ -116,8 +121,12 @@ class SongMetadataForm extends StatelessWidget {
           textCapitalization: TextCapitalization.words,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
+              main.myDebug(
+                  'SongMetadataForm: Artist validation failed - value: "$value"');
               return 'Artist is required';
             }
+            main.myDebug(
+                'SongMetadataForm: Artist validation passed - value: "$value"');
             return null;
           },
         ),
@@ -237,12 +246,17 @@ class SongMetadataForm extends StatelessWidget {
       ],
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
+          main.myDebug('SongMetadataForm: BPM validation failed - empty value');
           return 'Required';
         }
         final bpm = int.tryParse(value.trim());
         if (bpm == null || bpm < 1 || bpm > 300) {
+          main.myDebug(
+              'SongMetadataForm: BPM validation failed - invalid value: "$value"');
           return 'Invalid';
         }
+        main.myDebug(
+            'SongMetadataForm: BPM validation passed - value: "$value"');
         return null;
       },
     );

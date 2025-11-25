@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../../core/services/database_change_service.dart';
@@ -92,18 +93,39 @@ class AppDatabase extends _$AppDatabase {
 
   /// Insert a new song
   Future<void> insertSong(SongModel song) async {
+    debugPrint(
+        '[DB] insertSong called - ID: "${song.id}", title: "${song.title}"');
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     await into(songs).insert(songWithTimestamp);
+    debugPrint('[DB] insertSong completed for ID: "${song.id}"');
+
+    // Verify the song was actually inserted
+    final inserted = await (select(songs)
+          ..where((tbl) => tbl.id.equals(song.id)))
+        .getSingleOrNull();
+    debugPrint(
+        '[DB] Verification query for "${song.id}": ${inserted != null ? "FOUND" : "NOT FOUND"}');
   }
 
   /// Update an existing song
   Future<void> updateSong(SongModel song) async {
+    debugPrint(
+        '[DB] updateSong called - ID: "${song.id}", title: "${song.title}"');
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
-    await update(songs).replace(songWithTimestamp);
+    final rowsAffected = await update(songs).replace(songWithTimestamp);
+    debugPrint(
+        '[DB] updateSong completed for ID: "${song.id}", rows affected: $rowsAffected');
+
+    // Verify the song exists after update
+    final updated = await (select(songs)
+          ..where((tbl) => tbl.id.equals(song.id)))
+        .getSingleOrNull();
+    debugPrint(
+        '[DB] Verification query for "${song.id}": ${updated != null ? "FOUND (title: ${updated.title})" : "NOT FOUND"}');
   }
 
   // Pedal Mappings CRUD operations

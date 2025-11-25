@@ -16,6 +16,7 @@ import '../../services/song_editor/song_import_service.dart';
 import '../../services/song_editor/transposition_service.dart';
 import '../../services/song_editor/tab_auto_completion_service.dart';
 import '../../services/song_editor/song_persistence_service.dart';
+import '../../../main.dart' as main;
 
 /// Screen for creating or editing a song - Refactored version
 class SongEditorScreenRefactored extends StatefulWidget {
@@ -70,10 +71,20 @@ class _SongEditorScreenRefactoredState
     _loadMidiProfiles();
     _bodyController.addListener(_onBodyTextChanged);
     _bodyFocusNode.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) {}
     });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _artistController.dispose();
+    _bodyController.dispose();
+    _bpmController.dispose();
+    _durationController.dispose();
+    _bodyFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// Load MIDI profiles for dropdown
@@ -106,12 +117,18 @@ class _SongEditorScreenRefactoredState
 
   /// Initialize form fields with existing song data if editing
   void _initializeFields() async {
+    main.myDebug(
+        'SongEditorScreenRefactored: _initializeFields called - widget.song is null: ${widget.song == null}');
     if (widget.song != null) {
       final song = widget.song!;
+      main.myDebug(
+          'SongEditorScreenRefactored: Initializing fields for song ID: ${song.id}, title: "${song.title}", artist: "${song.artist}"');
       _titleController.text = song.title;
       _artistController.text = song.artist;
       _bodyController.text = song.body;
       _bpmController.text = song.bpm.toString();
+      main.myDebug(
+          'SongEditorScreenRefactored: Set controllers - title: "${_titleController.text}", artist: "${_artistController.text}", BPM: "${_bpmController.text}"');
 
       // Load MIDI profile for song
       try {
@@ -242,7 +259,7 @@ class _SongEditorScreenRefactoredState
 
     // Use the tab auto-completion service
     final result = TabAutoCompletionService.checkForAutoCompletion(
-      textBeforeTab + '\t',
+      '$textBeforeTab\t',
       textBeforeTab,
       cursorPosition,
     );
@@ -282,9 +299,26 @@ class _SongEditorScreenRefactoredState
   }
 
   Future<void> _saveSong() async {
-    if (!_formKey.currentState!.validate()) return;
+    main.myDebug(
+        'SongEditorScreenRefactored: _saveSong called - CURRENT FORM VALUES:');
+    main.myDebug(
+        'SongEditorScreenRefactored: Title controller: "${_titleController.text}"');
+    main.myDebug(
+        'SongEditorScreenRefactored: Artist controller: "${_artistController.text}"');
+    main.myDebug(
+        'SongEditorScreenRefactored: BPM controller: "${_bpmController.text}"');
+    main.myDebug('SongEditorScreenRefactored: Song ID: ${widget.song?.id}');
+    final formValid = _formKey.currentState!.validate();
+    main.myDebug(
+        'SongEditorScreenRefactored: Form validation result: $formValid');
+    if (!formValid) {
+      main.myDebug(
+          'SongEditorScreenRefactored: SAVE ABORTED - Form validation failed');
+      return;
+    }
 
     setState(() => _isSaving = true);
+    main.myDebug('SongEditorScreenRefactored: Starting save process');
 
     try {
       final now = DateTime.now();
@@ -306,18 +340,31 @@ class _SongEditorScreenRefactoredState
         updatedAt: now,
       );
 
+      main.myDebug(
+          'SongEditorScreenRefactored: Created song entity - title="${song.title}", artist="${song.artist}", id="${song.id}"');
+
       final songProvider = context.read<SongProvider>();
+      main.myDebug(
+          'SongEditorScreenRefactored: Got SongProvider, starting save operation');
       SongPersistenceResult result;
 
-      if (widget.song != null) {
+      // Check if ID is empty to decide between insert and update
+      // Imported songs have empty ID even though widget.song != null
+      if (song.id.isNotEmpty) {
         // Update existing song
+        main.myDebug(
+            'SongEditorScreenRefactored: Updating existing song with ID: ${song.id}');
         result = await SongPersistenceService.updateSong(
           song: song,
           midiProfileId: _selectedMidiProfile?.id,
           repository: songProvider.repository,
         );
+        main.myDebug(
+            'SongEditorScreenRefactored: Update result - success: ${result.success}, error: ${result.error}');
 
         if (result.success && mounted) {
+          main.myDebug(
+              'SongEditorScreenRefactored: Update successful, showing success message');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Song updated successfully'),
@@ -326,27 +373,33 @@ class _SongEditorScreenRefactoredState
           );
         }
       } else {
-        // Create new song
+        // Create new song (including imported songs with empty ID)
+        main.myDebug(
+            'SongEditorScreenRefactored: Creating new song (empty ID)');
         result = await SongPersistenceService.saveSong(
           song: song,
           midiProfileId: _selectedMidiProfile?.id,
           repository: songProvider.repository,
         );
+        main.myDebug(
+            'SongEditorScreenRefactored: Save result - success: ${result.success}, error: ${result.error}');
 
-        if (result.success && result.song != null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Song created successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            context.read<GlobalSidebarProvider>().navigateToSong(result.song!);
-          }
+        if (result.success && mounted) {
+          main.myDebug(
+              'SongEditorScreenRefactored: Save successful, showing success message');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Song saved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.read<GlobalSidebarProvider>().navigateToSong(result.song!);
         }
       }
 
       if (!result.success && mounted) {
+        main.myDebug(
+            'SongEditorScreenRefactored: Save failed, showing error message: ${result.error}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result.error ?? 'Unknown error'),
@@ -357,65 +410,35 @@ class _SongEditorScreenRefactoredState
       }
 
       if (result.success && mounted) {
+        main.myDebug(
+            'SongEditorScreenRefactored: Save successful, navigating back with result: true');
         Navigator.of(context).pop(true); // Return true to indicate success
+        main.myDebug(
+            'SongEditorScreenRefactored: Navigation completed - song should appear in list');
       }
-    } finally {
+    } catch (e, stackTrace) {
+      main.myDebug('SongEditorScreenRefactored: Save error: $e');
+      main.myDebug('SongEditorScreenRefactored: Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isSaving = false;
         });
-      }
-    }
-  }
-
-  /// Import from ChordPro file and auto-populate fields
-  Future<void> _importFromFile() async {
-    final result = await SongImportService.importFromFile();
-
-    if (result != null && result.success && mounted) {
-      setState(() {
-        if (result.title != null) {
-          _titleController.text = result.title!;
-        }
-        if (result.artist != null) {
-          _artistController.text = result.artist!;
-        }
-        if (result.key != null &&
-            TranspositionService.getAvailableKeys().contains(result.key)) {
-          _selectedKey = result.key!;
-        }
-        if (result.capo != null) {
-          _selectedCapo = result.capo!;
-        }
-        if (result.tempo != null) {
-          _bpmController.text = result.tempo!;
-        }
-        if (result.timeSignature != null) {
-          _selectedTimeSignature = result.timeSignature!;
-        }
-        if (result.duration != null) {
-          _durationController.text = result.duration!;
-        }
-        if (result.body != null) {
-          _bodyController.text = result.body!;
-        }
-      });
-
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Song imported successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text('Save failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to import song'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } finally {
+      if (mounted) {
+        main.myDebug(
+            'SongEditorScreenRefactored: Finally block, resetting saving state');
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -426,6 +449,18 @@ class _SongEditorScreenRefactoredState
         const SnackBar(
           content:
               Text('Ultimate Guitar import requires URL - feature coming soon'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  Future<void> _importFromFile() async {
+    // For now, show a placeholder - this would need file picker implementation
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('File import feature coming soon'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -498,18 +533,6 @@ class _SongEditorScreenRefactoredState
     // For now, this is a placeholder to avoid compilation errors
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _artistController.dispose();
-    _bodyController.dispose();
-    _bpmController.dispose();
-    _durationController.dispose();
-    _bodyFocusNode.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   /// Update editor font size with clamping
   void _updateEditorFontSize(double newSize) {
     setState(() {
@@ -552,14 +575,13 @@ class _SongEditorScreenRefactoredState
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.song != null;
-    final themeProvider = context.watch<ThemeProvider>();
+    final themeProvider = context.read<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final backgroundColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
     final actionColor =
         isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
-    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
-    final hideMetadata = _isMetadataHidden || isKeyboardOpen;
+    final hideMetadata = _isMetadataHidden;
 
     return Scaffold(
       backgroundColor: backgroundColor,

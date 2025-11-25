@@ -2,9 +2,6 @@ import 'package:nextchord/domain/entities/shared_import_payload.dart';
 import 'package:nextchord/core/utils/ug_text_converter.dart';
 import 'package:nextchord/domain/entities/song.dart';
 import 'package:nextchord/data/database/app_database.dart';
-import 'package:uuid/uuid.dart';
-import '../../../main.dart' as main; // Import with prefix for main.myDebug
-import 'content_type_detector.dart';
 
 /// Service for handling shared content from other apps (e.g., Ultimate Guitar)
 /// Routes content to appropriate parsers based on source and type detection
@@ -20,48 +17,27 @@ class ShareImportService {
   }
 
   /// Main entry point for handling shared content
-  /// Returns a Song entity ready for the editor (does NOT save to database)
-  /// The UI layer should navigate to the editor with this Song for user review
+  /// Returns a Song entity with EMPTY ID and raw text in body
+  /// This follows the exact same flow as creating a new song
   Future<Song?> handleSharedContent(SharedImportPayload payload) async {
-    main.myDebug(
-        'ShareImportService: handleSharedContent called with payload: $payload');
     try {
-      final song = await importFromSharedContent(payload);
-      main.myDebug(
-          'ShareImportService: importFromSharedContent completed successfully');
-      return song;
+      if (payload.text != null && payload.text!.isNotEmpty) {
+        // Just put raw text in body with empty ID
+        // User fills in title/artist, save generates ID - EXACT same flow as new song
+        return Song(
+          id: '', // EMPTY ID - insertSong will generate it
+          title: '', // User must fill in
+          artist: '', // User must fill in
+          body: payload.text!, // Raw text from lyrics.txt
+          tags: const [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      } else {
+        throw Exception('No text content in shared data');
+      }
     } catch (e) {
-      main.myDebug('ShareImportService: Error handling shared content: $e');
-      return null;
-    }
-  }
-
-  /// Route shared content to the correct parser
-  /// Returns a Song entity (does NOT save to database)
-  Future<Song?> importFromSharedContent(SharedImportPayload payload) async {
-    main.myDebug('ShareImportService: importFromSharedContent starting');
-    // 1) Identify UG vs non-UG
-    if (!payload.isFromUltimateGuitar) {
-      main.myDebug(
-          'ShareImportService: Non-UG payload, handling generic import');
-      // Use existing generic import behavior (no changes to current flows)
-      return await _handleGenericImport(payload);
-    }
-
-    main.myDebug('ShareImportService: UG payload detected');
-
-    // 2) For UG, decide tab vs chord-over-lyric using content analysis
-    final contentText = payload.text ?? '';
-    final isTab = ContentTypeDetector.isTabContent(contentText);
-
-    if (isTab) {
-      main.myDebug('ShareImportService: UG TAB import triggered');
-      return await importUltimateGuitarTabSong(contentText,
-          sourceUrl: payload.url);
-    } else {
-      main.myDebug('ShareImportService: UG chord-over-lyric import triggered');
-      return await importUltimateGuitarChordSong(contentText,
-          sourceUrl: payload.url);
+      throw Exception('Failed to handle shared content: $e');
     }
   }
 
@@ -69,21 +45,15 @@ class ShareImportService {
   /// Returns a Song entity (does NOT save to database)
   Future<Song> importUltimateGuitarChordSong(String rawText,
       {Uri? sourceUrl}) async {
-    main.myDebug(
-        'ShareImportService: Importing UG chord song, text length=${rawText.length}');
     try {
       final result = UGTextConverter.convertToChordPro(rawText);
       final chordProText = result['chordpro'] as String;
       final metadata = result['metadata'] as Map<String, String>;
 
-      main.myDebug('ShareImportService: Extracted metadata: $metadata');
-      main.myDebug(
-          'ShareImportService: Converted to ChordPro, length=${chordProText.length}');
-
       // Create Song entity from parsed content
       // Leave title blank if not in ChordPro metadata - user must fill it in
       final song = Song(
-        id: const Uuid().v4(),
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: metadata['title'] ?? '',
         artist: metadata['artist'] ?? '',
         body: chordProText,
@@ -99,14 +69,8 @@ class ShareImportService {
         updatedAt: DateTime.now(),
       );
 
-      main.myDebug(
-          'ShareImportService: Created song entity: title="${song.title}", artist="${song.artist}"');
-      main.myDebug(
-          'ShareImportService: Returning song for editor (NOT saving to database)');
-
       return song;
     } catch (e) {
-      main.myDebug('ShareImportService: Failed to import UG chord song: $e');
       throw Exception('Failed to import UG chord song: $e');
     }
   }
@@ -115,8 +79,6 @@ class ShareImportService {
   /// Returns a Song entity (does NOT save to database)
   Future<Song> importUltimateGuitarTabSong(String rawText,
       {Uri? sourceUrl}) async {
-    main.myDebug(
-        'ShareImportService: Importing UG tab song, text length=${rawText.length}');
     try {
       final chordProText = convertUltimateGuitarTabExportToChordPro(rawText);
 
@@ -126,7 +88,7 @@ class ShareImportService {
       // Create Song entity from tab content
       // Leave title blank if not in metadata - user must fill it in
       final song = Song(
-        id: const Uuid().v4(),
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: metadata['title'] ?? '',
         artist: metadata['artist'] ?? '',
         body: chordProText,
@@ -135,14 +97,8 @@ class ShareImportService {
         updatedAt: DateTime.now(),
       );
 
-      main.myDebug(
-          'ShareImportService: Created tab song entity: title="${song.title}", artist="${song.artist}"');
-      main.myDebug(
-          'ShareImportService: Returning tab song for editor (NOT saving to database)');
-
       return song;
     } catch (e) {
-      main.myDebug('ShareImportService: Failed to import UG tab song: $e');
       throw Exception('Failed to import UG tab song: $e');
     }
   }
@@ -196,16 +152,6 @@ class ShareImportService {
     }
 
     return result.join('\n');
-  }
-
-  /// Handle non-UG imports using existing generic behavior
-  /// Returns a Song entity (does NOT save to database)
-  Future<Song?> _handleGenericImport(SharedImportPayload payload) async {
-    main.myDebug(
-        'ShareImportService: Handling generic import (no changes to existing behavior)');
-    // TODO: Route to existing generic import logic
-    // For now, return null to indicate unsupported content
-    return null;
   }
 
   /// Extract basic metadata from raw UG text (simplified version)
