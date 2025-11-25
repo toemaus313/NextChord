@@ -14,6 +14,7 @@ import 'metronome_settings_modal.dart';
 import 'guitar_tuner_modal.dart';
 import 'storage_settings_modal.dart';
 import 'app_control_modal.dart';
+import 'action_test_modal.dart';
 import 'sidebar_views/sidebar_menu_view.dart';
 import 'sidebar_views/sidebar_all_songs_view.dart';
 import 'sidebar_views/sidebar_setlist_view.dart';
@@ -337,6 +338,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToGuitarTuner: () => _showGuitarTuner(),
           onNavigateToStorageSettings: () => _showStorageSettings(),
           onNavigateToAppControl: () => _showAppControl(),
+          onNavigateToActionTest: () => _showActionTest(),
           isPhoneMode: _isActualPhone(context),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
@@ -394,6 +396,10 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   void _showAppControl() {
     // Use singleton instance since Provider is not available in this context
     AppControlModal.show(context, deviceManager: MidiDeviceManager());
+  }
+
+  void _showActionTest() {
+    ActionTestModal.show(context);
   }
 
   void _showAddSongsToSetlist() {

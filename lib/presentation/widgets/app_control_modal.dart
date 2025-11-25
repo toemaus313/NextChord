@@ -1,17 +1,15 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../domain/entities/app_control_action.dart';
-import '../../domain/entities/midi_message.dart';
-import '../../services/midi/midi_command_parser.dart';
-import '../../services/midi/midi_device_manager.dart';
-import '../../presentation/providers/song_provider.dart';
-import '../../domain/entities/midi_profile.dart';
 import '../../data/database/app_database.dart';
+import '../../domain/entities/app_control_action.dart';
+import '../../domain/entities/midi_profile.dart';
+import '../../services/midi/midi_device_manager.dart';
+import '../../services/midi/midi_command_parser.dart';
+import '../../domain/entities/midi_message.dart';
 import '../../presentation/widgets/templates/standard_modal_template.dart';
-import '../../data/repositories/song_repository.dart';
-import '../../services/midi/midi_action_dispatcher.dart';
-import 'dart:async';
+import '../../presentation/providers/song_provider.dart';
 
 /// Helper class for app control mappings with MIDI code support
 class AppControlMapping {
@@ -147,8 +145,10 @@ class _AppControlModalState extends State<AppControlModal> {
   /// Initialize the MIDI Action Dispatcher lazily
   Future<void> _initializeMidiDispatcher() async {
     try {
-      final repository = Provider.of<SongRepository>(context, listen: false);
-      await MidiActionDispatcher().initialize(repository);
+      // MidiActionDispatcher is now initialized in app_wrapper.dart with all providers
+      // No need to initialize here anymore
+      debugPrint(
+          'MidiActionDispatcher already initialized in app_wrapper.dart');
     } catch (e) {
       // Handle initialization error gracefully
       debugPrint('Failed to initialize MIDI dispatcher: $e');

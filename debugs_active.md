@@ -61,6 +61,27 @@
 - **Message**: `"[$timestamp] Local db change successfully sent to cloud"`
 - **Trigger**: When local changes are successfully uploaded to Google Drive
 
+### Metronome Count-In Debug Logging
+- **File**: `lib/presentation/providers/metronome_provider.dart`
+- **Location**: Lines 419, 427, 441, 445 (_handleCountInTick method)
+- **Messages**: 
+  - `"[$timestamp] COUNT-IN: _countInBeatsRemaining=[value], _beatsPerMeasure=[value]"`
+  - `"[$timestamp] COUNT-IN: totalBeatsSoFar=[value], _currentCountInBeat=[value]"`
+  - `"[$timestamp] COUNT-IN: After decrement _countInBeatsRemaining=[value]"`
+  - `"[$timestamp] COUNT-IN: Finished, transitioning to normal operation"`
+- **Trigger**: During metronome count-in sequence on each tick
+- **Description**: Tracks beat calculation and counting logic to troubleshoot count-in beat numbering issues
+
+### Metronome Warm-up Debug Logging
+- **File**: `lib/presentation/providers/metronome_provider.dart`
+- **Location**: Lines 114, 120, 162, 259 (warm-up phase)
+- **Messages**:
+  - `"WARM-UP: Starting [N]-beat warm-up phase for timing stabilization"`
+  - `"WARM-UP: Beat [N]/[total] (silent, timing stabilization)"`
+  - `"WARM-UP: Complete! Starting MIDI clock and count-in/playback"`
+- **Trigger**: During metronome startup warm-up phase before count-in
+- **Description**: Tracks the silent warm-up period where timing engine stabilizes before starting MIDI clock and count-in
+
 ---
 
 ## Debug Behavior

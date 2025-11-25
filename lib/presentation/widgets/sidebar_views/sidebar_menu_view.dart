@@ -22,6 +22,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToGuitarTuner;
   final VoidCallback onNavigateToStorageSettings;
   final VoidCallback onNavigateToAppControl;
+  final VoidCallback onNavigateToActionTest;
   final bool isPhoneMode;
   final bool showHeader;
 
@@ -39,6 +40,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToGuitarTuner,
     required this.onNavigateToStorageSettings,
     required this.onNavigateToAppControl,
+    required this.onNavigateToActionTest,
     this.isPhoneMode = false,
     this.showHeader = true,
   }) : super(key: key);
@@ -303,6 +305,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
                 title: 'Guitar Tuner',
                 isSelected: false,
                 onTap: widget.onNavigateToGuitarTuner,
+                isPhoneMode: widget.isPhoneMode,
+              ),
+              SidebarSubMenuItem(
+                title: 'ActionTest',
+                isSelected: false,
+                onTap: widget.onNavigateToActionTest,
                 isPhoneMode: widget.isPhoneMode,
               ),
             ]

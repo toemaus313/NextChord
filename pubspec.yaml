@@ -2,7 +2,7 @@ name: nextchord
 description: A cross-platform chord book and MIDI controller app for musicians.
 publish_to: 'none'
 
-version: 0.1.0+1
+version: 0.1.0+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

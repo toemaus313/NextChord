@@ -59,6 +59,12 @@ class MetronomeProvider extends ChangeNotifier {
   int _countInBeatsRemaining = 0; // Track remaining count-in beats
   int _currentCountInBeat = 0; // Track current count-in beat number for display
 
+  // Warm-up phase for timing stabilization
+  bool _isWarmingUp = false; // Track if we're in warm-up phase
+  int _warmUpBeatsRemaining = 0; // Track remaining warm-up beats
+  static const int _warmUpBeatsCount = 3; // Number of beats to warm up
+  bool _shouldStartCountIn = false; // Whether to start count-in after warm-up
+
   MetronomeProvider() {
     _ensurePlayerReady();
     initialize();
@@ -86,6 +92,12 @@ class MetronomeProvider extends ChangeNotifier {
 
     _tickCounter++;
 
+    // Handle warm-up phase (silent timing stabilization)
+    if (_isWarmingUp) {
+      _handleWarmUpTick();
+      return;
+    }
+
     // Handle count-in phase
     if (_isCountingIn) {
       _handleCountInTick();
@@ -94,6 +106,40 @@ class MetronomeProvider extends ChangeNotifier {
 
     // Handle normal metronome operation
     _handleNormalTick();
+  }
+
+  /// Handle warm-up ticks (silent, for timing stabilization)
+  void _handleWarmUpTick() {
+    if (_warmUpBeatsRemaining > 0) {
+      debugPrint(
+          'WARM-UP: Beat ${_warmUpBeatsCount - _warmUpBeatsRemaining + 1}/$_warmUpBeatsCount (silent, timing stabilization)');
+      _warmUpBeatsRemaining--;
+    }
+
+    if (_warmUpBeatsRemaining <= 0) {
+      // Warm-up complete, transition to actual operation
+      debugPrint(
+          'WARM-UP: Complete! Starting MIDI clock and count-in/playback');
+      _isWarmingUp = false;
+
+      // Start MIDI clock service now that timing is stable
+      _midiClockService?.setBpm(_tempoBpm);
+      _midiClockService?.start();
+
+      // Initialize count-in if requested
+      if (_shouldStartCountIn) {
+        _initializeCountIn();
+        // Immediately trigger the first count-in beat (don't wait for next tick)
+        _handleCountInTick();
+      } else {
+        // Skip count-in, go straight to normal operation
+        _isCountingIn = false;
+        _countInBeatsRemaining = 0;
+        _currentCountInBeat = 0;
+        // Immediately trigger the first normal beat
+        _handleNormalTick();
+      }
+    }
   }
 
   /// Initialize service references for MIDI integration
@@ -144,21 +190,25 @@ class MetronomeProvider extends ChangeNotifier {
   bool get isCountingIn => _isCountingIn;
   int get currentCountInBeat => _currentCountInBeat;
 
-  Future<void> start() async {
+  Future<void> start({bool skipCountIn = false}) async {
     if (_isRunning) return;
 
-    // Initialize count-in if enabled
-    _initializeCountIn();
+    // Store whether we should start count-in after warm-up
+    _shouldStartCountIn = !skipCountIn;
+
+    // Start warm-up phase (silent timing stabilization)
+    _isWarmingUp = true;
+    _warmUpBeatsRemaining = _warmUpBeatsCount;
+    debugPrint(
+        'WARM-UP: Starting ${_warmUpBeatsCount}-beat warm-up phase for timing stabilization');
 
     _isRunning = true;
     _tickCounter = 0;
 
-    // Start the rock-solid metronome
+    // Start the rock-solid metronome (but don't start MIDI clock yet)
     await _rockSolidMetronome?.start();
 
-    // Start the dedicated MIDI clock service
-    await _midiClockService?.setBpm(_tempoBpm);
-    await _midiClockService?.start();
+    // Note: MIDI clock and count-in will start after warm-up completes
 
     _safeNotifyListeners();
   }
@@ -182,6 +232,11 @@ class MetronomeProvider extends ChangeNotifier {
     _countInBeatsRemaining = 0;
     _currentCountInBeat = 0;
 
+    // Reset warm-up state
+    _isWarmingUp = false;
+    _warmUpBeatsRemaining = 0;
+    _shouldStartCountIn = false;
+
     if (_player != null) unawaited(_player!.stop());
     if (_accentPlayer != null) unawaited(_accentPlayer!.stop());
     if (notifyListeners) {
@@ -196,6 +251,30 @@ class MetronomeProvider extends ChangeNotifier {
   Future<void> _handleMidiSendOnTick(int tickCount) async {
     // MIDI clock timing is now handled by the dedicated MidiClockService
     // This method is kept for compatibility with existing registration
+  }
+
+  /// Play count-in only without continuing the metronome
+  Future<void> playCountInOnly() async {
+    if (_isRunning) {
+      stop();
+    }
+
+    // Store that we should start count-in after warm-up
+    _shouldStartCountIn = true;
+
+    // Start warm-up phase (silent timing stabilization)
+    _isWarmingUp = true;
+    _warmUpBeatsRemaining = _warmUpBeatsCount;
+    debugPrint(
+        'WARM-UP: Starting ${_warmUpBeatsCount}-beat warm-up phase for count-in only');
+
+    _isRunning = true;
+    _tickCounter = 0;
+
+    // Start the rock-solid metronome (MIDI clock will start after warm-up)
+    await _rockSolidMetronome?.start();
+
+    _safeNotifyListeners();
   }
 
   Future<void> toggle() async {
@@ -371,31 +450,47 @@ class MetronomeProvider extends ChangeNotifier {
   /// Handle tick during count-in phase
   void _handleCountInTick() {
     if (_countInBeatsRemaining > 0) {
-      _countInBeatsRemaining--;
+      debugPrint(
+          'COUNT-IN: _countInBeatsRemaining=$_countInBeatsRemaining, _beatsPerMeasure=$_beatsPerMeasure');
 
-      // Calculate beat within the current measure (1-based)
+      // Calculate beat within the current measure (1-based) BEFORE decrementing
       final totalBeatsSoFar =
           (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
-              _countInBeatsRemaining;
+              _countInBeatsRemaining +
+              1; // Add +1 to fix beat ordering
       _currentCountInBeat = ((totalBeatsSoFar - 1) % _beatsPerMeasure) + 1;
 
+      debugPrint(
+          'COUNT-IN: totalBeatsSoFar=$totalBeatsSoFar, _currentCountInBeat=$_currentCountInBeat');
+
       // During count-in: always flash border and show beat number
+      debugPrint('COUNT-IN: Triggering flash for beat $_currentCountInBeat');
       _triggerFlash();
 
       // Always play sound during count-in
       final isAccent = _currentCountInBeat == 1;
+      debugPrint(
+          'COUNT-IN: Playing audio for beat $_currentCountInBeat (accent: $isAccent)');
       unawaited(_playClick(isAccent: isAccent));
 
       _safeNotifyListeners();
+
+      // Decrement AFTER playing the current beat
+      _countInBeatsRemaining--;
+
+      debugPrint(
+          'COUNT-IN: After decrement _countInBeatsRemaining=$_countInBeatsRemaining');
     }
 
     if (_countInBeatsRemaining <= 0) {
+      debugPrint('COUNT-IN: Finished, transitioning to normal operation');
       // Count-in finished, transition to normal operation
       _isCountingIn = false;
       _currentCountInBeat = 0;
 
       // If "Count In Only" mode, stop here
       if (_settingsProvider?.tickAction == 'Count In Only') {
+        debugPrint('COUNT-IN: Stopping (count-in only mode)');
         stop();
       } else {
         _handleNormalTick();

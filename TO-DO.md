@@ -22,6 +22,7 @@ SETTINGS
 
  PUNCHLIST
 
+  - Go back and fix count-in display issue, not showing all 4 counts. countin_debug.md is in the prompts folder
   - Detection for tab in parser not working quite right
         -Ex. I Hold On - Dierks Bentley. It is detecting the first line as a title and making it a tag
         - I think its also adding the chordpro-style metadata tags. Stop doing that
@@ -33,3 +34,9 @@ SETTINGS
 - No back button once in a Tag in Songs
 - Capo reminder when loading song 
  - Tools: MIDI Sender and MIDI Viewer 
+
+**MIDI Actions testing
+ - When starting metronome, it missed an accent beat
+ - When metronome is active and repeat count in is executed, it needs to wait for the "1" and then execute inline and in time with the existing metronome.
+ - Evaluate/make a 'start metronome after count in' option for autoscroll
+ - 

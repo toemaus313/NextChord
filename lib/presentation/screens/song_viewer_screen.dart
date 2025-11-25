@@ -27,6 +27,7 @@ import '../mixins/song_viewer_gestures.dart';
 import '../../services/midi_integration_service.dart';
 import '../../services/setlist_navigation_service.dart';
 import '../../services/midi/midi_service.dart';
+import '../../services/midi/midi_action_dispatcher.dart';
 import 'song_editor_screen_refactored.dart';
 
 /// Full-screen song viewer for live performance
@@ -118,8 +119,22 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     _syncMetronomeSettings();
     _initializeAutoscroll();
     _sendMidiMappingOnOpen();
+    _updateMidiDispatcherCallbacks();
     _focusNode.requestFocus();
     _initializePageViewIndex();
+  }
+
+  /// Update MidiActionDispatcher with current song state callbacks
+  void _updateMidiDispatcherCallbacks() {
+    try {
+      MidiActionDispatcher().updateCurrentStateCallbacks(
+        getCurrentSongContent: () => _songViewerProvider.currentSong.body,
+        getCurrentScrollController: () => scrollController,
+        songViewerProvider: _songViewerProvider,
+      );
+    } catch (e) {
+      debugPrint('Failed to update MIDI dispatcher callbacks: $e');
+    }
   }
 
   /// Initialize PageView index to match current setlist position

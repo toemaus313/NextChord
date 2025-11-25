@@ -1,24 +1,24 @@
+import 'dart:io' show Platform;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'package:provider/provider.dart';
 import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
 import 'data/repositories/setlist_repository.dart';
-import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/providers/global_sidebar_provider.dart';
-import 'presentation/providers/metadata_visibility_provider.dart';
 import 'presentation/providers/metronome_provider.dart';
 import 'presentation/providers/metronome_settings_provider.dart';
 import 'presentation/providers/autoscroll_provider.dart';
+import 'presentation/providers/metadata_visibility_provider.dart';
+import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/setlist_provider.dart';
 import 'providers/sync_provider.dart';
-import 'services/midi/midi_service.dart';
-import 'core/services/sync_service_locator.dart';
-import 'core/services/database_change_service.dart';
 import 'presentation/widgets/app_wrapper.dart';
+import 'core/services/database_change_service.dart';
+import 'core/services/sync_service_locator.dart';
+import 'services/midi/midi_service.dart';
 
 // Global debug configuration
 bool isDebug = true;

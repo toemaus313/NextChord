@@ -3,9 +3,14 @@ import 'package:provider/provider.dart';
 import '../providers/metronome_provider.dart';
 import '../providers/metronome_settings_provider.dart';
 import '../providers/global_sidebar_provider.dart';
+import '../providers/autoscroll_provider.dart';
+import '../providers/setlist_provider.dart';
 import '../screens/home_screen.dart';
 import 'global_sidebar.dart';
 import '../../core/widgets/responsive_config.dart';
+import '../../data/repositories/song_repository.dart';
+import '../../services/midi/midi_action_dispatcher.dart';
+import '../../services/setlist_navigation_service.dart';
 
 /// Wrapper widget that contains the main app content and global sidebar in responsive layout
 /// - Desktop/Tablet: Split-pane layout with sidebar + content side-by-side
@@ -26,7 +31,42 @@ class _AppWrapperState extends State<AppWrapper> {
       final metronomeProvider = context.read<MetronomeProvider>();
       final settingsProvider = context.read<MetronomeSettingsProvider>();
       metronomeProvider.setSettingsProvider(settingsProvider);
+
+      // Initialize MidiActionDispatcher with all providers
+      _initializeMidiDispatcher();
     });
+  }
+
+  /// Initialize the MIDI Action Dispatcher with all provider dependencies
+  Future<void> _initializeMidiDispatcher() async {
+    try {
+      final repository = context.read<SongRepository>();
+      final metronomeProvider = context.read<MetronomeProvider>();
+      final autoscrollProvider = context.read<AutoscrollProvider>();
+      final globalSidebarProvider = context.read<GlobalSidebarProvider>();
+      final setlistProvider = context.read<SetlistProvider>();
+
+      // Create SetlistNavigationService
+      final setlistNavigationService = SetlistNavigationService(
+        songRepository: repository,
+        setlistProvider: setlistProvider,
+        globalSidebarProvider: globalSidebarProvider,
+      );
+
+      // Initialize MidiActionDispatcher
+      await MidiActionDispatcher().initialize(
+        repository: repository,
+        metronomeProvider: metronomeProvider,
+        autoscrollProvider: autoscrollProvider,
+        globalSidebarProvider: globalSidebarProvider,
+        setlistNavigationService: setlistNavigationService,
+        // Current state callbacks will be set dynamically when entering song viewer
+      );
+
+      debugPrint('MidiActionDispatcher initialized with all providers');
+    } catch (e) {
+      debugPrint('Failed to initialize MIDI dispatcher: $e');
+    }
   }
 
   @override

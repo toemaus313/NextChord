@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "nextchord",
-      "version": "0.1.0+1",
+      "version": "0.1.0+4",
       "dependencies": [
         "app_links",
         "audio_session",

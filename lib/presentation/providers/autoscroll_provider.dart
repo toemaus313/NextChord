@@ -20,6 +20,9 @@ class AutoscrollProvider extends ChangeNotifier {
   MetronomeSettingsProvider? _settingsProvider;
   bool _isCountingIn = false;
 
+  // Per-song count-in tracking for MIDI toggle behavior
+  bool _hasRunAutoscrollCountIn = false;
+
   // Getters
   bool get isActive => _isActive;
   int get durationSeconds => _durationSeconds;
@@ -34,6 +37,14 @@ class AutoscrollProvider extends ChangeNotifier {
     final metadata = ChordProParser.extractMetadata(chordProBody);
     _durationSeconds = metadata.durationInSeconds ?? _defaultDurationSeconds;
     _originalDurationSeconds = _durationSeconds;
+
+    // Reset count-in state when loading a new song
+    _hasRunAutoscrollCountIn = false;
+  }
+
+  /// Reset count-in state (call when exiting song or loading different song)
+  void resetCountInState() {
+    _hasRunAutoscrollCountIn = false;
   }
 
   // Set the scroll controller for the viewer
@@ -89,13 +100,59 @@ class AutoscrollProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle autoscroll on/off
+  // Toggle autoscroll on/off with MIDI-compatible count-in behavior
   void toggle() {
     if (_isActive) {
       stop();
     } else {
       start();
     }
+  }
+
+  /// Toggle autoscroll with MIDI-specific count-in behavior
+  void toggleWithMidiBehavior() {
+    if (_isActive) {
+      stop();
+    } else {
+      // Check if we should do count-in for MIDI toggle
+      final shouldCountIn = _shouldDoCountInForMidi();
+      if (shouldCountIn) {
+        _startCountIn();
+      } else {
+        _startScrolling();
+      }
+    }
+  }
+
+  // Check if count-in should be performed for MIDI toggle (first time only)
+  bool _shouldDoCountInForMidi() {
+    if (_metronomeProvider == null || _settingsProvider == null) {
+      return false;
+    }
+
+    // If autoscroll is already running, bypass count-in
+    if (_isActive) {
+      return false;
+    }
+
+    // If we've already run count-in for this song, don't run it again
+    if (_hasRunAutoscrollCountIn) {
+      return false;
+    }
+
+    // Check if count-in is enabled (not set to Off)
+    final countInMeasures = _settingsProvider!.countInMeasures;
+    if (countInMeasures == 0) {
+      return false;
+    }
+
+    // Check if scroll position is at the beginning (within 50 pixels)
+    if (_scrollController != null && _scrollController!.hasClients) {
+      final currentOffset = _scrollController!.offset;
+      return currentOffset <= 50.0;
+    }
+
+    return false;
   }
 
   // Adjust duration by delta seconds
@@ -231,6 +288,10 @@ class AutoscrollProvider extends ChangeNotifier {
 
     _isActive = true;
     _calculateScrollExtent();
+
+    // Mark that count-in has been run for this song
+    _hasRunAutoscrollCountIn = true;
+
     _performScrollStart();
     notifyListeners();
   }

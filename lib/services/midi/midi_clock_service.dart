@@ -138,6 +138,10 @@ class MidiClockService with ChangeNotifier {
   /// Send a single MIDI Clock message (0xF8)
   void _sendMidiClock() async {
     try {
+      // Check if MIDI clock sending is enabled
+      if (!_midiService.sendMidiClockEnabled) {
+        return; // Don't send if disabled
+      }
       await _midiService.sendMidiClock();
     } catch (e) {
       debugPrint('MidiClockService: Failed to send MIDI clock: $e');

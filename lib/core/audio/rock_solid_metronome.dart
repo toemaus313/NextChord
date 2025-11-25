@@ -76,9 +76,11 @@ class RockSolidMetronome {
 
     // Record the precise start time
     _startTimeMicros = DateTime.now().microsecondsSinceEpoch;
-    _nextScheduledBeatMicros = _startTimeMicros;
+    // Schedule first beat one interval in the future (not immediately)
+    // This gives time for audio/MIDI systems to initialize
+    _nextScheduledBeatMicros = _startTimeMicros + _beatIntervalMicros;
 
-    // Schedule the first beat immediately
+    // Schedule the first beat
     _scheduleBeat();
   }
 
