@@ -16,6 +16,7 @@ class Songs extends Table {
   TextColumn get audioFilePath => text().nullable()();
   TextColumn get notes => text().nullable()();
   TextColumn get profileId => text().nullable()(); // Reference to MIDI profile
+  TextColumn get duration => text().nullable()(); // Duration in MM:SS format
   IntColumn get createdAt => integer()(); // Stored as epoch milliseconds
   IntColumn get updatedAt => integer()(); // Stored as epoch milliseconds
   BoolColumn get isDeleted =>

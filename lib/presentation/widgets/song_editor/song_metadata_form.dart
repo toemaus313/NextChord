@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/song_editor/transposition_service.dart';
+import '../../controllers/song_editor/song_editor_controller.dart';
 import 'package:flutter/services.dart';
 import 'capo_icon_painter.dart';
 import 'metronome_icon_painter.dart';
@@ -19,6 +20,7 @@ class SongMetadataForm extends StatelessWidget {
   final ValueChanged<String> onKeyChanged;
   final ValueChanged<int> onCapoChanged;
   final ValueChanged<String> onTimeSignatureChanged;
+  final OnlineMetadataStatus onlineMetadataStatus;
 
   const SongMetadataForm({
     super.key,
@@ -35,6 +37,7 @@ class SongMetadataForm extends StatelessWidget {
     required this.onKeyChanged,
     required this.onCapoChanged,
     required this.onTimeSignatureChanged,
+    this.onlineMetadataStatus = OnlineMetadataStatus.idle,
   });
 
   static const List<String> keys = [
@@ -158,6 +161,10 @@ class SongMetadataForm extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 12),
+
+        // Online metadata status message
+        _buildOnlineMetadataStatus(),
       ],
     );
   }
@@ -351,6 +358,87 @@ class SongMetadataForm extends StatelessWidget {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildOnlineMetadataStatus() {
+    String statusText;
+    Color statusColor;
+    IconData? statusIcon;
+
+    switch (onlineMetadataStatus) {
+      case OnlineMetadataStatus.idle:
+        // Show nothing or subtle text for idle state
+        return const SizedBox.shrink();
+
+      case OnlineMetadataStatus.searching:
+        statusText = 'Song info: searching online…';
+        statusColor = isDarkMode ? Colors.blue.shade300 : Colors.blue.shade600;
+        statusIcon = Icons.search;
+        break;
+
+      case OnlineMetadataStatus.found:
+        statusText = 'Song info: details imported from online sources.';
+        statusColor =
+            isDarkMode ? Colors.green.shade300 : Colors.green.shade600;
+        statusIcon = Icons.check_circle;
+        break;
+
+      case OnlineMetadataStatus.notFound:
+        statusText = 'Song info: no online match found.';
+        statusColor =
+            isDarkMode ? Colors.orange.shade300 : Colors.orange.shade600;
+        statusIcon = Icons.info_outline;
+        break;
+
+      case OnlineMetadataStatus.error:
+        statusText =
+            'Song info: error retrieving data. You can continue editing manually.';
+        statusColor = isDarkMode ? Colors.red.shade300 : Colors.red.shade600;
+        statusIcon = Icons.error_outline;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: statusColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            statusIcon,
+            size: 16,
+            color: statusColor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              statusText,
+              style: TextStyle(
+                fontSize: 12,
+                color: statusColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (onlineMetadataStatus == OnlineMetadataStatus.searching) ...[
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

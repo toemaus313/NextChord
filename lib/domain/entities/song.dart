@@ -16,6 +16,7 @@ class Song extends Equatable {
   final String? audioFilePath; // Optional path to backing track
   final String? notes; // User notes about the song
   final String? profileId; // MIDI profile ID
+  final String? duration; // Duration in MM:SS format
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted; // Soft delete flag
@@ -33,6 +34,7 @@ class Song extends Equatable {
     this.audioFilePath,
     this.notes,
     this.profileId,
+    this.duration,
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
@@ -52,6 +54,7 @@ class Song extends Equatable {
     String? audioFilePath,
     String? notes,
     String? profileId,
+    String? duration,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -69,6 +72,7 @@ class Song extends Equatable {
       audioFilePath: audioFilePath ?? this.audioFilePath,
       notes: notes ?? this.notes,
       profileId: profileId ?? this.profileId,
+      duration: duration ?? this.duration,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -89,6 +93,7 @@ class Song extends Equatable {
         audioFilePath,
         notes,
         profileId,
+        duration,
         createdAt,
         updatedAt,
         isDeleted,

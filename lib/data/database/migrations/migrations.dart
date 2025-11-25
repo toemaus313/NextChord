@@ -136,6 +136,13 @@ class DatabaseMigrations {
               await m.addColumn(db.pedalMappings, db.pedalMappings.valueMax);
             } catch (e) {}
           }
+          if (from <= 11 && to >= 12) {
+            // Add duration column to songs table
+            final db = m.database as AppDatabase;
+            try {
+              await m.addColumn(db.songs, db.songs.duration);
+            } catch (e) {}
+          }
         },
       );
 

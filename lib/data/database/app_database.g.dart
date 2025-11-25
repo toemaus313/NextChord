@@ -81,6 +81,12 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
   late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
       'profile_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _durationMeta =
+      const VerificationMeta('duration');
+  @override
+  late final GeneratedColumn<String> duration = GeneratedColumn<String>(
+      'duration', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -117,6 +123,7 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
         audioFilePath,
         notes,
         profileId,
+        duration,
         createdAt,
         updatedAt,
         isDeleted
@@ -190,6 +197,10 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
       context.handle(_profileIdMeta,
           profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta));
     }
+    if (data.containsKey('duration')) {
+      context.handle(_durationMeta,
+          duration.isAcceptableOrUnknown(data['duration']!, _durationMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -239,6 +250,8 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongModel> {
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
       profileId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}profile_id']),
+      duration: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}duration']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -267,6 +280,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
   final String? audioFilePath;
   final String? notes;
   final String? profileId;
+  final String? duration;
   final int createdAt;
   final int updatedAt;
   final bool isDeleted;
@@ -283,6 +297,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       this.audioFilePath,
       this.notes,
       this.profileId,
+      this.duration,
       required this.createdAt,
       required this.updatedAt,
       required this.isDeleted});
@@ -306,6 +321,9 @@ class SongModel extends DataClass implements Insertable<SongModel> {
     }
     if (!nullToAbsent || profileId != null) {
       map['profile_id'] = Variable<String>(profileId);
+    }
+    if (!nullToAbsent || duration != null) {
+      map['duration'] = Variable<String>(duration);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
@@ -332,6 +350,9 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       profileId: profileId == null && nullToAbsent
           ? const Value.absent()
           : Value(profileId),
+      duration: duration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(duration),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
@@ -354,6 +375,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       audioFilePath: serializer.fromJson<String?>(json['audioFilePath']),
       notes: serializer.fromJson<String?>(json['notes']),
       profileId: serializer.fromJson<String?>(json['profileId']),
+      duration: serializer.fromJson<String?>(json['duration']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -375,6 +397,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       'audioFilePath': serializer.toJson<String?>(audioFilePath),
       'notes': serializer.toJson<String?>(notes),
       'profileId': serializer.toJson<String?>(profileId),
+      'duration': serializer.toJson<String?>(duration),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
@@ -394,6 +417,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           Value<String?> audioFilePath = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           Value<String?> profileId = const Value.absent(),
+          Value<String?> duration = const Value.absent(),
           int? createdAt,
           int? updatedAt,
           bool? isDeleted}) =>
@@ -411,6 +435,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
             audioFilePath.present ? audioFilePath.value : this.audioFilePath,
         notes: notes.present ? notes.value : this.notes,
         profileId: profileId.present ? profileId.value : this.profileId,
+        duration: duration.present ? duration.value : this.duration,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
@@ -433,6 +458,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           : this.audioFilePath,
       notes: data.notes.present ? data.notes.value : this.notes,
       profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      duration: data.duration.present ? data.duration.value : this.duration,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -454,6 +480,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           ..write('audioFilePath: $audioFilePath, ')
           ..write('notes: $notes, ')
           ..write('profileId: $profileId, ')
+          ..write('duration: $duration, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted')
@@ -475,6 +502,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
       audioFilePath,
       notes,
       profileId,
+      duration,
       createdAt,
       updatedAt,
       isDeleted);
@@ -494,6 +522,7 @@ class SongModel extends DataClass implements Insertable<SongModel> {
           other.audioFilePath == this.audioFilePath &&
           other.notes == this.notes &&
           other.profileId == this.profileId &&
+          other.duration == this.duration &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted);
@@ -512,6 +541,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
   final Value<String?> audioFilePath;
   final Value<String?> notes;
   final Value<String?> profileId;
+  final Value<String?> duration;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<bool> isDeleted;
@@ -529,6 +559,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     this.audioFilePath = const Value.absent(),
     this.notes = const Value.absent(),
     this.profileId = const Value.absent(),
+    this.duration = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
@@ -547,6 +578,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     this.audioFilePath = const Value.absent(),
     this.notes = const Value.absent(),
     this.profileId = const Value.absent(),
+    this.duration = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.isDeleted = const Value.absent(),
@@ -570,6 +602,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     Expression<String>? audioFilePath,
     Expression<String>? notes,
     Expression<String>? profileId,
+    Expression<String>? duration,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<bool>? isDeleted,
@@ -588,6 +621,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       if (audioFilePath != null) 'audio_file_path': audioFilePath,
       if (notes != null) 'notes': notes,
       if (profileId != null) 'profile_id': profileId,
+      if (duration != null) 'duration': duration,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
@@ -608,6 +642,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       Value<String?>? audioFilePath,
       Value<String?>? notes,
       Value<String?>? profileId,
+      Value<String?>? duration,
       Value<int>? createdAt,
       Value<int>? updatedAt,
       Value<bool>? isDeleted,
@@ -625,6 +660,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
       audioFilePath: audioFilePath ?? this.audioFilePath,
       notes: notes ?? this.notes,
       profileId: profileId ?? this.profileId,
+      duration: duration ?? this.duration,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -671,6 +707,9 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
     if (profileId.present) {
       map['profile_id'] = Variable<String>(profileId.value);
     }
+    if (duration.present) {
+      map['duration'] = Variable<String>(duration.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -701,6 +740,7 @@ class SongsCompanion extends UpdateCompanion<SongModel> {
           ..write('audioFilePath: $audioFilePath, ')
           ..write('notes: $notes, ')
           ..write('profileId: $profileId, ')
+          ..write('duration: $duration, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
@@ -3394,6 +3434,7 @@ typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
   Value<String?> audioFilePath,
   Value<String?> notes,
   Value<String?> profileId,
+  Value<String?> duration,
   required int createdAt,
   required int updatedAt,
   Value<bool> isDeleted,
@@ -3412,6 +3453,7 @@ typedef $$SongsTableUpdateCompanionBuilder = SongsCompanion Function({
   Value<String?> audioFilePath,
   Value<String?> notes,
   Value<String?> profileId,
+  Value<String?> duration,
   Value<int> createdAt,
   Value<int> updatedAt,
   Value<bool> isDeleted,
@@ -3461,6 +3503,9 @@ class $$SongsTableFilterComposer extends Composer<_$AppDatabase, $SongsTable> {
 
   ColumnFilters<String> get profileId => $composableBuilder(
       column: $table.profileId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get duration => $composableBuilder(
+      column: $table.duration, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3519,6 +3564,9 @@ class $$SongsTableOrderingComposer
   ColumnOrderings<String> get profileId => $composableBuilder(
       column: $table.profileId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get duration => $composableBuilder(
+      column: $table.duration, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3574,6 +3622,9 @@ class $$SongsTableAnnotationComposer
   GeneratedColumn<String> get profileId =>
       $composableBuilder(column: $table.profileId, builder: (column) => column);
 
+  GeneratedColumn<String> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -3619,6 +3670,7 @@ class $$SongsTableTableManager extends RootTableManager<
             Value<String?> audioFilePath = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String?> profileId = const Value.absent(),
+            Value<String?> duration = const Value.absent(),
             Value<int> createdAt = const Value.absent(),
             Value<int> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
@@ -3637,6 +3689,7 @@ class $$SongsTableTableManager extends RootTableManager<
             audioFilePath: audioFilePath,
             notes: notes,
             profileId: profileId,
+            duration: duration,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
@@ -3655,6 +3708,7 @@ class $$SongsTableTableManager extends RootTableManager<
             Value<String?> audioFilePath = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String?> profileId = const Value.absent(),
+            Value<String?> duration = const Value.absent(),
             required int createdAt,
             required int updatedAt,
             Value<bool> isDeleted = const Value.absent(),
@@ -3673,6 +3727,7 @@ class $$SongsTableTableManager extends RootTableManager<
             audioFilePath: audioFilePath,
             notes: notes,
             profileId: profileId,
+            duration: duration,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,

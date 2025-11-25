@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import '../../../domain/entities/song.dart';
 import '../../../domain/entities/midi_profile.dart';
+import '../../../services/song_metadata_service.dart';
+
+/// Status enum for online metadata lookup
+enum OnlineMetadataStatus {
+  idle,
+  searching,
+  found,
+  notFound,
+  error,
+}
 
 /// Controller for managing song editor state and logic
 class SongEditorController extends ChangeNotifier {
@@ -12,6 +23,7 @@ class SongEditorController extends ChangeNotifier {
   final TextEditingController artistController = TextEditingController();
   final TextEditingController bodyController = TextEditingController();
   final TextEditingController bpmController = TextEditingController();
+  final TextEditingController durationController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
 
   // Form state
@@ -24,6 +36,17 @@ class SongEditorController extends ChangeNotifier {
   bool _showKeyboard = false;
   bool _hasUnsavedChanges = false;
 
+  // Online lookup state tracking
+  bool _titleArtistAutoPopulated =
+      false; // Set to true by import services when title/artist are auto-populated
+  bool _hasAttemptedOnlineLookup = false;
+  bool _onlineLookupCompletedSuccessfully = false;
+  OnlineMetadataStatus _onlineMetadataStatus = OnlineMetadataStatus.idle;
+
+  // Metadata lookup service and debouncing
+  final SongMetadataService _metadataService = SongMetadataService();
+  Timer? _lookupDebounceTimer;
+
   // Original values for comparison
   late final String _originalTitle;
   late final String _originalArtist;
@@ -35,6 +58,7 @@ class SongEditorController extends ChangeNotifier {
   late final List<String> _originalTags;
   late final String? _originalAudioFilePath;
   late final String? _originalMidiProfileId;
+  late final String? _originalDuration;
 
   // Available options
   static const List<String> availableKeys = [
@@ -91,11 +115,13 @@ class SongEditorController extends ChangeNotifier {
       _originalTags = List.from(song!.tags);
       _originalAudioFilePath = song!.audioFilePath;
       _originalMidiProfileId = song!.profileId;
+      _originalDuration = song!.duration;
 
       titleController.text = _originalTitle;
       artistController.text = _originalArtist;
       bodyController.text = _originalBody;
       bpmController.text = _originalBpm.toString();
+      durationController.text = _originalDuration ?? '';
       _selectedKey = _originalKey;
       _selectedCapo = _originalCapo;
       _timeSignature = _originalTimeSignature;
@@ -113,8 +139,10 @@ class SongEditorController extends ChangeNotifier {
       _originalTags = [];
       _originalAudioFilePath = null;
       _originalMidiProfileId = null;
+      _originalDuration = null;
 
       bpmController.text = '120';
+      durationController.text = '';
       _selectedKey = 'C';
       _selectedCapo = 0;
       _timeSignature = '4/4';
@@ -126,6 +154,7 @@ class SongEditorController extends ChangeNotifier {
     artistController.addListener(_onFormChanged);
     bodyController.addListener(_onFormChanged);
     bpmController.addListener(_onFormChanged);
+    durationController.addListener(_onFormChanged);
     notesController.addListener(_onFormChanged);
   }
 
@@ -134,6 +163,7 @@ class SongEditorController extends ChangeNotifier {
     final currentArtist = artistController.text;
     final currentBody = bodyController.text;
     final currentBpm = int.tryParse(bpmController.text) ?? 120;
+    final currentDuration = durationController.text.trim();
     final currentNotes = notesController.text;
 
     _hasUnsavedChanges = currentTitle != _originalTitle ||
@@ -146,7 +176,11 @@ class SongEditorController extends ChangeNotifier {
         !listEquals(_tags, _originalTags) ||
         _audioFilePath != _originalAudioFilePath ||
         _selectedMidiProfile?.id != _originalMidiProfileId ||
+        currentDuration != (_originalDuration ?? '') ||
         currentNotes != (song?.notes ?? '');
+
+    // Trigger online lookup if conditions are met
+    _debounceOnlineLookup(currentTitle, currentArtist);
 
     notifyListeners();
   }
@@ -161,6 +195,13 @@ class SongEditorController extends ChangeNotifier {
   bool get showKeyboard => _showKeyboard;
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get isValid => titleController.text.trim().isNotEmpty;
+
+  // Online lookup state getters
+  bool get titleArtistAutoPopulated => _titleArtistAutoPopulated;
+  bool get hasAttemptedOnlineLookup => _hasAttemptedOnlineLookup;
+  bool get onlineLookupCompletedSuccessfully =>
+      _onlineLookupCompletedSuccessfully;
+  OnlineMetadataStatus get onlineMetadataStatus => _onlineMetadataStatus;
 
   // Setters
   void setSelectedKey(String key) {
@@ -196,6 +237,116 @@ class SongEditorController extends ChangeNotifier {
   void toggleKeyboard() {
     _showKeyboard = !_showKeyboard;
     notifyListeners();
+  }
+
+  // Online lookup state setters
+  void setTitleArtistAutoPopulated(bool autoPopulated) {
+    _titleArtistAutoPopulated = autoPopulated;
+    notifyListeners();
+  }
+
+  void setOnlineMetadataStatus(OnlineMetadataStatus status) {
+    _onlineMetadataStatus = status;
+    notifyListeners();
+  }
+
+  void setHasAttemptedOnlineLookup(bool attempted) {
+    _hasAttemptedOnlineLookup = attempted;
+    notifyListeners();
+  }
+
+  void setOnlineLookupCompletedSuccessfully(bool completed) {
+    _onlineLookupCompletedSuccessfully = completed;
+    notifyListeners();
+  }
+
+  /// Debounce online lookup to avoid rapid API calls during typing
+  void _debounceOnlineLookup(String title, String artist) {
+    // Cancel existing timer
+    _lookupDebounceTimer?.cancel();
+
+    // Check if lookup should be triggered
+    if (!_shouldTriggerOnlineLookup(title, artist)) {
+      return;
+    }
+
+    // Set new timer for 1.5 seconds delay
+    _lookupDebounceTimer =
+        Timer(const Duration(seconds: 1, milliseconds: 500), () {
+      _triggerOnlineLookup(title, artist);
+    });
+  }
+
+  /// Check if online lookup should be triggered based on current conditions
+  bool _shouldTriggerOnlineLookup(String title, String artist) {
+    // Don't trigger if title/artist were auto-populated by parser
+    if (_titleArtistAutoPopulated) return false;
+
+    // Don't trigger if either field is empty
+    if (title.trim().isEmpty || artist.trim().isEmpty) return false;
+
+    // Don't trigger if we've already attempted lookup for this song
+    if (_hasAttemptedOnlineLookup) return false;
+
+    // Don't trigger if we've already successfully completed lookup
+    if (_onlineLookupCompletedSuccessfully) return false;
+
+    return true;
+  }
+
+  /// Trigger the online metadata lookup
+  Future<void> _triggerOnlineLookup(String title, String artist) async {
+    if (!_shouldTriggerOnlineLookup(title, artist)) return;
+
+    setOnlineMetadataStatus(OnlineMetadataStatus.searching);
+    setHasAttemptedOnlineLookup(true);
+
+    try {
+      final result = await _metadataService.fetchMetadata(
+        title: title.trim(),
+        artist: artist.trim(),
+      );
+
+      if (result.success) {
+        _applyMetadataResult(result);
+        setOnlineMetadataStatus(OnlineMetadataStatus.found);
+        setOnlineLookupCompletedSuccessfully(true);
+      } else if (result.error != null) {
+        setOnlineMetadataStatus(OnlineMetadataStatus.error);
+      } else {
+        setOnlineMetadataStatus(OnlineMetadataStatus.notFound);
+      }
+    } catch (e) {
+      setOnlineMetadataStatus(OnlineMetadataStatus.error);
+    }
+  }
+
+  /// Apply metadata from lookup result, respecting user-entered values
+  void _applyMetadataResult(SongMetadataLookupResult result) {
+    // Only apply tempo if field is at default value or empty
+    final currentBpm = int.tryParse(bpmController.text);
+    if (result.tempoBpm != null && (currentBpm == null || currentBpm == 120)) {
+      bpmController.text = result.tempoBpm!.round().toString();
+    }
+
+    // Only apply key if at default value
+    if (result.key != null && _selectedKey == 'C') {
+      setSelectedKey(result.key!);
+    }
+
+    // Only apply time signature if at default value
+    if (result.timeSignature != null && _timeSignature == '4/4') {
+      setTimeSignature(result.timeSignature!);
+    }
+
+    // Only apply duration if empty
+    if (result.durationMs != null && durationController.text.trim().isEmpty) {
+      final formattedDuration =
+          SongMetadataLookupResult.formatDuration(result.durationMs);
+      if (formattedDuration != null) {
+        durationController.text = formattedDuration;
+      }
+    }
   }
 
   void transposeBody(int semitones) {
@@ -240,6 +391,9 @@ class SongEditorController extends ChangeNotifier {
           ? null
           : notesController.text.trim(),
       profileId: _selectedMidiProfile?.id,
+      duration: durationController.text.trim().isEmpty
+          ? null
+          : durationController.text.trim(),
       createdAt: song?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -250,6 +404,7 @@ class SongEditorController extends ChangeNotifier {
     artistController.text = _originalArtist;
     bodyController.text = _originalBody;
     bpmController.text = _originalBpm.toString();
+    durationController.text = _originalDuration ?? '';
     notesController.text = song?.notes ?? '';
     _selectedKey = _originalKey;
     _selectedCapo = _originalCapo;
@@ -266,6 +421,7 @@ class SongEditorController extends ChangeNotifier {
     artistController.clear();
     bodyController.clear();
     bpmController.text = '120';
+    durationController.clear();
     notesController.clear();
     _selectedKey = 'C';
     _selectedCapo = 0;
@@ -275,15 +431,24 @@ class SongEditorController extends ChangeNotifier {
     _selectedMidiProfile = null;
     _showKeyboard = false;
     _hasUnsavedChanges = false;
+
+    // Reset online lookup state
+    _titleArtistAutoPopulated = false;
+    _hasAttemptedOnlineLookup = false;
+    _onlineLookupCompletedSuccessfully = false;
+    _onlineMetadataStatus = OnlineMetadataStatus.idle;
+
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _lookupDebounceTimer?.cancel();
     titleController.dispose();
     artistController.dispose();
     bodyController.dispose();
     bpmController.dispose();
+    durationController.dispose();
     notesController.dispose();
     super.dispose();
   }

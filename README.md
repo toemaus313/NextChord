@@ -2,6 +2,9 @@
 
 A cross-platform chord book and MIDI controller app for musicians. Manage your song library, create setlists, and control your gear via MIDI.
 
+****SPECIAL ACKNOWLEDGEMENT! Music metadata VERY graciously provided by http://getsongbpm.com and musicbrainz.org. Thank you very much for enabling an important piece of this project!****
+
+
 ## Project Architecture Overview
 
 NextChord follows **Clean Architecture** principles with clear separation of concerns. This makes it easier to test, maintain, and scale.
