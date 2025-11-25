@@ -38,7 +38,7 @@ class GoogleDriveSyncService {
 
   // Backup configuration
   // Legacy name kept for backward compatibility with existing cloud backups
-  static const String _backupFolderName = 'Troubadour';
+  static const String _backupFolderName = 'NextChord';
   static const String _libraryFileName = 'library.json';
 
   static GoogleSignIn get _googleSignInInstance {

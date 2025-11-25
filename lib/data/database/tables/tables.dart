@@ -106,3 +106,22 @@ class SyncState extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Drift table for Pedal Mappings (keyboard/MIDI pedal key bindings)
+@DataClassName('PedalMappingModel')
+class PedalMappings extends Table {
+  TextColumn get id => text()();
+  TextColumn get key =>
+      text()(); // Key identifier (e.g., 'upArrow', 'downArrow', MIDI note)
+  TextColumn get action =>
+      text()(); // JSON object describing the action (e.g., '{"nextSongSection": {}}')
+  TextColumn get description =>
+      text().nullable()(); // User-friendly description
+  BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

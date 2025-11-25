@@ -2,13 +2,13 @@
 
 import 'dart:io';
 
-/// Script to delete Troubadour local databases for iOS simulator debug instances
+/// Script to delete NextChord local databases for iOS simulator debug instances
 /// This script removes the local SQLite database and any backup files from iOS simulators
 
 void main() async {
-  // Deleting Troubadour iOS simulator local databases...
+  // Deleting NextChord iOS simulator local databases...
 
-  // Find all iOS simulator Troubadour databases
+  // Find all iOS simulator NextChord databases
   final homeDir = Platform.environment['HOME']!;
   final simulatorDir =
       Directory('$homeDir/Library/Developer/CoreSimulator/Devices');
@@ -33,9 +33,9 @@ void main() async {
         if (!documentsDir.existsSync()) continue;
 
         for (final file in documentsDir.listSync().whereType<File>()) {
-          if (file.path.endsWith('troubadour_db.sqlite')) {
+          if (file.path.endsWith('nextchord_db.sqlite')) {
             iosDbs.add(file.path);
-          } else if (file.path.endsWith('troubadour_db.sqlite.backup')) {
+          } else if (file.path.endsWith('nextchord_db.sqlite.backup')) {
             iosBackups.add(file.path);
           }
         }

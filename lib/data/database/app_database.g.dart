@@ -2150,6 +2150,440 @@ class MidiProfilesCompanion extends UpdateCompanion<MidiProfileModel> {
   }
 }
 
+class $PedalMappingsTable extends PedalMappings
+    with TableInfo<$PedalMappingsTable, PedalMappingModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PedalMappingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+      'action', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isEnabledMeta =
+      const VerificationMeta('isEnabled');
+  @override
+  late final GeneratedColumn<bool> isEnabled = GeneratedColumn<bool>(
+      'is_enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_enabled" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        key,
+        action,
+        description,
+        isEnabled,
+        createdAt,
+        updatedAt,
+        isDeleted
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pedal_mappings';
+  @override
+  VerificationContext validateIntegrity(Insertable<PedalMappingModel> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(_actionMeta,
+          action.isAcceptableOrUnknown(data['action']!, _actionMeta));
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    if (data.containsKey('is_enabled')) {
+      context.handle(_isEnabledMeta,
+          isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PedalMappingModel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PedalMappingModel(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      action: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}action'])!,
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+      isEnabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_enabled'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+    );
+  }
+
+  @override
+  $PedalMappingsTable createAlias(String alias) {
+    return $PedalMappingsTable(attachedDatabase, alias);
+  }
+}
+
+class PedalMappingModel extends DataClass
+    implements Insertable<PedalMappingModel> {
+  final String id;
+  final String key;
+  final String action;
+  final String? description;
+  final bool isEnabled;
+  final int createdAt;
+  final int updatedAt;
+  final bool isDeleted;
+  const PedalMappingModel(
+      {required this.id,
+      required this.key,
+      required this.action,
+      this.description,
+      required this.isEnabled,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.isDeleted});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['key'] = Variable<String>(key);
+    map['action'] = Variable<String>(action);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['is_enabled'] = Variable<bool>(isEnabled);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    return map;
+  }
+
+  PedalMappingsCompanion toCompanion(bool nullToAbsent) {
+    return PedalMappingsCompanion(
+      id: Value(id),
+      key: Value(key),
+      action: Value(action),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      isEnabled: Value(isEnabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+    );
+  }
+
+  factory PedalMappingModel.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PedalMappingModel(
+      id: serializer.fromJson<String>(json['id']),
+      key: serializer.fromJson<String>(json['key']),
+      action: serializer.fromJson<String>(json['action']),
+      description: serializer.fromJson<String?>(json['description']),
+      isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'key': serializer.toJson<String>(key),
+      'action': serializer.toJson<String>(action),
+      'description': serializer.toJson<String?>(description),
+      'isEnabled': serializer.toJson<bool>(isEnabled),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+    };
+  }
+
+  PedalMappingModel copyWith(
+          {String? id,
+          String? key,
+          String? action,
+          Value<String?> description = const Value.absent(),
+          bool? isEnabled,
+          int? createdAt,
+          int? updatedAt,
+          bool? isDeleted}) =>
+      PedalMappingModel(
+        id: id ?? this.id,
+        key: key ?? this.key,
+        action: action ?? this.action,
+        description: description.present ? description.value : this.description,
+        isEnabled: isEnabled ?? this.isEnabled,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
+      );
+  PedalMappingModel copyWithCompanion(PedalMappingsCompanion data) {
+    return PedalMappingModel(
+      id: data.id.present ? data.id.value : this.id,
+      key: data.key.present ? data.key.value : this.key,
+      action: data.action.present ? data.action.value : this.action,
+      description:
+          data.description.present ? data.description.value : this.description,
+      isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PedalMappingModel(')
+          ..write('id: $id, ')
+          ..write('key: $key, ')
+          ..write('action: $action, ')
+          ..write('description: $description, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, key, action, description, isEnabled, createdAt, updatedAt, isDeleted);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PedalMappingModel &&
+          other.id == this.id &&
+          other.key == this.key &&
+          other.action == this.action &&
+          other.description == this.description &&
+          other.isEnabled == this.isEnabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted);
+}
+
+class PedalMappingsCompanion extends UpdateCompanion<PedalMappingModel> {
+  final Value<String> id;
+  final Value<String> key;
+  final Value<String> action;
+  final Value<String?> description;
+  final Value<bool> isEnabled;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<int> rowid;
+  const PedalMappingsCompanion({
+    this.id = const Value.absent(),
+    this.key = const Value.absent(),
+    this.action = const Value.absent(),
+    this.description = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PedalMappingsCompanion.insert({
+    required String id,
+    required String key,
+    required String action,
+    this.description = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.isDeleted = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        key = Value(key),
+        action = Value(action),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<PedalMappingModel> custom({
+    Expression<String>? id,
+    Expression<String>? key,
+    Expression<String>? action,
+    Expression<String>? description,
+    Expression<bool>? isEnabled,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (key != null) 'key': key,
+      if (action != null) 'action': action,
+      if (description != null) 'description': description,
+      if (isEnabled != null) 'is_enabled': isEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PedalMappingsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? key,
+      Value<String>? action,
+      Value<String?>? description,
+      Value<bool>? isEnabled,
+      Value<int>? createdAt,
+      Value<int>? updatedAt,
+      Value<bool>? isDeleted,
+      Value<int>? rowid}) {
+    return PedalMappingsCompanion(
+      id: id ?? this.id,
+      key: key ?? this.key,
+      action: action ?? this.action,
+      description: description ?? this.description,
+      isEnabled: isEnabled ?? this.isEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (isEnabled.present) {
+      map['is_enabled'] = Variable<bool>(isEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PedalMappingsCompanion(')
+          ..write('id: $id, ')
+          ..write('key: $key, ')
+          ..write('action: $action, ')
+          ..write('description: $description, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncStateTable extends SyncState
     with TableInfo<$SyncStateTable, SyncStateModel> {
   @override
@@ -2689,13 +3123,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SetlistsTable setlists = $SetlistsTable(this);
   late final $MidiMappingsTable midiMappings = $MidiMappingsTable(this);
   late final $MidiProfilesTable midiProfiles = $MidiProfilesTable(this);
+  late final $PedalMappingsTable pedalMappings = $PedalMappingsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [songs, setlists, midiMappings, midiProfiles, syncState];
+      [songs, setlists, midiMappings, midiProfiles, pedalMappings, syncState];
 }
 
 typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
@@ -3715,6 +4150,224 @@ typedef $$MidiProfilesTableProcessedTableManager = ProcessedTableManager<
     ),
     MidiProfileModel,
     PrefetchHooks Function()>;
+typedef $$PedalMappingsTableCreateCompanionBuilder = PedalMappingsCompanion
+    Function({
+  required String id,
+  required String key,
+  required String action,
+  Value<String?> description,
+  Value<bool> isEnabled,
+  required int createdAt,
+  required int updatedAt,
+  Value<bool> isDeleted,
+  Value<int> rowid,
+});
+typedef $$PedalMappingsTableUpdateCompanionBuilder = PedalMappingsCompanion
+    Function({
+  Value<String> id,
+  Value<String> key,
+  Value<String> action,
+  Value<String?> description,
+  Value<bool> isEnabled,
+  Value<int> createdAt,
+  Value<int> updatedAt,
+  Value<bool> isDeleted,
+  Value<int> rowid,
+});
+
+class $$PedalMappingsTableFilterComposer
+    extends Composer<_$AppDatabase, $PedalMappingsTable> {
+  $$PedalMappingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get action => $composableBuilder(
+      column: $table.action, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isEnabled => $composableBuilder(
+      column: $table.isEnabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+}
+
+class $$PedalMappingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PedalMappingsTable> {
+  $$PedalMappingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get action => $composableBuilder(
+      column: $table.action, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isEnabled => $composableBuilder(
+      column: $table.isEnabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PedalMappingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PedalMappingsTable> {
+  $$PedalMappingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => column);
+
+  GeneratedColumn<bool> get isEnabled =>
+      $composableBuilder(column: $table.isEnabled, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+}
+
+class $$PedalMappingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PedalMappingsTable,
+    PedalMappingModel,
+    $$PedalMappingsTableFilterComposer,
+    $$PedalMappingsTableOrderingComposer,
+    $$PedalMappingsTableAnnotationComposer,
+    $$PedalMappingsTableCreateCompanionBuilder,
+    $$PedalMappingsTableUpdateCompanionBuilder,
+    (
+      PedalMappingModel,
+      BaseReferences<_$AppDatabase, $PedalMappingsTable, PedalMappingModel>
+    ),
+    PedalMappingModel,
+    PrefetchHooks Function()> {
+  $$PedalMappingsTableTableManager(_$AppDatabase db, $PedalMappingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PedalMappingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PedalMappingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PedalMappingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> key = const Value.absent(),
+            Value<String> action = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+            Value<bool> isEnabled = const Value.absent(),
+            Value<int> createdAt = const Value.absent(),
+            Value<int> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PedalMappingsCompanion(
+            id: id,
+            key: key,
+            action: action,
+            description: description,
+            isEnabled: isEnabled,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String key,
+            required String action,
+            Value<String?> description = const Value.absent(),
+            Value<bool> isEnabled = const Value.absent(),
+            required int createdAt,
+            required int updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PedalMappingsCompanion.insert(
+            id: id,
+            key: key,
+            action: action,
+            description: description,
+            isEnabled: isEnabled,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PedalMappingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PedalMappingsTable,
+    PedalMappingModel,
+    $$PedalMappingsTableFilterComposer,
+    $$PedalMappingsTableOrderingComposer,
+    $$PedalMappingsTableAnnotationComposer,
+    $$PedalMappingsTableCreateCompanionBuilder,
+    $$PedalMappingsTableUpdateCompanionBuilder,
+    (
+      PedalMappingModel,
+      BaseReferences<_$AppDatabase, $PedalMappingsTable, PedalMappingModel>
+    ),
+    PedalMappingModel,
+    PrefetchHooks Function()>;
 typedef $$SyncStateTableCreateCompanionBuilder = SyncStateCompanion Function({
   Value<int> id,
   required String deviceId,
@@ -3964,6 +4617,8 @@ class $AppDatabaseManager {
       $$MidiMappingsTableTableManager(_db, _db.midiMappings);
   $$MidiProfilesTableTableManager get midiProfiles =>
       $$MidiProfilesTableTableManager(_db, _db.midiProfiles);
+  $$PedalMappingsTableTableManager get pedalMappings =>
+      $$PedalMappingsTableTableManager(_db, _db.pedalMappings);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db, _db.syncState);
 }

@@ -13,12 +13,19 @@ import '../../services/sync/library_sync_service.dart';
 part 'app_database.g.dart';
 
 /// Main Drift database
-@DriftDatabase(tables: [Songs, Setlists, MidiMappings, MidiProfiles, SyncState])
+@DriftDatabase(tables: [
+  Songs,
+  Setlists,
+  MidiMappings,
+  MidiProfiles,
+  PedalMappings,
+  SyncState
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;
@@ -97,6 +104,50 @@ class AppDatabase extends _$AppDatabase {
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     await update(songs).replace(songWithTimestamp);
+  }
+
+  // Pedal Mappings CRUD operations
+
+  /// Get all pedal mappings
+  Future<List<PedalMappingModel>> getAllPedalMappings() {
+    return (select(pedalMappings)
+          ..where((tbl) => tbl.isDeleted.equals(false))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
+          ]))
+        .get();
+  }
+
+  /// Get pedal mapping by ID
+  Future<PedalMappingModel?> getPedalMappingById(String id) {
+    return (select(pedalMappings)..where((tbl) => tbl.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// Insert a new pedal mapping
+  Future<void> insertPedalMapping(PedalMappingModel mapping) async {
+    final mappingWithTimestamp = mapping.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await into(pedalMappings).insert(mappingWithTimestamp);
+  }
+
+  /// Update an existing pedal mapping
+  Future<void> updatePedalMapping(PedalMappingModel mapping) async {
+    final mappingWithTimestamp = mapping.copyWith(
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await update(pedalMappings).replace(mappingWithTimestamp);
+  }
+
+  /// Delete a pedal mapping (soft delete)
+  Future<void> deletePedalMapping(String id) async {
+    await (update(pedalMappings)..where((tbl) => tbl.id.equals(id)))
+        .write(PedalMappingsCompanion(
+      isDeleted: const Value(true),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+    ));
   }
 
   /// Soft delete a song (mark as deleted)
@@ -355,7 +406,7 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     // Legacy database filename kept for backward compatibility with existing user data
-    final file = File(p.join(dbFolder.path, 'troubadour_db.sqlite'));
+    final file = File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
 
     return NativeDatabase(file);
   });

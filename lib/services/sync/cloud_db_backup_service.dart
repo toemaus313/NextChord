@@ -9,7 +9,7 @@ import '../../data/database/app_database.dart';
 /// Service for managing cloud database backups
 class CloudDbBackupService {
   // Legacy backup filename kept for backward compatibility with existing cloud backups
-  static const String _backupFileName = 'troubadour_backup.db';
+  static const String _backupFileName = 'nextchord_backup.db';
   final GoogleDriveSyncService _syncService;
   final AppDatabase _database;
 
@@ -256,7 +256,7 @@ class CloudDbBackupService {
   Future<File> _getLocalDatabaseFile() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     // Legacy database filename kept for backward compatibility with existing user data
-    return File(p.join(dbFolder.path, 'troubadour_db.sqlite'));
+    return File(p.join(dbFolder.path, 'nextchord_db.sqlite'));
   }
 
   /// Check if cloud backup exists
