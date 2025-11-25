@@ -17,11 +17,12 @@ default_platform(:ios)
 platform :ios do
   desc "Build and upload a beta version to TestFlight"
   lane :beta do
-    # 1. Make sure Flutter deps are up to date
-    sh "cd .. && flutter pub get"
+    # ensure Homebrew bin is visible to the subshells fastlane spawns
+    env_path = 'export PATH="/opt/homebrew/bin:$PATH"'
 
-    # 2. Build IPA with Flutter
-    sh "cd .. && flutter build ipa --release"
+    sh "#{env_path}; cd .. && flutter pub get"
+    sh 'echo "FASTLANE PATH=$PATH"; which pod; pod --version; ruby -v'
+    sh "#{env_path}; cd .. && flutter build ipa --release"
 
     # 3. Upload to TestFlight
     increment_build_number(xcodeproj: "Runner.xcodeproj")
@@ -32,8 +33,14 @@ platform :ios do
     apple_id       = "thomas@antonovich.us" # not strictly needed if using API key
     app_name       = "NextChord"
 
+    api_key = app_store_connect_api_key(
+      key_id: "D28W2YBXS9",
+      issuer_id: "a5176732-64f6-441d-8ed0-0db127470dda",
+      key_filepath: "../AuthKeys/AuthKey_D28W2YBXS9.p8"
+)
+
     upload_to_testflight(
-      ipa: "../build/ios/ipa/Runner.ipa", # or YourAppName.ipa
+      ipa: "../build/ios/ipa/nextchord.ipa", # or YourAppName.ipa
       app_identifier: app_identifier,
       skip_waiting_for_build_processing: false,
       # Optional: auto-submit to internal group
