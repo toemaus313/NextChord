@@ -9,9 +9,6 @@ import UIKit
 import UniformTypeIdentifiers
 
 private let kSchemePrefix = "ShareMedia"
-private let kUserDefaultsKey = "ShareKey"
-private let kUserDefaultsMessageKey = "ShareMessageKey"
-private let kAppGroupIdKey = "AppGroupId"
 
 // Global debug function for iOS share extension
 func myDebug(_ message: String) {
@@ -40,20 +37,11 @@ class ShareViewController: UIViewController {
         return String(bundleIdentifier[..<lastDot])
     }
 
-    private var appGroupId: String {
-        if let customGroupId = Bundle.main.object(forInfoDictionaryKey: kAppGroupIdKey) as? String,
-           !customGroupId.isEmpty {
-            return customGroupId
-        }
-        return "group.\(hostAppBundleIdentifier)"
-    }
-
     override func viewDidLoad() {
         super.viewDidLoad()
         myDebug("ShareViewController: viewDidLoad called - TESTING DEBUG OUTPUT")
         myDebug("ShareViewController: Bundle ID: \(Bundle.main.bundleIdentifier ?? "UNKNOWN")")
         myDebug("ShareViewController: Host App Bundle ID: \(hostAppBundleIdentifier)")
-        myDebug("ShareViewController: App Group ID: \(appGroupId)")
         handleSharedContent()
     }
 
@@ -152,20 +140,28 @@ class ShareViewController: UIViewController {
             return
         }
 
-        let userDefaults = UserDefaults(suiteName: appGroupId)
-        myDebug("ShareViewController: Using app group ID: \(appGroupId)")
-
-        if let data = try? JSONEncoder().encode(sharedItems) {
-            userDefaults?.set(data, forKey: kUserDefaultsKey)
-            userDefaults?.removeObject(forKey: kUserDefaultsMessageKey)
-            userDefaults?.synchronize()
-            myDebug("ShareViewController: Saved shared data to UserDefaults")
-        } else {
+        // Encode shared items as JSON and base64 for URL passing
+        // Since we removed App Groups, pass data directly through the URL
+        guard let jsonData = try? JSONEncoder().encode(sharedItems),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
             myDebug("ShareViewController: Failed to encode shared items")
+            completeRequest()
+            return
+        }
+        
+        // Base64 encode to make URL-safe
+        let base64Data = Data(jsonString.utf8).base64EncodedString()
+        
+        // URL encode the base64 string
+        guard let encodedData = base64Data.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            myDebug("ShareViewController: Failed to URL encode data")
+            completeRequest()
+            return
         }
 
-        let urlString = "\(kSchemePrefix)-\(hostAppBundleIdentifier):share"
-        myDebug("ShareViewController: Opening URL: \(urlString)")
+        // Pass data through URL query parameter (no App Groups needed)
+        let urlString = "\(kSchemePrefix)-\(hostAppBundleIdentifier):share?data=\(encodedData)"
+        myDebug("ShareViewController: Opening URL with inline data (length: \(encodedData.count))")
         
         if let url = URL(string: urlString) {
             openURL(url)

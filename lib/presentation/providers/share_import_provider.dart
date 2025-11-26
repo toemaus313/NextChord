@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:app_links/app_links.dart';
 import '../../domain/entities/shared_import_payload.dart';
 import '../../domain/entities/song.dart';
 import '../../services/import/share_import_service.dart';
@@ -16,6 +18,8 @@ class ShareImportProvider extends ChangeNotifier {
   final ShareImportService _shareImportService = ShareImportService();
 
   StreamSubscription<List<SharedMediaFile>>? _intentDataStreamSubscription;
+  StreamSubscription<Uri>? _appLinksSubscription;
+  final AppLinks _appLinks = AppLinks();
 
   bool _isProcessingShare = false;
 
@@ -29,6 +33,14 @@ class ShareImportProvider extends ChangeNotifier {
     // Only initialize sharing intent on mobile platforms (iOS/Android)
     if (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.android) {
+      // Listen for URL-based share data (no App Groups needed)
+      _appLinksSubscription =
+          _appLinks.uriLinkStream.listen(_handleUrlScheme, onError: (error) {
+        _isProcessingShare = false;
+        notifyListeners();
+      });
+
+      // Also keep the standard share intent for other sharing methods
       _intentDataStreamSubscription = ReceiveSharingIntent.instance
           .getMediaStream()
           .listen(_handleSharedMedia, onError: (error) {
@@ -38,6 +50,7 @@ class ShareImportProvider extends ChangeNotifier {
 
       // Check for any pending intents when app starts
       _checkInitialIntents();
+      _checkInitialUrl();
     }
   }
 
@@ -45,6 +58,66 @@ class ShareImportProvider extends ChangeNotifier {
     final initialMedia = await ReceiveSharingIntent.instance.getInitialMedia();
     if (initialMedia.isNotEmpty) {
       await _handleSharedMediaList(initialMedia);
+    }
+  }
+
+  Future<void> _checkInitialUrl() async {
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        await _handleUrlScheme(initialUri);
+      }
+    } catch (e) {
+      // Ignore errors when checking initial URL
+    }
+  }
+
+  Future<void> _handleUrlScheme(Uri uri) async {
+    // Check if this is a share URL from our Share Extension
+    if (uri.scheme.startsWith('ShareMedia') && uri.host == 'share') {
+      final dataParam = uri.queryParameters['data'];
+      if (dataParam != null && dataParam.isNotEmpty) {
+        try {
+          // Decode base64 and parse JSON
+          final jsonString = utf8.decode(base64.decode(dataParam));
+          final List<dynamic> jsonList = json.decode(jsonString);
+
+          // Convert to SharedMediaFile list
+          final sharedMedia = jsonList.map((item) {
+            final type = _parseMediaType(item['type']);
+            return SharedMediaFile(
+              path: item['path'] ?? '',
+              thumbnail: null,
+              duration: item['duration']?.toDouble(),
+              type: type,
+              mimeType: item['mimeType'],
+            );
+          }).toList();
+
+          await _handleSharedMediaList(sharedMedia);
+        } catch (e) {
+          // Failed to parse URL data
+          _isProcessingShare = false;
+          notifyListeners();
+        }
+      }
+    }
+  }
+
+  SharedMediaType _parseMediaType(String? typeString) {
+    switch (typeString) {
+      case 'text':
+        return SharedMediaType.text;
+      case 'url':
+        return SharedMediaType.url;
+      case 'image':
+        return SharedMediaType.image;
+      case 'video':
+        return SharedMediaType.video;
+      case 'file':
+        return SharedMediaType.file;
+      default:
+        return SharedMediaType.text;
     }
   }
 
@@ -163,6 +236,7 @@ class ShareImportProvider extends ChangeNotifier {
   @override
   void dispose() {
     _intentDataStreamSubscription?.cancel();
+    _appLinksSubscription?.cancel();
     super.dispose();
   }
 }

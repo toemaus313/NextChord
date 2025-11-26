@@ -1,49 +1,47 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
+# Fastlane configuration for NextChord iOS
+# Run from the ios/ directory with: fastlane beta
 
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
 default_platform(:ios)
 
 platform :ios do
   desc "Build and upload a beta version to TestFlight"
   lane :beta do
-    # Build iOS framework without codesign, then use fastlane's build_app for signing
+    # 1. Build Flutter iOS app without codesign
     sh "cd .. && flutter pub get"
     sh "cd .. && flutter build ios --release --no-codesign"
 
-    # 3. Upload to TestFlight
-    increment_build_number(xcodeproj: "Runner.xcodeproj")
-    build_app(workspace: "Runner.xcworkspace", scheme: "Runner")
-    # If fastlane generated an app_identifier / app-specific config 
-    # use those here. Replace with your details:
-    app_identifier = "us.antonovich.nextchord" # or whatever your bundle id is
-    apple_id       = "thomas@antonovich.us" # not strictly needed if using API key
-    app_name       = "NextChord"
-
+    # 2. App Store Connect API key (your existing key)
     api_key = app_store_connect_api_key(
       key_id: "D28W2YBXS9",
       issuer_id: "a5176732-64f6-441d-8ed0-0db127470dda",
       key_filepath: "../AuthKeys/AuthKey_D28W2YBXS9.p8"
-)
+    )
 
+    # 3. Bump build number in Xcode project
+    increment_build_number(
+      xcodeproj: "Runner.xcodeproj"
+    )
+
+    # 4. Archive + export IPA using Xcode workspace and automatic signing
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",                 # or "app-store-connect" if you prefer
+      export_xcargs: "-allowProvisioningUpdates"  # lets Xcode create/download profiles
+    )
+
+    # 5. Get the IPA path produced by build_app
+    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH]
+
+    # 6. Upload to TestFlight
     upload_to_testflight(
-      ipa: "Runner.ipa", # Use the actual IPA path created by build_app
-      app_identifier: app_identifier,
-      skip_submission: true, # Skip beta review submission for now
+      api_key: api_key,
+      ipa: ipa_path,
+      app_identifier: "us.antonovich.nextchord",
+      skip_submission: true,                  # don't auto-submit for beta review
       skip_waiting_for_build_processing: false,
-      # Optional: auto-submit to internal group
-      distribute_external: false,
-      groups: ["Int"] # if you have groups set up
+      distribute_external: false,             # internal only
+      groups: ["Int"]                         # your internal TestFlight group
     )
   end
 end
