@@ -52,6 +52,9 @@ macos/Flutter/ephemeral/
 macos/build/
 .vscode/launch.json
 
+#misc
+AuthKeys/
+
 # Obfuscation
 app.*.map.json
 
