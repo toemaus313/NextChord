@@ -2,6 +2,7 @@ import 'package:nextchord/domain/entities/shared_import_payload.dart';
 import 'package:nextchord/core/utils/ug_text_converter.dart';
 import 'package:nextchord/domain/entities/song.dart';
 import 'package:nextchord/data/database/app_database.dart';
+import 'package:nextchord/services/import/song_identification_service.dart';
 
 /// Service for handling shared content from other apps (e.g., Ultimate Guitar)
 /// Routes content to appropriate parsers based on source and type detection
@@ -21,14 +22,67 @@ class ShareImportService {
   /// This follows the exact same flow as creating a new song
   Future<Song?> handleSharedContent(SharedImportPayload payload) async {
     try {
+      print("📥 ShareImportService: handleSharedContent called");
+      print("📥 ShareImportService: sourceApp = '${payload.sourceApp}'");
+      print(
+          "📥 ShareImportService: text length = ${payload.text?.length ?? 0}");
+
       if (payload.text != null && payload.text!.isNotEmpty) {
-        // Just put raw text in body with empty ID
-        // User fills in title/artist, save generates ID - EXACT same flow as new song
+        // Try to identify song from lyrics and fetch metadata
+        String title = '';
+        String artist = '';
+        String? key;
+        int? bpm;
+        String? duration;
+        String? timeSignature;
+
+        if (payload.sourceApp == 'Ultimate Guitar') {
+          print(
+              "📥 ShareImportService: Source is Ultimate Guitar, attempting song identification");
+          final identification =
+              await SongIdentificationService.identifySong(payload.text!);
+          print(
+              "📥 ShareImportService: Identification result: $identification");
+          if (identification != null) {
+            title = identification['title'] ?? '';
+            artist = identification['artist'] ?? '';
+            bpm = identification['tempo_bpm'] as int?;
+            key = identification['key'] as String?;
+            final durationSeconds = identification['duration_seconds'] as int?;
+            if (durationSeconds != null) {
+              final minutes = durationSeconds ~/ 60;
+              final seconds = durationSeconds % 60;
+              duration = '$minutes:${seconds.toString().padLeft(2, '0')}';
+            }
+            timeSignature = identification['time_signature'] as String?;
+            print(
+                "📥 ShareImportService: Extracted metadata - Title: '$title', Artist: '$artist', BPM: $bpm, Key: $key, Duration: $duration, Time Sig: $timeSignature");
+          }
+        } else {
+          print(
+              "📥 ShareImportService: Source is not Ultimate Guitar, skipping identification");
+        }
+
+        // Step 4: Convert raw UG text to ChordPro format
+        print("📥 ShareImportService: Converting to ChordPro format...");
+        final conversionResult =
+            UGTextConverter.convertToChordPro(payload.text!);
+        final chordProText = conversionResult['chordpro'] as String;
+        print("📥 ShareImportService: ChordPro conversion complete");
+
+        // Create song with identified metadata and converted ChordPro body
+        print(
+            "📥 ShareImportService: Creating Song with title: '$title', artist: '$artist'");
         return Song(
           id: '', // EMPTY ID - insertSong will generate it
-          title: '', // User must fill in
-          artist: '', // User must fill in
-          body: payload.text!, // Raw text from lyrics.txt
+          title: title, // Auto-populated if identified, otherwise empty
+          artist: artist, // Auto-populated if identified, otherwise empty
+          body: chordProText, // Converted ChordPro format text
+          key: key ?? 'C', // Use identified key or default to C
+          bpm: bpm ?? 120, // Use identified BPM or default to 120
+          duration: duration, // Use identified duration or null
+          timeSignature:
+              timeSignature ?? '4/4', // Use identified or default to 4/4
           tags: const [],
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -37,6 +91,7 @@ class ShareImportService {
         throw Exception('No text content in shared data');
       }
     } catch (e) {
+      print("📥 ShareImportService: Error: $e");
       throw Exception('Failed to handle shared content: $e');
     }
   }

@@ -209,50 +209,33 @@ class GoogleDriveSyncService {
 
   Future<bool> isSignedIn() async {
     try {
-      main.myDebug("GoogleDriveSyncService.isSignedIn() called");
-
       if (_isMobilePlatform()) {
-        main.myDebug("Checking mobile platform sign-in status");
         // Use GoogleSignIn for mobile platforms
         final bool isSignedIn = await _googleSignInInstance.isSignedIn();
-        main.myDebug("GoogleSignIn.isSignedIn() result: $isSignedIn");
         return isSignedIn;
       } else {
-        main.myDebug("Checking web platform sign-in status");
         // Use universal web OAuth for desktop platforms
         await _loadUniversalTokens(); // Ensure tokens are loaded from storage
         final bool hasToken = _universalAccessToken != null;
-        main.myDebug("Universal token check result: $hasToken");
         return hasToken;
       }
     } catch (e) {
-      main.myDebug("GoogleDriveSyncService.isSignedIn() error: $e");
       return false;
     }
   }
 
   Future<bool> signIn() async {
     try {
-      main.myDebug("GoogleDriveSyncService.signIn() called");
-
       if (_isMobilePlatform()) {
-        main.myDebug("Using mobile platform sign-in");
         // Use GoogleSignIn for mobile platforms
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signIn();
-        main.myDebug(
-            "GoogleSignIn.signIn() result: ${account != null ? 'SUCCESS' : 'NULL/CANCELLED'}");
-        if (account != null) {
-          main.myDebug("Signed in as: ${account.email}");
-        }
         return account != null;
       } else {
-        main.myDebug("Using web platform sign-in");
         // Use universal web OAuth for desktop platforms
         return await _signInWeb();
       }
     } catch (e) {
-      main.myDebug("GoogleDriveSyncService.signIn() error: $e");
       return false;
     }
   }
