@@ -119,9 +119,97 @@ class UGTextConverter {
         continue;
       }
 
+      // Extract metadata from Ultimate Guitar plain text format
+      // Skip "X" placeholder line
+      if (line.trim() == 'X') {
+        continue;
+      }
+
+      // Title and artist from "Song Title Official by Artist Name" format
+      if (title == null && artist == null) {
+        final titleArtistMatch = RegExp(
+          r'^(.+?)\s+(?:Official\s+)?by\s+(.+)$',
+          caseSensitive: false,
+        ).firstMatch(line);
+        if (titleArtistMatch != null) {
+          title = titleArtistMatch.group(1)?.trim();
+          // Remove "Official" suffix if present
+          title = title?.replaceAll(
+              RegExp(r'\s+Official$', caseSensitive: false), '');
+          artist = titleArtistMatch.group(2)?.trim();
+          continue;
+        }
+      }
+
+      // Skip tuning line
+      if (line.toLowerCase().startsWith('tuning:')) {
+        continue;
+      }
+
+      // Skip "Chords" header line
+      if (line.toLowerCase().trim() == 'chords') {
+        continue;
+      }
+
+      // Skip chord list lines (single chords on their own lines before content)
+      if (contentStartIndex == 0 && _looksLikeChord(line)) {
+        continue;
+      }
+
+      // Skip "Strumming pattern" line
+      if (line.toLowerCase().contains('strumming pattern')) {
+        continue;
+      }
+
+      // Skip numbered strumming pattern lines (1, &, 2, &, etc.)
+      if (RegExp(r'^[\d&\s]+$').hasMatch(line)) {
+        continue;
+      }
+
+      // Extract key from "Key: C#m" format
+      if (key == null) {
+        final keyMatch =
+            RegExp(r'^Key:\s*([A-G][#b]?(?:m|min)?)', caseSensitive: false)
+                .firstMatch(line);
+        if (keyMatch != null) {
+          String rawKey = keyMatch.group(1)!;
+          // Normalize flats to sharps and unicode sharps to ASCII
+          const flatToSharp = {
+            'Db': 'C#',
+            'Eb': 'D#',
+            'Gb': 'F#',
+            'Ab': 'G#',
+            'Bb': 'A#',
+            'Dbm': 'C#m',
+            'Ebm': 'D#m',
+            'Gbm': 'F#m',
+            'Abm': 'G#m',
+            'Bbm': 'A#m'
+          };
+          key = flatToSharp[rawKey] ?? rawKey;
+          // Also convert unicode sharp to ASCII sharp
+          key = key.replaceAll('♯', '#');
+          continue;
+        }
+      }
+
+      // Extract BPM from "Whole song 129 bpm" or "129 bpm" format
+      if (bpm == null) {
+        final bpmMatch = RegExp(r'(\d+(?:\.\d+)?)\s*bpm', caseSensitive: false)
+            .firstMatch(line);
+        if (bpmMatch != null) {
+          final tempoValue = double.tryParse(bpmMatch.group(1)!);
+          if (tempoValue != null) {
+            // Convert decimal tempo to integer (round to nearest)
+            bpm = tempoValue.round();
+            continue;
+          }
+        }
+      }
+
       // No heuristic-based metadata extraction - only ChordPro directives above
 
-      // Check if we've reached content (section markers or chord lines)
+      // Check if we've reached content (section markers like [Intro], [Verse], etc.)
       if (line.startsWith('[') && line.contains(']')) {
         contentStartIndex = i;
         contentStartFound = true;
@@ -192,8 +280,8 @@ class UGTextConverter {
       if (trimmedLine.isEmpty) {
         if (insideExplicitTabBlock) {
           chordProLines.add('');
-        } else if (chordProLines.length > 5) {
-          // Only add after we have content
+        } else if (chordProLines.isNotEmpty) {
+          // Preserve empty lines between sections and content
           chordProLines.add('');
         }
         continue;

@@ -258,7 +258,7 @@ class _SongEditorScreenRefactoredState
               result.correctedArtist!.isNotEmpty) {
             _artistController.text = result.correctedArtist!;
           }
-          _bpmController.text = result.tempoBpm.toString();
+          _bpmController.text = result.tempoBpm?.round().toString() ?? '';
           _selectedKey = result.key!;
           _selectedTimeSignature = result.timeSignature!;
 
@@ -651,7 +651,47 @@ class _SongEditorScreenRefactoredState
         // Convert chord content using UGTextConverter
         final result = UGTextConverter.convertToChordPro(currentText);
         convertedText = result['chordpro'] as String;
+        final metadata = result['metadata'] as Map<String, String>;
         conversionType = 'chord';
+
+        // Track if we have title and artist for auto-retrieval
+        bool hasTitle =
+            metadata['title'] != null && metadata['title']!.isNotEmpty;
+        bool hasArtist =
+            metadata['artist'] != null && metadata['artist']!.isNotEmpty;
+
+        // Populate form fields with extracted metadata
+        setState(() {
+          if (hasTitle) {
+            _titleController.text = metadata['title']!;
+          }
+          if (hasArtist) {
+            _artistController.text = metadata['artist']!;
+          }
+          if (metadata['key'] != null && metadata['key']!.isNotEmpty) {
+            _selectedKey = metadata['key']!;
+          }
+          if (metadata['bpm'] != null && metadata['bpm']!.isNotEmpty) {
+            _bpmController.text = metadata['bpm']!;
+          }
+          if (metadata['timeSignature'] != null &&
+              metadata['timeSignature']!.isNotEmpty) {
+            _selectedTimeSignature = metadata['timeSignature']!;
+          }
+          if (metadata['capo'] != null && metadata['capo']!.isNotEmpty) {
+            _selectedCapo = int.tryParse(metadata['capo']!) ?? 0;
+          }
+        });
+
+        // Auto-retrieve additional metadata if title and artist are present
+        if (hasTitle && hasArtist) {
+          // Delay slightly to let the UI update first
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              _testSongMetadataAPI();
+            }
+          });
+        }
       }
 
       // Update the body controller with converted text
