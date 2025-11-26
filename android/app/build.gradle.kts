@@ -19,6 +19,13 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    // Force consistent JVM target across all subprojects
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "us.antonovich.nextchord"

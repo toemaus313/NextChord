@@ -70,9 +70,15 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     _prefs = await SharedPreferences.getInstance();
     _isSyncEnabled = _prefs?.getBool(_syncEnabledKey) ?? false;
 
-    // If sync was previously enabled, optimistically set sign-in status
+    main.myDebug("Loading sync preference - sync enabled: $_isSyncEnabled");
+
+    // If sync was previously enabled, verify actual sign-in status
     if (_isSyncEnabled) {
-      _isSignedIn = true;
+      _isSignedIn = await _syncService.isSignedIn();
+      main.myDebug("Sync was enabled, checking sign-in status: $_isSignedIn");
+    } else {
+      _isSignedIn = false;
+      main.myDebug("Sync was disabled, sign-in status set to false");
     }
     notifyListeners();
 
@@ -206,18 +212,26 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<bool> signIn() async {
     try {
+      main.myDebug("Starting sign-in process");
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
 
       _isSignedIn = await _syncService.signIn();
+      main.myDebug("Sign-in result: $_isSignedIn");
+
       if (_isSignedIn) {
         // Enable sync when successfully signed in
+        main.myDebug(
+            "Sign-in successful, enabling sync and running initial sync");
         await setSyncEnabled(true);
         await handleInitialSync();
+      } else {
+        main.myDebug("Sign-in failed or was cancelled");
       }
       return _isSignedIn;
     } catch (e) {
+      main.myDebug("Sign-in error: $e");
       _lastError = e.toString();
       return false;
     } finally {

@@ -26,7 +26,7 @@ class GoogleOAuthConfig {
   // Android client credentials (from Google Cloud Console)
   // Android-specific client ID for GoogleSignIn SDK
   static const String androidClientId =
-      '466612959108-acor920kbln88qab2n65u59mt4okvaoq.apps.googleusercontent.com';
+      '466612959108-t31p0uid2q0cn2o3j3mdlprad56ms9f5.apps.googleusercontent.com';
 
   // Get the appropriate client ID for the current platform
   static String get clientId {

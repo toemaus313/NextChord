@@ -4,30 +4,24 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
- 
-     {
-      "name": "Flutter iPhone(myMac)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "257ED20B-7545-44DA-8703-0BB3EF9CDEED"
-    },     
+
+    
     {
-      "name": "Flutter macOS",
+      "name": "Windows",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "deviceId": "macos"
+      "deviceId": "windows"
+    },
+    {
+      "name": "PixelPhone",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5556"
     },  
     {
-      "name": "Flutter iPadSim",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "74A388F7-3A87-4E6B-8D02-1D6AA0AD7F81"
-    },        
-    {
-      "name": "Flutter Android",
+      "name": "PixelTablet",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
@@ -36,17 +30,25 @@
   ],
   "compounds": [
     {
-      "name": "Flutter Macos + Android",
+      "name": "Windows+Phone",
       "configurations": [
-        "Flutter macOS",
-        "Flutter Android"
+        "Windows",
+        "PixelPhone"
       ]
-    },
+    },    
     {
-      "name": "Flutter Macos+iPhone",
+      "name": "Windows+Tablet",
       "configurations": [
-        "Flutter macOS",
-        "Flutter iPhone(myMac)"
+        "Windows",
+        "PixelTablet"
+      ]
+    },    
+    {
+      "name": "Windows+Tab+Phone",
+      "configurations": [
+        "Windows",
+        "PixelPhone",
+        "PixelTablet"
       ]
     }    
   ]

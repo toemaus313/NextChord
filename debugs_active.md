@@ -7,7 +7,7 @@
 
 ---
 
-## Current Active Debug Statements (SQLite/Sync Only + Metadata Lookup)
+## Current Active Debug Statements (SQLite/Sync Only + Metadata Lookup + Google Sign-In)
 
 ### Global Debug Foundation
 - **File**: `lib/main.dart`
@@ -15,6 +15,31 @@
 - **Flag**: `bool isDebug = true`
 - **Format**: `[$timestamp] $message` (HH:MM:SS format)
 - **Description**: Standardized debug helper with timestamps for consistent logging across the app
+
+### Google Sign-In Debugging (NEW)
+- **File**: `lib/providers/sync_provider.dart`
+- **Function**: `_loadSyncPreference()`
+- **Message**: Sync preference loading and sign-in status verification
+- **Trigger**: During app initialization when loading sync settings
+- **Description**: Tracks whether sync was previously enabled and actual sign-in status verification
+
+- **File**: `lib/providers/sync_provider.dart`
+- **Function**: `signIn()`
+- **Message**: Sign-in process start, result, and error tracking
+- **Trigger**: When user taps "Sign In" button
+- **Description**: Tracks complete sign-in flow including success/failure and initial sync
+
+- **File**: `lib/services/sync/google_drive_sync_service.dart`
+- **Function**: `isSignedIn()`
+- **Message**: Platform-specific sign-in status checking
+- **Trigger**: When verifying if user is currently signed in
+- **Description**: Tracks GoogleSignIn.isSignedIn() results and token validation
+
+- **File**: `lib/services/sync/google_drive_sync_service.dart`
+- **Function**: `signIn()`
+- **Message**: GoogleSignIn.signIn() execution and results
+- **Trigger**: When attempting to sign in with Google
+- **Description**: Tracks GoogleSignIn account results and user email on success
 
 ### Two-Step Metadata Lookup Debugging
 - **File**: `lib/services/song_metadata_service.dart`
