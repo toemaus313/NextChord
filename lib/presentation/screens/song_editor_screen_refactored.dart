@@ -102,12 +102,15 @@ class _SongEditorScreenRefactoredState
 
   @override
   void dispose() {
+    // Remove listeners before disposing
+    _bodyController.removeListener(_onBodyTextChanged);
+    // Dispose FocusNode FIRST before controllers
+    _bodyFocusNode.dispose();
     _titleController.dispose();
     _artistController.dispose();
     _bodyController.dispose();
     _bpmController.dispose();
     _durationController.dispose();
-    _bodyFocusNode.dispose();
     _scrollController.dispose();
     _controller.removeListener(_handleControllerStateChange);
     // Only dispose controller if we created it internally
@@ -711,7 +714,12 @@ class _SongEditorScreenRefactoredState
       },
     );
 
-    controller.dispose();
+    // Dispose controller after a short delay to allow dialog animation to complete
+    // Disposing immediately causes "TextEditingController used after being disposed" errors
+    Future.delayed(const Duration(milliseconds: 300), () {
+      controller.dispose();
+    });
+
     return url;
   }
 
@@ -757,7 +765,7 @@ class _SongEditorScreenRefactoredState
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 8),
       ),
     );
   }

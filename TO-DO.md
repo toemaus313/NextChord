@@ -41,9 +41,6 @@ SETTINGS
  - Evaluate/make a 'start metronome after count in' option for autoscroll
  - 
 
-
-- Not opening in editor when switch back to NextChord
-- Duration is importing just like all the other metadata, but it is not saving. The other metadata is saving properly
 - When the capo is adjusted using the onscreen button in the Viewer, that change is not being persisted when I leave the song and come back. I want that capo setting to “stick”. Same with Transpose. If a Setlist is active when those changes are made, the changes need to save so that they are only active when that setlist is active. 
 - Autoscroll and metronome remain active when changing to another song. These should be reset on song load
 - Autoscroll not showing the duration that I’m seeing in the edit field. We also need to make autoscroll adjustments persistent. Revisit this later and fix both at the same time
