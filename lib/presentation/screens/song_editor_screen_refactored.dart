@@ -12,6 +12,8 @@ import '../widgets/song_editor/song_editor_header.dart';
 import '../widgets/song_editor/song_metadata_form.dart';
 import '../widgets/song_editor/midi_profile_selector.dart';
 import '../widgets/song_editor/tag_editor.dart';
+import '../widgets/song_editor/title_only_confirmation_dialog.dart';
+import '../controllers/song_editor/song_editor_controller.dart';
 import '../../services/song_editor/song_import_service.dart';
 import '../../services/song_editor/transposition_service.dart';
 import '../../services/song_editor/tab_auto_completion_service.dart';
@@ -25,8 +27,14 @@ import '../../core/utils/ug_text_converter.dart';
 class SongEditorScreenRefactored extends StatefulWidget {
   final Song? song; // If null, create new song; if provided, edit existing
   final SetlistSongItem? setlistContext; // Setlist context for adjustments
+  final SongEditorController? controller;
 
-  const SongEditorScreenRefactored({super.key, this.song, this.setlistContext});
+  const SongEditorScreenRefactored({
+    super.key,
+    this.song,
+    this.setlistContext,
+    this.controller,
+  });
 
   @override
   State<SongEditorScreenRefactored> createState() =>
@@ -41,9 +49,13 @@ class _SongEditorScreenRefactoredState
   final _bodyController = TextEditingController();
   final _bpmController = TextEditingController();
   final _durationController = TextEditingController();
-  final FocusNode _bodyFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
-  final SongMetadataService _metadataService = SongMetadataService();
+  final FocusNode _bodyFocusNode = FocusNode();
+
+  late final SongEditorController _controller;
+
+  // Flag to prevent showing confirmation dialog multiple times
+  bool _isShowingConfirmationDialog = false;
 
   String _selectedKey = 'C';
   int _selectedCapo = 0;
@@ -71,12 +83,18 @@ class _SongEditorScreenRefactoredState
   @override
   void initState() {
     super.initState();
+    // Initialize controller - use provided one or create new one
+    _controller = widget.controller ?? SongEditorController(song: widget.song);
+
     _initializeFields();
     _loadMidiProfiles();
     _bodyController.addListener(_onBodyTextChanged);
     _bodyFocusNode.addListener(() {
       if (mounted) {}
     });
+
+    // Listen for pending confirmation state
+    _controller.addListener(_handleControllerStateChange);
   }
 
   @override
@@ -88,7 +106,92 @@ class _SongEditorScreenRefactoredState
     _durationController.dispose();
     _bodyFocusNode.dispose();
     _scrollController.dispose();
+    _controller.removeListener(_handleControllerStateChange);
+    // Only dispose controller if we created it internally
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     super.dispose();
+  }
+
+  /// Handle controller state changes for pending confirmation
+  void _handleControllerStateChange() {
+    if (_controller.onlineMetadataStatus ==
+            OnlineMetadataStatus.pendingConfirmation &&
+        !_isShowingConfirmationDialog) {
+      final pendingResult = _controller.pendingTitleOnlyResult;
+      if (pendingResult != null && mounted) {
+        _isShowingConfirmationDialog = true;
+        _showTitleOnlyConfirmationDialog(pendingResult).then((_) {
+          _isShowingConfirmationDialog = false;
+        });
+      }
+    }
+
+    // Sync metadata from controller to screen controllers when lookup completes
+    if (_controller.onlineMetadataStatus == OnlineMetadataStatus.found &&
+        mounted) {
+      print('DEBUG: Syncing metadata from controller to screen');
+
+      // Check if no duration data was found and show warning
+      if (_controller.lastLookupResult?.missingDuration == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('No duration data found, importing remaining metadata'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+      setState(() {
+        // Sync BPM
+        if (_controller.bpmController.text.isNotEmpty) {
+          _bpmController.text = _controller.bpmController.text;
+          print('DEBUG: Synced BPM: ${_bpmController.text}');
+        }
+
+        // Sync duration
+        if (_controller.durationController.text.isNotEmpty) {
+          _durationController.text = _controller.durationController.text;
+          print('DEBUG: Synced duration: ${_durationController.text}');
+        }
+
+        // Sync title and artist
+        if (_controller.titleController.text.isNotEmpty) {
+          _titleController.text = _controller.titleController.text;
+          print('DEBUG: Synced title: ${_titleController.text}');
+        }
+        if (_controller.artistController.text.isNotEmpty) {
+          _artistController.text = _controller.artistController.text;
+          print('DEBUG: Synced artist: ${_artistController.text}');
+        }
+
+        // Sync key and time signature
+        _selectedKey = _controller.selectedKey;
+        _selectedTimeSignature = _controller.timeSignature;
+        print(
+            'DEBUG: Synced key: $_selectedKey, time signature: $_selectedTimeSignature');
+      });
+    }
+  }
+
+  /// Show title-only confirmation dialog
+  Future<void> _showTitleOnlyConfirmationDialog(
+      SongMetadataLookupResult result) async {
+    final confirmed = await TitleOnlyConfirmationDialog.show(
+      context: context,
+      result: result,
+    );
+
+    if (confirmed) {
+      // User accepted - complete the lookup
+      await _controller.confirmTitleOnlyLookup();
+    } else {
+      // User rejected - return to editor
+      _controller.rejectTitleOnlyLookup();
+    }
   }
 
   /// Load MIDI profiles for dropdown
@@ -159,10 +262,15 @@ class _SongEditorScreenRefactoredState
       _selectedTimeSignature = song.timeSignature;
       _tags = List.from(song.tags);
 
-      // Extract duration from ChordPro metadata if available
-      final metadata = SongImportService.extractMetadata(song.body);
-      if (metadata.duration != null) {
-        _durationController.text = metadata.duration!;
+      // Load duration from database field first, fallback to ChordPro metadata
+      if (song.duration != null && song.duration!.isNotEmpty) {
+        _durationController.text = song.duration!;
+      } else {
+        // Extract duration from ChordPro metadata if available (fallback)
+        final metadata = SongImportService.extractMetadata(song.body);
+        if (metadata.duration != null) {
+          _durationController.text = metadata.duration!;
+        }
       }
     } else {
       // Default values for new song
@@ -208,153 +316,25 @@ class _SongEditorScreenRefactoredState
 
   /// Test method to verify SongBPM API works
   Future<void> _testSongMetadataAPI() async {
-    // Check if title and artist are provided
+    // Check if title is provided (artist is now optional)
     final title = _titleController.text.trim();
     final artist = _artistController.text.trim();
 
-    if (title.isEmpty || artist.isEmpty) {
+    if (title.isEmpty) {
       _showRetrieveInfoDialog(
         title: 'Missing Information',
         content:
-            'Please enter both a song title and artist name before retrieving song information.',
+            'Please enter a song title before retrieving song information.',
         showRetry: false,
       );
       return;
     }
 
-    // Show progress dialog
-    _showRetrieveInfoDialog(
-      title: 'Retrieving Song Info',
-      content:
-          'Searching for song information...\n\nThis can take up to 60 seconds.\nPlease wait.',
-      showRetry: false,
-      isLoading: true,
-    );
-
-    try {
-      final result = await _metadataService.fetchMetadata(
-        title: title,
-        artist: artist,
-      );
-
-      // Close progress dialog
-      if (mounted) Navigator.of(context).pop();
-
-      // Check if ALL required metadata fields are present
-      final hasAllFields = result.success &&
-          result.tempoBpm != null &&
-          result.key != null &&
-          result.timeSignature != null &&
-          result.durationMs != null;
-
-      if (hasAllFields) {
-        // Auto-populate the form fields with retrieved data
-        setState(() {
-          if (result.correctedTitle != null &&
-              result.correctedTitle!.isNotEmpty) {
-            _titleController.text = result.correctedTitle!;
-          }
-          if (result.correctedArtist != null &&
-              result.correctedArtist!.isNotEmpty) {
-            _artistController.text = result.correctedArtist!;
-          }
-          _bpmController.text = result.tempoBpm?.round().toString() ?? '';
-          _selectedKey = result.key!;
-          _selectedTimeSignature = result.timeSignature!;
-
-          // Format duration as MM:SS
-          final formattedDuration =
-              SongMetadataLookupResult.formatDuration(result.durationMs);
-          if (formattedDuration != null) {
-            _durationController.text = formattedDuration;
-          }
-        });
-
-        _showRetrieveInfoDialog(
-          title: '✅ Song Information Found',
-          content: 'Successfully retrieved complete metadata:\n\n'
-              '🎵 Tempo: ${result.tempoBpm} BPM\n'
-              '🎹 Key: ${result.key}\n'
-              '⏱️ Time Signature: ${result.timeSignature}\n'
-              '⏳ Duration: ${SongMetadataLookupResult.formatDuration(result.durationMs)}\n\n'
-              'Form fields have been updated automatically.\n'
-              'Title and artist have been corrected to match the database.',
-          showRetry: false,
-        );
-      } else {
-        // Handle partial success or no results
-        final missingFields = <String>[];
-        if (result.tempoBpm == null) missingFields.add('tempo');
-        if (result.key == null) missingFields.add('key');
-        if (result.timeSignature == null) missingFields.add('time signature');
-        if (result.durationMs == null) missingFields.add('duration');
-
-        if (result.error != null) {
-          // Check if this is likely a spelling error
-          final isLikelySpellingError =
-              result.error!.contains('No matches found') ||
-                  result.error!.contains('check spelling');
-
-          if (isLikelySpellingError) {
-            _showRetrieveInfoDialog(
-              title: '🔍 Song Not Found',
-              content: '${result.error}\n\n'
-                  'Tips for finding songs:\n'
-                  '• Use the official song title (not remixes or live versions)\n'
-                  '• Check artist name spelling exactly\n'
-                  '• Try shorter versions of the title\n'
-                  '• Some new/obscure songs may not be in our database yet',
-              showRetry: true,
-            );
-          } else {
-            _showRetrieveInfoDialog(
-              title: '❌ Retrieval Error',
-              content:
-                  'Failed to retrieve song information:\n\n${result.error}\n\n'
-                  'Please check:\n'
-                  '• Song title and artist are spelled correctly\n'
-                  '• Internet connection is active\n'
-                  '• Try again in a few moments',
-              showRetry: true,
-            );
-          }
-        } else if (missingFields.isNotEmpty) {
-          _showRetrieveInfoDialog(
-            title: '⚠️ Incomplete Information',
-            content: 'Found some information but missing:\n\n'
-                '${missingFields.map((field) => '• $field').join('\n')}\n\n'
-                'Available data has been applied to the form.\n'
-                'Missing fields will need to be filled manually.',
-            showRetry: true,
-          );
-        } else {
-          _showRetrieveInfoDialog(
-            title: '🔍 No Information Found',
-            content: 'No song information found for:\n\n'
-                'Title: $title\n'
-                'Artist: $artist\n\n'
-                'Suggestions:\n'
-                '• Check spelling of title and artist\n'
-                '• Try using the original song title\n'
-                '• Some songs may not be in the database',
-            showRetry: true,
-          );
-        }
-      }
-    } catch (e) {
-      // Close progress dialog if still showing
-      if (mounted) Navigator.of(context).pop();
-
-      _showRetrieveInfoDialog(
-        title: '❌ Network Error',
-        content: 'Failed to connect to song information service:\n\n$e\n\n'
-            'Please check your internet connection and try again.',
-        showRetry: true,
-      );
-    }
+    // Use controller's lookup method to trigger confirmation flow for title-only searches
+    _controller.triggerOnlineLookup(title, artist);
   }
 
-  /// Show retrieve dialog with status and retry options
+  /// Initialize form fields with song data and retry options
   void _showRetrieveInfoDialog({
     required String title,
     required String content,
@@ -516,6 +496,9 @@ class _SongEditorScreenRefactoredState
         tags: _tags,
         audioFilePath: null,
         notes: widget.song?.notes,
+        duration: _durationController.text.trim().isNotEmpty
+            ? _durationController.text.trim()
+            : null,
         createdAt: widget.song?.createdAt ?? now,
         updatedAt: now,
       );
@@ -620,7 +603,29 @@ class _SongEditorScreenRefactoredState
     }
   }
 
-  void _convertToChordPro() {
+  /// Check form fields for metadata lookup before conversion
+  /// Returns true if metadata lookup was performed (regardless of result)
+  Future<bool> _checkFormFieldsForMetadata() async {
+    final title = _titleController.text.trim();
+    final artist = _artistController.text.trim();
+
+    // Case 1: Artist + Title entered - perform full metadata search
+    if (title.isNotEmpty && artist.isNotEmpty) {
+      _controller.triggerOnlineLookup(title, artist);
+      return true;
+    }
+
+    // Case 2: Only Title entered - perform title-only search with confirmation
+    if (title.isNotEmpty && artist.isEmpty) {
+      _controller.triggerOnlineLookup(title, '');
+      return true;
+    }
+
+    // Case 3: Neither entered - no lookup from form fields
+    return false;
+  }
+
+  void _convertToChordPro() async {
     final currentText = _bodyController.text;
     if (currentText.trim().isEmpty) {
       if (mounted) {
@@ -634,11 +639,32 @@ class _SongEditorScreenRefactoredState
       return;
     }
 
+    // NEW FLOW: Check form fields for metadata lookup first
+    final formFieldsLookupPerformed = await _checkFormFieldsForMetadata();
+
+    // Save current form field values to protect them from content detection overwrites
+    final originalTitle = _titleController.text.trim();
+    final originalArtist = _artistController.text.trim();
+    final hasMetadataFromForm =
+        originalTitle.isNotEmpty || originalArtist.isNotEmpty;
+
+    // If form fields lookup was performed, show confirmation but continue with conversion
+    if (formFieldsLookupPerformed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Metadata lookup initiated from form fields'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
+
+    // ALWAYS proceed with text conversion, but protect metadata-populated fields
     // Detect content type
     final isTab = ContentTypeDetector.isTabContent(currentText);
 
     String convertedText;
     String conversionType;
+    bool shouldTriggerMetadataLookup = false;
 
     try {
       if (isTab) {
@@ -647,6 +673,7 @@ class _SongEditorScreenRefactoredState
         convertedText = shareImportService
             .convertUltimateGuitarTabExportToChordPro(currentText);
         conversionType = 'tab';
+        // Tab content does NOT trigger metadata lookup
       } else {
         // Convert chord content using UGTextConverter
         final result = UGTextConverter.convertToChordPro(currentText);
@@ -654,43 +681,44 @@ class _SongEditorScreenRefactoredState
         final metadata = result['metadata'] as Map<String, String>;
         conversionType = 'chord';
 
-        // Track if we have title and artist for auto-retrieval
-        bool hasTitle =
-            metadata['title'] != null && metadata['title']!.isNotEmpty;
-        bool hasArtist =
-            metadata['artist'] != null && metadata['artist']!.isNotEmpty;
+        // Only populate form fields from content if they weren't already populated from form fields
+        if (!hasMetadataFromForm) {
+          // Track if we have title and artist for auto-retrieval
+          bool hasTitle =
+              metadata['title'] != null && metadata['title']!.isNotEmpty;
+          bool hasArtist =
+              metadata['artist'] != null && metadata['artist']!.isNotEmpty;
 
-        // Populate form fields with extracted metadata
-        setState(() {
-          if (hasTitle) {
-            _titleController.text = metadata['title']!;
-          }
-          if (hasArtist) {
-            _artistController.text = metadata['artist']!;
-          }
-          if (metadata['key'] != null && metadata['key']!.isNotEmpty) {
-            _selectedKey = metadata['key']!;
-          }
-          if (metadata['bpm'] != null && metadata['bpm']!.isNotEmpty) {
-            _bpmController.text = metadata['bpm']!;
-          }
-          if (metadata['timeSignature'] != null &&
-              metadata['timeSignature']!.isNotEmpty) {
-            _selectedTimeSignature = metadata['timeSignature']!;
-          }
-          if (metadata['capo'] != null && metadata['capo']!.isNotEmpty) {
-            _selectedCapo = int.tryParse(metadata['capo']!) ?? 0;
-          }
-        });
-
-        // Auto-retrieve additional metadata if title and artist are present
-        if (hasTitle && hasArtist) {
-          // Delay slightly to let the UI update first
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              _testSongMetadataAPI();
+          // Populate form fields with extracted metadata
+          setState(() {
+            if (hasTitle) {
+              _titleController.text = metadata['title']!;
+            }
+            if (hasArtist) {
+              _artistController.text = metadata['artist']!;
+            }
+            if (metadata['key'] != null && metadata['key']!.isNotEmpty) {
+              _selectedKey = metadata['key']!;
+            }
+            if (metadata['bpm'] != null && metadata['bpm']!.isNotEmpty) {
+              _bpmController.text = metadata['bpm']!;
+            }
+            if (metadata['timeSignature'] != null &&
+                metadata['timeSignature']!.isNotEmpty) {
+              _selectedTimeSignature = metadata['timeSignature']!;
+            }
+            if (metadata['capo'] != null && metadata['capo']!.isNotEmpty) {
+              _selectedCapo = int.tryParse(metadata['capo']!) ?? 0;
             }
           });
+
+          // Auto-retrieve additional metadata if title and artist are present
+          if (hasTitle && hasArtist) {
+            shouldTriggerMetadataLookup = true;
+          }
+        } else {
+          myDebug(
+              'Skipping content metadata extraction - form fields already populated');
         }
       }
 
@@ -706,6 +734,15 @@ class _SongEditorScreenRefactoredState
             backgroundColor: Colors.green,
           ),
         );
+      }
+
+      // Trigger metadata lookup if needed (with delay for UI update)
+      if (shouldTriggerMetadataLookup) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _testSongMetadataAPI();
+          }
+        });
       }
     } catch (e) {
       if (mounted) {

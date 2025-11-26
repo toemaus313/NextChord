@@ -1,13 +1,13 @@
 # Active Debug Logs - NextChord Codebase
 
-## Status: DEBUG CLEANUP COMPLETED
+## Status: DEBUG CLEANUP COMPLETED + Two-Step Metadata Lookup Debugging
 
-**Updated**: 2025-11-25  
-**Purpose**: SQLite and sync debugging only (general debugging removed)
+**Updated**: 2025-11-26  
+**Purpose**: SQLite and sync debugging only (general debugging removed) + Two-step metadata lookup flow debugging
 
 ---
 
-## Current Active Debug Statements (SQLite/Sync Only)
+## Current Active Debug Statements (SQLite/Sync Only + Metadata Lookup)
 
 ### Global Debug Foundation
 - **File**: `lib/main.dart`
@@ -15,6 +15,25 @@
 - **Flag**: `bool isDebug = true`
 - **Format**: `[$timestamp] $message` (HH:MM:SS format)
 - **Description**: Standardized debug helper with timestamps for consistent logging across the app
+
+### Two-Step Metadata Lookup Debugging
+- **File**: `lib/services/song_metadata_service.dart`
+- **Function**: `completeTitleOnlyLookup()`
+- **Message**: MusicBrainz API query and response tracing
+- **Trigger**: When user accepts title-only confirmation dialog
+- **Description**: Tracks MusicBrainz API calls, query parameters, and response data for duration lookup
+
+- **File**: `lib/presentation/controllers/song_editor/song_editor_controller.dart`
+- **Function**: `confirmTitleOnlyLookup()` and `_applyMetadataResult()`
+- **Message**: Metadata application flow and field updates
+- **Trigger**: During confirmation acceptance and metadata sync
+- **Description**: Tracks controller state changes and metadata field updates
+
+- **File**: `lib/presentation/screens/song_editor_screen_refactored.dart`
+- **Function**: `_handleControllerStateChange()`
+- **Message**: UI sync from controller to screen controllers
+- **Trigger**: When metadata changes need to be reflected in UI
+- **Description**: Tracks synchronization between controller and screen state
 
 ### Global Error Handler
 - **File**: `lib/main.dart`

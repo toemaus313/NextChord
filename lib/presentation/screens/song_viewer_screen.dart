@@ -133,7 +133,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
         songViewerProvider: _songViewerProvider,
       );
     } catch (e) {
-      debugPrint('Failed to update MIDI dispatcher callbacks: $e');
+      // Handle MIDI dispatcher callback update errors silently
     }
   }
 

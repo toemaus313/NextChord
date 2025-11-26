@@ -4,13 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-     {
-      "name": "Flutter iPhone(workMac)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
-      "deviceId": "278738C9-EB08-4BE8-8E7C-3D103964F491"
-    },      
+ 
      {
       "name": "Flutter iPhone(myMac)",
       "request": "launch",
@@ -24,7 +18,14 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "macos"
-    },      
+    },  
+    {
+      "name": "Flutter iPadSim",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "74A388F7-3A87-4E6B-8D02-1D6AA0AD7F81"
+    },        
     {
       "name": "Flutter Android",
       "request": "launch",

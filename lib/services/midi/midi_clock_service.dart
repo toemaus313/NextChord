@@ -76,7 +76,6 @@ class MidiClockService with ChangeNotifier {
     if (_isRunning || _isDisposed) return;
 
     if (!_midiService.isConnected) {
-      debugPrint('MidiClockService: Cannot start - no MIDI device connected');
       return;
     }
 
@@ -93,8 +92,6 @@ class MidiClockService with ChangeNotifier {
     _monitoringTimer =
         Timer.periodic(_monitoringWindow, _performSelfMonitoring);
 
-    debugPrint(
-        'MidiClockService: Started at $_bpm BPM (interval: ${_tickIntervalMicros / 1000}ms)');
     notifyListeners();
   }
 
@@ -110,7 +107,6 @@ class MidiClockService with ChangeNotifier {
     _stopwatch.stop();
     _sentTimestamps.clear();
 
-    debugPrint('MidiClockService: Stopped');
     notifyListeners();
   }
 
@@ -144,7 +140,7 @@ class MidiClockService with ChangeNotifier {
       }
       await _midiService.sendMidiClock();
     } catch (e) {
-      debugPrint('MidiClockService: Failed to send MIDI clock: $e');
+      // Handle MIDI clock send errors silently
     }
   }
 
@@ -174,11 +170,7 @@ class MidiClockService with ChangeNotifier {
     }
 
     if (deviation > _maxBpmDeviation) {
-      debugPrint('MidiClockService: WARNING - Timing deviation detected! '
-          'Target: $_bpm BPM, Actual: ${_actualBpm.toStringAsFixed(1)} BPM '
-          '(deviation: ${deviation.toStringAsFixed(1)} BPM)');
-
-      // Optional: Apply small correction to bring timing back on target
+      // Apply timing correction if deviation is too high
       _applyTimingCorrection(deviation);
     }
 
@@ -190,9 +182,6 @@ class MidiClockService with ChangeNotifier {
     // Apply a tiny correction factor (1-2%) to gradually bring timing back on target
     final correctionFactor = deviation > _maxBpmDeviation * 2 ? 0.98 : 0.99;
     _tickIntervalMicros *= correctionFactor;
-
-    debugPrint(
-        'MidiClockService: Applied timing correction factor: $correctionFactor');
   }
 
   /// Get the current interval between F8 messages in milliseconds

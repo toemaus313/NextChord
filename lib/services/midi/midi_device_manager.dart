@@ -89,7 +89,6 @@ class MidiDeviceManager extends ChangeNotifier {
       notifyListeners();
       _deviceListController.add(connectedDeviceRefs);
 
-      debugPrint('Connected to MIDI device: ${device.name}');
       return true;
     } catch (e) {
       _setError('Failed to connect to ${device.name}: ${e.toString()}');
@@ -114,8 +113,6 @@ class MidiDeviceManager extends ChangeNotifier {
         await _savePreferredDeviceIds();
         notifyListeners();
         _deviceListController.add(connectedDeviceRefs);
-
-        debugPrint('Disconnected from MIDI device: ${device.name}');
       }
     } catch (e) {
       _setError('Failed to disconnect from device: ${e.toString()}');
@@ -261,14 +258,12 @@ class MidiDeviceManager extends ChangeNotifier {
           data: data.toList(),
         );
 
-        debugPrint('Received MIDI: $message');
         _messageController.add(message);
       } catch (e) {
         // Skip invalid messages but continue processing
-        debugPrint('Invalid MIDI data: $e');
       }
     } catch (e) {
-      debugPrint('Error processing MIDI data: $e');
+      // Handle MIDI processing errors silently
     }
   }
 

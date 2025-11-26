@@ -63,9 +63,9 @@ class _AppWrapperState extends State<AppWrapper> {
         // Current state callbacks will be set dynamically when entering song viewer
       );
 
-      debugPrint('MidiActionDispatcher initialized with all providers');
+      // MIDI dispatcher initialized successfully
     } catch (e) {
-      debugPrint('Failed to initialize MIDI dispatcher: $e');
+      // Handle MIDI dispatcher initialization errors silently
     }
   }
 

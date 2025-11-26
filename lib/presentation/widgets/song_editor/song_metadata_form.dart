@@ -119,12 +119,6 @@ class SongMetadataForm extends StatelessWidget {
             isDense: true,
           ),
           textCapitalization: TextCapitalization.words,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Artist is required';
-            }
-            return null;
-          },
         ),
         const SizedBox(height: 12),
 
@@ -399,6 +393,10 @@ class SongMetadataForm extends StatelessWidget {
         statusColor = isDarkMode ? Colors.red.shade300 : Colors.red.shade600;
         statusIcon = Icons.error_outline;
         break;
+
+      case OnlineMetadataStatus.pendingConfirmation:
+        // Don't show status - confirmation dialog is handled separately
+        return const SizedBox.shrink();
     }
 
     return Container(

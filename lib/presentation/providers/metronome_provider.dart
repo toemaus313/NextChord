@@ -111,15 +111,11 @@ class MetronomeProvider extends ChangeNotifier {
   /// Handle warm-up ticks (silent, for timing stabilization)
   void _handleWarmUpTick() {
     if (_warmUpBeatsRemaining > 0) {
-      debugPrint(
-          'WARM-UP: Beat ${_warmUpBeatsCount - _warmUpBeatsRemaining + 1}/$_warmUpBeatsCount (silent, timing stabilization)');
       _warmUpBeatsRemaining--;
     }
 
     if (_warmUpBeatsRemaining <= 0) {
       // Warm-up complete, transition to actual operation
-      debugPrint(
-          'WARM-UP: Complete! Starting MIDI clock and count-in/playback');
       _isWarmingUp = false;
 
       // Start MIDI clock service now that timing is stable
@@ -199,8 +195,6 @@ class MetronomeProvider extends ChangeNotifier {
     // Start warm-up phase (silent timing stabilization)
     _isWarmingUp = true;
     _warmUpBeatsRemaining = _warmUpBeatsCount;
-    debugPrint(
-        'WARM-UP: Starting ${_warmUpBeatsCount}-beat warm-up phase for timing stabilization');
 
     _isRunning = true;
     _tickCounter = 0;
@@ -265,8 +259,6 @@ class MetronomeProvider extends ChangeNotifier {
     // Start warm-up phase (silent timing stabilization)
     _isWarmingUp = true;
     _warmUpBeatsRemaining = _warmUpBeatsCount;
-    debugPrint(
-        'WARM-UP: Starting ${_warmUpBeatsCount}-beat warm-up phase for count-in only');
 
     _isRunning = true;
     _tickCounter = 0;
@@ -450,9 +442,6 @@ class MetronomeProvider extends ChangeNotifier {
   /// Handle tick during count-in phase
   void _handleCountInTick() {
     if (_countInBeatsRemaining > 0) {
-      debugPrint(
-          'COUNT-IN: _countInBeatsRemaining=$_countInBeatsRemaining, _beatsPerMeasure=$_beatsPerMeasure');
-
       // Calculate beat within the current measure (1-based) BEFORE decrementing
       final totalBeatsSoFar =
           (_settingsProvider!.countInMeasures * _beatsPerMeasure) -
@@ -460,37 +449,26 @@ class MetronomeProvider extends ChangeNotifier {
               1; // Add +1 to fix beat ordering
       _currentCountInBeat = ((totalBeatsSoFar - 1) % _beatsPerMeasure) + 1;
 
-      debugPrint(
-          'COUNT-IN: totalBeatsSoFar=$totalBeatsSoFar, _currentCountInBeat=$_currentCountInBeat');
-
       // During count-in: always flash border and show beat number
-      debugPrint('COUNT-IN: Triggering flash for beat $_currentCountInBeat');
       _triggerFlash();
 
       // Always play sound during count-in
       final isAccent = _currentCountInBeat == 1;
-      debugPrint(
-          'COUNT-IN: Playing audio for beat $_currentCountInBeat (accent: $isAccent)');
       unawaited(_playClick(isAccent: isAccent));
 
       _safeNotifyListeners();
 
       // Decrement AFTER playing the current beat
       _countInBeatsRemaining--;
-
-      debugPrint(
-          'COUNT-IN: After decrement _countInBeatsRemaining=$_countInBeatsRemaining');
     }
 
     if (_countInBeatsRemaining <= 0) {
-      debugPrint('COUNT-IN: Finished, transitioning to normal operation');
       // Count-in finished, transition to normal operation
       _isCountingIn = false;
       _currentCountInBeat = 0;
 
       // If "Count In Only" mode, stop here
       if (_settingsProvider?.tickAction == 'Count In Only') {
-        debugPrint('COUNT-IN: Stopping (count-in only mode)');
         stop();
       } else {
         _handleNormalTick();

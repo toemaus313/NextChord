@@ -9,6 +9,7 @@ import '../../../services/song_metadata_service.dart';
 enum OnlineMetadataStatus {
   idle,
   searching,
+  pendingConfirmation,
   found,
   notFound,
   error,
@@ -42,6 +43,12 @@ class SongEditorController extends ChangeNotifier {
   bool _hasAttemptedOnlineLookup = false;
   bool _onlineLookupCompletedSuccessfully = false;
   OnlineMetadataStatus _onlineMetadataStatus = OnlineMetadataStatus.idle;
+
+  // Title-only confirmation flow state
+  SongMetadataLookupResult? _pendingTitleOnlyResult;
+
+  // Last complete lookup result for UI access
+  SongMetadataLookupResult? _lastLookupResult;
 
   // Metadata lookup service and debouncing
   final SongMetadataService _metadataService = SongMetadataService();
@@ -203,6 +210,13 @@ class SongEditorController extends ChangeNotifier {
       _onlineLookupCompletedSuccessfully;
   OnlineMetadataStatus get onlineMetadataStatus => _onlineMetadataStatus;
 
+  /// Get the last complete lookup result (for UI access like warning snackbars)
+  SongMetadataLookupResult? get lastLookupResult => _lastLookupResult;
+
+  /// Pending title-only result for confirmation flow
+  SongMetadataLookupResult? get pendingTitleOnlyResult =>
+      _pendingTitleOnlyResult;
+
   // Setters
   void setSelectedKey(String key) {
     _selectedKey = key;
@@ -280,17 +294,30 @@ class SongEditorController extends ChangeNotifier {
   /// Check if online lookup should be triggered based on current conditions
   bool _shouldTriggerOnlineLookup(String title, String artist) {
     // Don't trigger if title/artist were auto-populated by parser
-    if (_titleArtistAutoPopulated) return false;
+    if (_titleArtistAutoPopulated) {
+      print('DEBUG: Lookup blocked - title/artist auto-populated');
+      return false;
+    }
 
-    // Don't trigger if either field is empty
-    if (title.trim().isEmpty || artist.trim().isEmpty) return false;
+    // Don't trigger if title is empty (artist is now optional)
+    if (title.trim().isEmpty) {
+      print('DEBUG: Lookup blocked - title is empty');
+      return false;
+    }
 
     // Don't trigger if we've already attempted lookup for this song
-    if (_hasAttemptedOnlineLookup) return false;
+    if (_hasAttemptedOnlineLookup) {
+      print('DEBUG: Lookup blocked - has attempted online lookup');
+      return false;
+    }
 
     // Don't trigger if we've already successfully completed lookup
-    if (_onlineLookupCompletedSuccessfully) return false;
+    if (_onlineLookupCompletedSuccessfully) {
+      print('DEBUG: Lookup blocked - online lookup completed successfully');
+      return false;
+    }
 
+    print('DEBUG: Lookup allowed - all checks passed');
     return true;
   }
 
@@ -302,41 +329,125 @@ class SongEditorController extends ChangeNotifier {
     setHasAttemptedOnlineLookup(true);
 
     try {
-      final result = await _metadataService.fetchMetadata(
-        title: title.trim(),
-        artist: artist.trim(),
-      );
+      // Check if this is a title-only search
+      if (artist.trim().isEmpty) {
+        // Title-only flow: fetch from SongBPM only and show confirmation
+        final result = await _metadataService.fetchTitleOnlyMetadata(
+          title: title.trim(),
+        );
 
-      if (result.success) {
-        _applyMetadataResult(result);
-        setOnlineMetadataStatus(OnlineMetadataStatus.found);
-        setOnlineLookupCompletedSuccessfully(true);
-      } else if (result.error != null) {
-        setOnlineMetadataStatus(OnlineMetadataStatus.error);
+        if (result.success) {
+          _pendingTitleOnlyResult = result;
+          setOnlineMetadataStatus(OnlineMetadataStatus.pendingConfirmation);
+        } else if (result.error != null) {
+          setOnlineMetadataStatus(OnlineMetadataStatus.error);
+        } else {
+          setOnlineMetadataStatus(OnlineMetadataStatus.notFound);
+        }
       } else {
-        setOnlineMetadataStatus(OnlineMetadataStatus.notFound);
+        // Title + Artist flow: use existing parallel API calls
+        final result = await _metadataService.fetchMetadata(
+          title: title.trim(),
+          artist: artist.trim(),
+        );
+
+        if (result.success) {
+          _applyMetadataResult(result);
+          setOnlineMetadataStatus(OnlineMetadataStatus.found);
+          setOnlineLookupCompletedSuccessfully(true);
+        } else if (result.error != null) {
+          setOnlineMetadataStatus(OnlineMetadataStatus.error);
+        } else {
+          setOnlineMetadataStatus(OnlineMetadataStatus.notFound);
+        }
       }
     } catch (e) {
       setOnlineMetadataStatus(OnlineMetadataStatus.error);
     }
   }
 
+  /// Complete title-only lookup after user confirmation
+  Future<void> confirmTitleOnlyLookup() async {
+    if (_pendingTitleOnlyResult == null) return;
+
+    setOnlineMetadataStatus(OnlineMetadataStatus.searching);
+
+    try {
+      final result = await _metadataService.completeTitleOnlyLookup(
+        title: _pendingTitleOnlyResult!.correctedTitle ??
+            titleController.text.trim(),
+        artist: _pendingTitleOnlyResult!.correctedArtist,
+        tempo: _pendingTitleOnlyResult!.tempoBpm?.toInt() ?? 0,
+        key: _pendingTitleOnlyResult!.key,
+        timeSignature: _pendingTitleOnlyResult!.timeSignature,
+      );
+
+      if (result.success) {
+        _applyMetadataResult(result);
+        setOnlineMetadataStatus(OnlineMetadataStatus.found);
+        setOnlineLookupCompletedSuccessfully(true);
+        _pendingTitleOnlyResult = null; // Clear pending result
+        setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
+        setOnlineLookupCompletedSuccessfully(
+            false); // Reset flag to allow retries
+      } else if (result.error != null) {
+        setOnlineMetadataStatus(OnlineMetadataStatus.error);
+        setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
+        setOnlineLookupCompletedSuccessfully(
+            false); // Reset flag to allow retries
+      } else {
+        setOnlineMetadataStatus(OnlineMetadataStatus.notFound);
+        setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
+        setOnlineLookupCompletedSuccessfully(
+            false); // Reset flag to allow retries
+      }
+    } catch (e) {
+      setOnlineMetadataStatus(OnlineMetadataStatus.error);
+      setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
+      setOnlineLookupCompletedSuccessfully(
+          false); // Reset flag to allow retries
+      print('Exception in confirmTitleOnlyLookup: $e');
+    }
+  }
+
+  /// Reject title-only lookup and return to editor
+  void rejectTitleOnlyLookup() {
+    _pendingTitleOnlyResult = null;
+    setOnlineMetadataStatus(OnlineMetadataStatus.idle);
+    setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
+    setOnlineLookupCompletedSuccessfully(false); // Reset flag to allow retries
+  }
+
+  /// Public method to trigger online metadata lookup (for manual "Get Song Info" button)
+  void triggerOnlineLookup(String title, String artist) {
+    _triggerOnlineLookup(title, artist);
+  }
+
   /// Apply metadata from lookup result, respecting user-entered values
   void _applyMetadataResult(SongMetadataLookupResult result) {
+    print(
+        'DEBUG: _applyMetadataResult called with tempo=${result.tempoBpm}, key=${result.key}, duration=${result.durationMs}');
+
+    // Store the complete result for UI access (e.g., warning snackbars)
+    _lastLookupResult = result;
+
     // Only apply tempo if field is at default value or empty
     final currentBpm = int.tryParse(bpmController.text);
     if (result.tempoBpm != null && (currentBpm == null || currentBpm == 120)) {
       bpmController.text = result.tempoBpm!.round().toString();
+      print('DEBUG: Updated bpmController to ${result.tempoBpm!.round()}');
     }
 
     // Only apply key if at default value
     if (result.key != null && _selectedKey == 'C') {
       setSelectedKey(result.key!);
+      print('DEBUG: Updated key to ${result.key}');
     }
 
     // Only apply time signature if at default value
     if (result.timeSignature != null && _timeSignature == '4/4') {
       setTimeSignature(result.timeSignature!);
+      print('DEBUG: Updated time signature to ${result.timeSignature}');
     }
 
     // Only apply duration if empty
@@ -345,8 +456,22 @@ class SongEditorController extends ChangeNotifier {
           SongMetadataLookupResult.formatDuration(result.durationMs);
       if (formattedDuration != null) {
         durationController.text = formattedDuration;
+        print('DEBUG: Updated durationController to $formattedDuration');
       }
     }
+
+    // Update title and artist if they were auto-corrected
+    if (result.correctedTitle != null && result.correctedTitle!.isNotEmpty) {
+      titleController.text = result.correctedTitle!;
+      print('DEBUG: Updated title to ${result.correctedTitle}');
+    }
+    if (result.correctedArtist != null && result.correctedArtist!.isNotEmpty) {
+      artistController.text = result.correctedArtist!;
+      print('DEBUG: Updated artist to ${result.correctedArtist}');
+    }
+
+    notifyListeners(); // Notify screen of metadata changes
+    print('DEBUG: Notified listeners of metadata changes');
   }
 
   void transposeBody(int semitones) {

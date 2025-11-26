@@ -147,11 +147,8 @@ class _AppControlModalState extends State<AppControlModal> {
     try {
       // MidiActionDispatcher is now initialized in app_wrapper.dart with all providers
       // No need to initialize here anymore
-      debugPrint(
-          'MidiActionDispatcher already initialized in app_wrapper.dart');
     } catch (e) {
       // Handle initialization error gracefully
-      debugPrint('Failed to initialize MIDI dispatcher: $e');
     }
   }
 

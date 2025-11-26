@@ -77,7 +77,6 @@ class MidiActionDispatcher {
     });
 
     _isInitialized = true;
-    debugPrint('MidiActionDispatcher initialized');
   }
 
   /// Handle incoming MIDI messages and trigger matching actions
@@ -90,7 +89,7 @@ class MidiActionDispatcher {
         _executeAction(mapping, message);
       }
     } catch (e) {
-      debugPrint('Error handling MIDI message: $e');
+      // Handle MIDI message errors silently
     }
   }
 
@@ -146,9 +145,6 @@ class MidiActionDispatcher {
     try {
       // Parse the action from JSON
       final action = AppControlAction.fromLegacyJson(mapping.action);
-
-      debugPrint(
-          'Executing MIDI action: ${action.description} from ${message.device.name}');
 
       // Execute the appropriate action
       switch (action.type) {
@@ -226,7 +222,7 @@ class MidiActionDispatcher {
           break;
       }
     } catch (e) {
-      debugPrint('Error executing action for mapping ${mapping.id}: $e');
+      // Handle action execution errors silently
     }
   }
 
@@ -243,10 +239,8 @@ class MidiActionDispatcher {
                   m.messageType != null // Only MIDI mappings
               )
           .toList();
-
-      debugPrint('Loaded ${_activeMappings.length} active MIDI mappings');
     } catch (e) {
-      debugPrint('Error loading MIDI mappings: $e');
+      // Handle mapping loading errors silently
     }
   }
 
@@ -259,7 +253,6 @@ class MidiActionDispatcher {
     _getCurrentSongContent = getCurrentSongContent;
     _getCurrentScrollController = getCurrentScrollController;
     _songViewerProvider = songViewerProvider;
-    debugPrint('Updated MIDI dispatcher current state callbacks');
   }
 
   /// Refresh mappings (call after database changes)
@@ -354,7 +347,7 @@ class MidiActionDispatcher {
           break;
       }
     } catch (e) {
-      debugPrint('Error executing action $action: $e');
+      // Handle action execution errors silently
     }
   }
 
@@ -364,7 +357,6 @@ class MidiActionDispatcher {
   void _executeScrollUp(AppControlActionParams params) {
     final scrollController = _getCurrentScrollController?.call();
     if (scrollController == null || !scrollController.hasClients) {
-      debugPrint('Scroll controller not available for scroll up');
       return;
     }
 
@@ -381,14 +373,11 @@ class MidiActionDispatcher {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    debugPrint('Scrolled up ${scrollDistance.round()}px');
   }
 
   void _executeScrollDown(AppControlActionParams params) {
     final scrollController = _getCurrentScrollController?.call();
     if (scrollController == null || !scrollController.hasClients) {
-      debugPrint('Scroll controller not available for scroll down');
       return;
     }
 
@@ -405,14 +394,11 @@ class MidiActionDispatcher {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    debugPrint('Scrolled down ${scrollDistance.round()}px');
   }
 
   void _executeScrollToTop() {
     final scrollController = _getCurrentScrollController?.call();
     if (scrollController == null || !scrollController.hasClients) {
-      debugPrint('Scroll controller not available for scroll to top');
       return;
     }
 
@@ -421,14 +407,11 @@ class MidiActionDispatcher {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    debugPrint('Scrolled to top');
   }
 
   void _executeScrollToBottom() {
     final scrollController = _getCurrentScrollController?.call();
     if (scrollController == null || !scrollController.hasClients) {
-      debugPrint('Scroll controller not available for scroll to bottom');
       return;
     }
 
@@ -437,36 +420,30 @@ class MidiActionDispatcher {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    debugPrint('Scrolled to bottom');
   }
 
   void _executeStartMetronome() {
     if (_metronomeProvider == null) {
-      debugPrint('MetronomeProvider not available for start metronome');
       return;
     }
 
     _metronomeProvider!.start().then((_) {
-      debugPrint('Started metronome');
+      // Handle metronome start silently
     }).catchError((error) {
-      debugPrint('Error starting metronome: $error');
+      // Handle metronome errors silently
     });
   }
 
   void _executeStopMetronome() {
     if (_metronomeProvider == null) {
-      debugPrint('MetronomeProvider not available for stop metronome');
       return;
     }
 
     _metronomeProvider!.stop();
-    debugPrint('Stopped metronome');
   }
 
   void _executeToggleMetronome() {
     if (_metronomeProvider == null) {
-      debugPrint('MetronomeProvider not available for toggle metronome');
       return;
     }
 
@@ -474,214 +451,184 @@ class MidiActionDispatcher {
     if (_metronomeProvider!.isRunning) {
       // If running, stop it (including during count-in)
       _metronomeProvider!.stop();
-      debugPrint('Stopped metronome via MIDI toggle');
     } else {
       // If stopped, start without count-in
       _metronomeProvider!.start(skipCountIn: true).then((_) {
-        debugPrint('Started metronome via MIDI toggle (skipped count-in)');
+        // Handle metronome start silently
       }).catchError((error) {
-        debugPrint('Error starting metronome via MIDI toggle: $error');
+        // Handle metronome errors silently
       });
     }
   }
 
   void _executeRepeatCountIn() {
     if (_metronomeProvider == null) {
-      debugPrint('MetronomeProvider not available for repeat count-in');
       return;
     }
 
     _metronomeProvider!.playCountInOnly().then((_) {
-      debugPrint('Started count-in only');
+      // Handle count-in start silently
     }).catchError((error) {
-      debugPrint('Error starting count-in only: $error');
+      // Handle count-in errors silently
     });
   }
 
   void _executeStartAutoscroll() {
     if (_autoscrollProvider == null) {
-      debugPrint('AutoscrollProvider not available for start autoscroll');
       return;
     }
 
     _autoscrollProvider!.start();
-    debugPrint('Started autoscroll');
   }
 
   void _executeStopAutoscroll() {
     if (_autoscrollProvider == null) {
-      debugPrint('AutoscrollProvider not available for stop autoscroll');
       return;
     }
 
     _autoscrollProvider!.stop();
-    debugPrint('Stopped autoscroll');
   }
 
   void _executeToggleAutoscroll() {
     if (_autoscrollProvider == null) {
-      debugPrint('AutoscrollProvider not available for toggle autoscroll');
       return;
     }
 
     // Use MIDI-specific toggle behavior with count-in logic
     _autoscrollProvider!.toggleWithMidiBehavior();
-    debugPrint('Toggled autoscroll with MIDI behavior');
   }
 
   void _executeAutoscrollSpeedFaster() {
     if (_autoscrollProvider == null) {
-      debugPrint('AutoscrollProvider not available for speed faster');
       return;
     }
 
     // Decrease duration by 15 seconds to make it faster
     _autoscrollProvider!.adjustDuration(-15);
-    debugPrint('Made autoscroll faster (decreased duration by 15 seconds)');
   }
 
   void _executeAutoscrollSpeedSlower() {
     if (_autoscrollProvider == null) {
-      debugPrint('AutoscrollProvider not available for speed slower');
       return;
     }
 
     // Increase duration by 15 seconds to make it slower
     _autoscrollProvider!.adjustDuration(15);
-    debugPrint('Made autoscroll slower (increased duration by 15 seconds)');
   }
 
   void _executeToggleSidebar() {
     if (_globalSidebarProvider == null) {
-      debugPrint('GlobalSidebarProvider not available for toggle sidebar');
       return;
     }
 
     _globalSidebarProvider!.toggleSidebar();
-    debugPrint('Toggled sidebar');
   }
 
   void _executeTransposeUp() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for transpose up');
       return;
     }
 
     if (_songViewerProvider!.canIncrementTranspose()) {
       _songViewerProvider!.updateTranspose(1);
-      debugPrint('Transposed up by one half-step');
     } else {
-      debugPrint('Cannot transpose up - at maximum');
+      // At maximum transpose level
     }
   }
 
   void _executeTransposeDown() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for transpose down');
       return;
     }
 
     if (_songViewerProvider!.canDecrementTranspose()) {
       _songViewerProvider!.updateTranspose(-1);
-      debugPrint('Transposed down by one half-step');
     } else {
-      debugPrint('Cannot transpose down - at minimum');
+      // At minimum transpose level
     }
   }
 
   void _executeCapoUp() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for capo up');
       return;
     }
 
     if (_songViewerProvider!.canIncrementCapo()) {
       _songViewerProvider!.updateCapo(1);
-      debugPrint('Increased capo by 1');
     } else {
-      debugPrint('Cannot increase capo - at maximum');
+      // At maximum capo level
     }
   }
 
   void _executeCapoDown() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for capo down');
       return;
     }
 
     if (_songViewerProvider!.canDecrementCapo()) {
       _songViewerProvider!.updateCapo(-1);
-      debugPrint('Decreased capo by 1');
     } else {
-      debugPrint('Cannot decrease capo - at minimum');
+      // At minimum capo level
     }
   }
 
   void _executeZoomIn() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for zoom in');
       return;
     }
 
     final currentFontSize = _songViewerProvider!.fontSize;
     final newFontSize = currentFontSize + 2.0; // Increase by 2 points
     _songViewerProvider!.updateFontSize(newFontSize);
-    debugPrint('Zoomed in (increased font size)');
   }
 
   void _executeZoomOut() {
     if (_songViewerProvider == null) {
-      debugPrint('SongViewerProvider not available for zoom out');
       return;
     }
 
     final currentFontSize = _songViewerProvider!.fontSize;
     final newFontSize = currentFontSize - 2.0; // Decrease by 2 points
     _songViewerProvider!.updateFontSize(newFontSize);
-    debugPrint('Zoomed out (decreased font size)');
   }
 
   void _executePreviousSong() {
     if (_setlistNavigationService == null) {
-      debugPrint('SetlistNavigationService not available for previous song');
       return;
     }
 
     if (!_setlistNavigationService!.hasPreviousSong) {
-      debugPrint('No previous song available');
       return;
     }
 
     _setlistNavigationService!.navigateToPreviousSong().then((song) {
       if (song != null) {
-        debugPrint('Navigated to previous song: ${song.title}');
+        // Navigation successful
       } else {
-        debugPrint('Failed to navigate to previous song');
+        // Navigation failed
       }
     }).catchError((error) {
-      debugPrint('Error navigating to previous song: $error');
+      // Handle navigation errors silently
     });
   }
 
   void _executeNextSong() {
     if (_setlistNavigationService == null) {
-      debugPrint('SetlistNavigationService not available for next song');
       return;
     }
 
     if (!_setlistNavigationService!.hasNextSong) {
-      debugPrint('No next song available');
       return;
     }
 
     _setlistNavigationService!.navigateToNextSong().then((song) {
       if (song != null) {
-        debugPrint('Navigated to next song: ${song.title}');
+        // Navigation successful
       } else {
-        debugPrint('Failed to navigate to next song');
+        // Navigation failed
       }
     }).catchError((error) {
-      debugPrint('Error navigating to next song: $error');
+      // Handle navigation errors silently
     });
   }
 
@@ -690,8 +637,6 @@ class MidiActionDispatcher {
     final songContent = _getCurrentSongContent?.call();
 
     if (scrollController == null || songContent == null) {
-      debugPrint(
-          'Scroll controller or song content not available for section navigation');
       return;
     }
 
@@ -701,18 +646,17 @@ class MidiActionDispatcher {
     );
 
     if (!sectionService.hasPreviousSection) {
-      debugPrint('No previous section available');
       return;
     }
 
     sectionService.navigateToPreviousSection().then((success) {
       if (success) {
-        debugPrint('Navigated to previous section');
+        // Navigation successful
       } else {
-        debugPrint('Failed to navigate to previous section');
+        // Navigation failed
       }
     }).catchError((error) {
-      debugPrint('Error navigating to previous section: $error');
+      // Handle navigation errors silently
     });
   }
 
@@ -721,8 +665,6 @@ class MidiActionDispatcher {
     final songContent = _getCurrentSongContent?.call();
 
     if (scrollController == null || songContent == null) {
-      debugPrint(
-          'Scroll controller or song content not available for section navigation');
       return;
     }
 
@@ -732,18 +674,17 @@ class MidiActionDispatcher {
     );
 
     if (!sectionService.hasNextSection) {
-      debugPrint('No next section available');
       return;
     }
 
     sectionService.navigateToNextSection().then((success) {
       if (success) {
-        debugPrint('Navigated to next section');
+        // Navigation successful
       } else {
-        debugPrint('Failed to navigate to next section');
+        // Navigation failed
       }
     }).catchError((error) {
-      debugPrint('Error navigating to next section: $error');
+      // Handle navigation errors silently
     });
   }
 
@@ -751,6 +692,5 @@ class MidiActionDispatcher {
   void dispose() {
     _messageSubscription.cancel();
     _isInitialized = false;
-    debugPrint('MidiActionDispatcher disposed');
   }
 }
