@@ -71,7 +71,9 @@ class SongMetadataForm extends StatelessWidget {
 
   /// Normalize flat keys to sharp keys for dropdown compatibility
   static String _normalizeKey(String key) {
-    return TranspositionService.flatToSharpMap[key] ?? key;
+    // Convert Unicode sharp (♯) to ASCII sharp (#) first
+    final asciiSharpKey = key.replaceAll('♯', '#');
+    return TranspositionService.flatToSharpMap[asciiSharpKey] ?? asciiSharpKey;
   }
 
   @override

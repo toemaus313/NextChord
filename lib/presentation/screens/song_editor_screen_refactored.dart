@@ -18,6 +18,7 @@ import '../../services/song_editor/tab_auto_completion_service.dart';
 import '../../services/song_editor/song_persistence_service.dart';
 import '../../services/import/content_type_detector.dart';
 import '../../services/import/share_import_service.dart';
+import '../../services/song_metadata_service.dart';
 import '../../core/utils/ug_text_converter.dart';
 
 /// Screen for creating or editing a song - Refactored version
@@ -42,6 +43,7 @@ class _SongEditorScreenRefactoredState
   final _durationController = TextEditingController();
   final FocusNode _bodyFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  final SongMetadataService _metadataService = SongMetadataService();
 
   String _selectedKey = 'C';
   int _selectedCapo = 0;
@@ -204,7 +206,203 @@ class _SongEditorScreenRefactoredState
     });
   }
 
-  /// Handle keyboard toggle to match iOS Hide Keyboard button behavior
+  /// Test method to verify SongBPM API works
+  Future<void> _testSongMetadataAPI() async {
+    // Check if title and artist are provided
+    final title = _titleController.text.trim();
+    final artist = _artistController.text.trim();
+
+    if (title.isEmpty || artist.isEmpty) {
+      _showRetrieveInfoDialog(
+        title: 'Missing Information',
+        content:
+            'Please enter both a song title and artist name before retrieving song information.',
+        showRetry: false,
+      );
+      return;
+    }
+
+    // Show progress dialog
+    _showRetrieveInfoDialog(
+      title: 'Retrieving Song Info',
+      content:
+          'Searching for song information...\n\nThis can take up to 60 seconds.\nPlease wait.',
+      showRetry: false,
+      isLoading: true,
+    );
+
+    try {
+      final result = await _metadataService.fetchMetadata(
+        title: title,
+        artist: artist,
+      );
+
+      // Close progress dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Check if ALL required metadata fields are present
+      final hasAllFields = result.success &&
+          result.tempoBpm != null &&
+          result.key != null &&
+          result.timeSignature != null &&
+          result.durationMs != null;
+
+      if (hasAllFields) {
+        // Auto-populate the form fields with retrieved data
+        setState(() {
+          if (result.correctedTitle != null &&
+              result.correctedTitle!.isNotEmpty) {
+            _titleController.text = result.correctedTitle!;
+          }
+          if (result.correctedArtist != null &&
+              result.correctedArtist!.isNotEmpty) {
+            _artistController.text = result.correctedArtist!;
+          }
+          _bpmController.text = result.tempoBpm.toString();
+          _selectedKey = result.key!;
+          _selectedTimeSignature = result.timeSignature!;
+
+          // Format duration as MM:SS
+          final formattedDuration =
+              SongMetadataLookupResult.formatDuration(result.durationMs);
+          if (formattedDuration != null) {
+            _durationController.text = formattedDuration;
+          }
+        });
+
+        _showRetrieveInfoDialog(
+          title: '✅ Song Information Found',
+          content: 'Successfully retrieved complete metadata:\n\n'
+              '🎵 Tempo: ${result.tempoBpm} BPM\n'
+              '🎹 Key: ${result.key}\n'
+              '⏱️ Time Signature: ${result.timeSignature}\n'
+              '⏳ Duration: ${SongMetadataLookupResult.formatDuration(result.durationMs)}\n\n'
+              'Form fields have been updated automatically.\n'
+              'Title and artist have been corrected to match the database.',
+          showRetry: false,
+        );
+      } else {
+        // Handle partial success or no results
+        final missingFields = <String>[];
+        if (result.tempoBpm == null) missingFields.add('tempo');
+        if (result.key == null) missingFields.add('key');
+        if (result.timeSignature == null) missingFields.add('time signature');
+        if (result.durationMs == null) missingFields.add('duration');
+
+        if (result.error != null) {
+          // Check if this is likely a spelling error
+          final isLikelySpellingError =
+              result.error!.contains('No matches found') ||
+                  result.error!.contains('check spelling');
+
+          if (isLikelySpellingError) {
+            _showRetrieveInfoDialog(
+              title: '🔍 Song Not Found',
+              content: '${result.error}\n\n'
+                  'Tips for finding songs:\n'
+                  '• Use the official song title (not remixes or live versions)\n'
+                  '• Check artist name spelling exactly\n'
+                  '• Try shorter versions of the title\n'
+                  '• Some new/obscure songs may not be in our database yet',
+              showRetry: true,
+            );
+          } else {
+            _showRetrieveInfoDialog(
+              title: '❌ Retrieval Error',
+              content:
+                  'Failed to retrieve song information:\n\n${result.error}\n\n'
+                  'Please check:\n'
+                  '• Song title and artist are spelled correctly\n'
+                  '• Internet connection is active\n'
+                  '• Try again in a few moments',
+              showRetry: true,
+            );
+          }
+        } else if (missingFields.isNotEmpty) {
+          _showRetrieveInfoDialog(
+            title: '⚠️ Incomplete Information',
+            content: 'Found some information but missing:\n\n'
+                '${missingFields.map((field) => '• $field').join('\n')}\n\n'
+                'Available data has been applied to the form.\n'
+                'Missing fields will need to be filled manually.',
+            showRetry: true,
+          );
+        } else {
+          _showRetrieveInfoDialog(
+            title: '🔍 No Information Found',
+            content: 'No song information found for:\n\n'
+                'Title: $title\n'
+                'Artist: $artist\n\n'
+                'Suggestions:\n'
+                '• Check spelling of title and artist\n'
+                '• Try using the original song title\n'
+                '• Some songs may not be in the database',
+            showRetry: true,
+          );
+        }
+      }
+    } catch (e) {
+      // Close progress dialog if still showing
+      if (mounted) Navigator.of(context).pop();
+
+      _showRetrieveInfoDialog(
+        title: '❌ Network Error',
+        content: 'Failed to connect to song information service:\n\n$e\n\n'
+            'Please check your internet connection and try again.',
+        showRetry: true,
+      );
+    }
+  }
+
+  /// Show retrieve dialog with status and retry options
+  void _showRetrieveInfoDialog({
+    required String title,
+    required String content,
+    bool showRetry = true,
+    bool isLoading = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: !isLoading,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => !isLoading,
+          child: AlertDialog(
+            title: Row(
+              children: [
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(title)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Text(content),
+            ),
+            actions: [
+              if (!isLoading && showRetry)
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _testSongMetadataAPI();
+                  },
+                  child: const Text('Retry'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _handleKeyboardToggle() {
     final isKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
@@ -657,20 +855,33 @@ class _SongEditorScreenRefactoredState
                       child: Column(
                         children: [
                           // Metadata form
-                          SongMetadataForm(
-                            titleController: _titleController,
-                            artistController: _artistController,
-                            bpmController: _bpmController,
-                            durationController: _durationController,
-                            selectedKey: _selectedKey,
-                            selectedCapo: _selectedCapo,
-                            selectedTimeSignature: _selectedTimeSignature,
-                            textColor: textColor,
-                            isDarkMode: isDarkMode,
-                            hasSetlistContext: widget.setlistContext != null,
-                            onKeyChanged: _handleKeySelection,
-                            onCapoChanged: _handleCapoSelection,
-                            onTimeSignatureChanged: _handleTimeSignatureChanged,
+                          Column(
+                            children: [
+                              // Debug API test button
+                              ElevatedButton(
+                                onPressed: _testSongMetadataAPI,
+                                child: const Text('Retrieve Song Info'),
+                              ),
+                              const SizedBox(height: 8),
+                              // Actual metadata form
+                              SongMetadataForm(
+                                titleController: _titleController,
+                                artistController: _artistController,
+                                bpmController: _bpmController,
+                                durationController: _durationController,
+                                selectedKey: _selectedKey,
+                                selectedCapo: _selectedCapo,
+                                selectedTimeSignature: _selectedTimeSignature,
+                                textColor: textColor,
+                                isDarkMode: isDarkMode,
+                                hasSetlistContext:
+                                    widget.setlistContext != null,
+                                onKeyChanged: _handleKeySelection,
+                                onCapoChanged: _handleCapoSelection,
+                                onTimeSignatureChanged:
+                                    _handleTimeSignatureChanged,
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
 

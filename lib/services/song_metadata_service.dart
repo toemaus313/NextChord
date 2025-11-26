@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../main.dart';
 
 /// Result of an online song metadata lookup
 class SongMetadataLookupResult {
@@ -8,6 +7,8 @@ class SongMetadataLookupResult {
   final String? key;
   final String? timeSignature;
   final int? durationMs;
+  final String? correctedTitle;
+  final String? correctedArtist;
   final bool success;
   final bool partialSuccess;
   final String? error;
@@ -17,8 +18,10 @@ class SongMetadataLookupResult {
     this.key,
     this.timeSignature,
     this.durationMs,
+    this.correctedTitle,
+    this.correctedArtist,
     required this.success,
-    required this.partialSuccess,
+    this.partialSuccess = false,
     this.error,
   });
 
@@ -27,6 +30,8 @@ class SongMetadataLookupResult {
     String? key,
     String? timeSignature,
     int? durationMs,
+    String? correctedTitle,
+    String? correctedArtist,
     bool partialSuccess = false,
   }) {
     return SongMetadataLookupResult(
@@ -34,6 +39,8 @@ class SongMetadataLookupResult {
       key: key,
       timeSignature: timeSignature,
       durationMs: durationMs,
+      correctedTitle: correctedTitle,
+      correctedArtist: correctedArtist,
       success: true,
       partialSuccess: partialSuccess,
     );
@@ -68,11 +75,11 @@ class SongMetadataLookupResult {
 
 /// Service for fetching song metadata from online sources (SongBPM + MusicBrainz)
 class SongMetadataService {
-  static const String _songBpmBaseUrl = 'https://api.getsongbpm.com/v1';
+  static const String _songBpmBaseUrl = 'https://api.getsong.co';
   static const String _musicBrainzBaseUrl = 'https://musicbrainz.org/ws/2';
 
   // TODO: Move these to configuration following existing patterns
-  static const String _songBpmApiKey = 'YOUR_SONGBPM_API_KEY';
+  static const String _songBpmApiKey = '0b0d119c98912195fa14e1153cbd79e6';
 
   /// Fetch metadata from both SongBPM and MusicBrainz APIs in parallel
   Future<SongMetadataLookupResult> fetchMetadata({
@@ -80,7 +87,7 @@ class SongMetadataService {
     required String artist,
   }) async {
     // Check if SongBPM API key is properly configured
-    if (_songBpmApiKey == 'YOUR_SONGBPM_API_KEY' || _songBpmApiKey.isEmpty) {
+    if (_songBpmApiKey.isEmpty) {
       return SongMetadataLookupResult.error('SongBPM API key not configured');
     }
 
@@ -104,39 +111,42 @@ class SongMetadataService {
   /// Fetch metadata from SongBPM API
   Future<_SongBpmResult?> _fetchFromSongBpm(String title, String artist) async {
     try {
-      final query = 'song:"$title" artist:"$artist"';
+      final lookup =
+          'song:${Uri.encodeComponent(title)} artist:${Uri.encodeComponent(artist)}';
       final url = Uri.parse(
-          '$_songBpmBaseUrl/search/?type=songs&query=$query&api_key=$_songBpmApiKey');
+          '$_songBpmBaseUrl/search/?api_key=$_songBpmApiKey&type=both&lookup=$lookup&limit=1');
 
       final response = await http.get(
         url,
         headers: {
-          'User-Agent': 'NextChord/1.0 (https://nextchord.app)',
+          'User-Agent': 'NextChord/1.0.0 ( tommy@antonovich.us )',
+          'Accept': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
-        myDebug('SongBPM API error: ${response.statusCode}');
-        return null;
+        throw Exception('SongBPM API error: ${response.statusCode}');
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
-      final songs = data['songs'] as List<dynamic>?;
+      final search = data['search'] as List<dynamic>?;
 
-      if (songs == null || songs.isEmpty) {
-        return null;
+      if (search == null || search.isEmpty) {
+        return null; // No data found
       }
 
-      // Find the best matching song (highest relevance score or first match)
-      final bestSong = songs.first as Map<String, dynamic>;
+      // Parse the song object according to documentation
+      final song = search.first as Map<String, dynamic>;
+      final artistData = song['artist'] as Map<String, dynamic>?;
 
       return _SongBpmResult(
-        tempo: _parseDouble(bestSong['tempo']),
-        key: bestSong['key_of'] as String?,
-        timeSignature: bestSong['time_sig'] as String?,
+        tempo: _parseDouble(song['tempo']),
+        key: song['key_of'] as String?,
+        timeSignature: song['time_sig'] as String?,
+        correctedTitle: song['title'] as String?,
+        correctedArtist: artistData?['name'] as String?,
       );
     } catch (e) {
-      myDebug('SongBPM fetch error: $e');
       return null;
     }
   }
@@ -152,12 +162,11 @@ class SongMetadataService {
       final response = await http.get(
         url,
         headers: {
-          'User-Agent': 'NextChord/1.0 (https://nextchord.app)',
+          'User-Agent': 'NextChord/1.0.0 ( tommy@antonovich.us )',
         },
       );
 
       if (response.statusCode != 200) {
-        myDebug('MusicBrainz API error: ${response.statusCode}');
         return null;
       }
 
@@ -175,7 +184,6 @@ class SongMetadataService {
         durationMs: _parseInt(bestRecording['length']),
       );
     } catch (e) {
-      myDebug('MusicBrainz fetch error: $e');
       return null;
     }
   }
@@ -188,7 +196,14 @@ class SongMetadataService {
     final hasAnyData = songBpmResult != null || musicBrainzResult != null;
 
     if (!hasAnyData) {
-      return SongMetadataLookupResult.noMatch();
+      // Both APIs returned nothing - likely spelling error or obscure song
+      return SongMetadataLookupResult.error(
+        'No matches found for this song title and artist.\n\n'
+        'Please check:\n'
+        '• Song title spelling (try the official title)\n'
+        '• Artist name spelling\n'
+        '• Song might not be in our databases yet',
+      );
     }
 
     // Check if we have partial data (some fields missing)
@@ -201,6 +216,8 @@ class SongMetadataService {
       key: songBpmResult?.key,
       timeSignature: songBpmResult?.timeSignature,
       durationMs: musicBrainzResult?.durationMs,
+      correctedTitle: songBpmResult?.correctedTitle,
+      correctedArtist: songBpmResult?.correctedArtist,
       partialSuccess: hasPartialData,
     );
   }
@@ -226,11 +243,15 @@ class _SongBpmResult {
   final double? tempo;
   final String? key;
   final String? timeSignature;
+  final String? correctedTitle;
+  final String? correctedArtist;
 
   _SongBpmResult({
     this.tempo,
     this.key,
     this.timeSignature,
+    this.correctedTitle,
+    this.correctedArtist,
   });
 
   bool hasCompleteData() =>
