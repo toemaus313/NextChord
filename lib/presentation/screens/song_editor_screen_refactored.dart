@@ -22,6 +22,7 @@ import '../../services/import/content_type_detector.dart';
 import '../../services/import/share_import_service.dart';
 import '../../services/song_metadata_service.dart';
 import '../../core/utils/ug_text_converter.dart';
+import '../../main.dart' as app_main;
 
 /// Screen for creating or editing a song - Refactored version
 class SongEditorScreenRefactored extends StatefulWidget {
@@ -64,6 +65,8 @@ class _SongEditorScreenRefactoredState
   bool _isSaving = false;
   String _lastBodyText = '';
   bool _isAutoCompleting = false;
+  bool _isImportingFromUrl = false;
+  String? _lastImportedUrl;
 
   // Text sizing state for editor
   double _editorFontSize = 14.0;
@@ -579,16 +582,184 @@ class _SongEditorScreenRefactoredState
   }
 
   Future<void> _importFromUltimateGuitar() async {
-    // For now, show a placeholder - this would need a URL input dialog
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Ultimate Guitar import requires URL - feature coming soon'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+    if (_isImportingFromUrl) {
+      app_main.myDebug(
+          'UG import attempted while already running; ignoring duplicate tap');
+      return;
     }
+
+    final url = await _promptForUltimateGuitarUrl();
+    if (!mounted || url == null || url.trim().isEmpty) {
+      app_main.myDebug('UG import dialog dismissed or empty URL provided');
+      return;
+    }
+
+    setState(() {
+      _isImportingFromUrl = true;
+    });
+
+    app_main.myDebug('Starting Ultimate Guitar import for URL: $url');
+
+    try {
+      final importResult =
+          await SongImportService.importFromUltimateGuitar(url);
+
+      if (!mounted) {
+        app_main.myDebug('UG import completed but screen unmounted; aborting');
+        return;
+      }
+
+      if (!importResult.success ||
+          importResult.body == null ||
+          importResult.body!.trim().isEmpty) {
+        final error = importResult.error ?? 'Unknown error';
+        app_main.myDebug('UG import failed for $url: $error');
+        _showImportError(error);
+        return;
+      }
+
+      app_main
+          .myDebug('UG import succeeded for $url, applying content to editor');
+
+      _applyImportedContent(
+        body: importResult.body!,
+        title: importResult.title,
+        artist: importResult.artist,
+        key: importResult.key,
+        capo: importResult.capo,
+        tempo: importResult.tempo,
+        timeSignature: importResult.timeSignature,
+        duration: importResult.duration,
+      );
+
+      _lastImportedUrl = url;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Imported song from Ultimate Guitar'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Trigger metadata lookup if title (and optional artist) were detected
+      final title = importResult.title?.trim() ?? '';
+      final artist = importResult.artist?.trim() ?? '';
+      if (title.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted) {
+            app_main.myDebug(
+                'Triggering metadata lookup after UG import (title: $title, artist: $artist)');
+            _controller.triggerOnlineLookup(title, artist);
+          }
+        });
+      }
+    } catch (e) {
+      final message = 'Failed to import Ultimate Guitar tab: $e';
+      app_main.myDebug(message);
+      if (mounted) {
+        _showImportError('Failed to import tab. Please try again.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isImportingFromUrl = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _promptForUltimateGuitarUrl() async {
+    final controller = TextEditingController(text: _lastImportedUrl ?? '');
+
+    final url = await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Import from Ultimate Guitar'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Paste the Ultimate Guitar tab URL. Supported format: https://tabs.ultimate-guitar.com/tab/...',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'https://tabs.ultimate-guitar.com/tab/...',
+                ),
+                autofocus: true,
+                keyboardType: TextInputType.url,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
+              child: const Text('Import'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    return url;
+  }
+
+  void _applyImportedContent({
+    required String body,
+    String? title,
+    String? artist,
+    String? key,
+    int? capo,
+    String? tempo,
+    String? timeSignature,
+    String? duration,
+  }) {
+    setState(() {
+      _bodyController.text = body;
+      if (title != null && title.isNotEmpty) {
+        _titleController.text = title;
+      }
+      if (artist != null && artist.isNotEmpty) {
+        _artistController.text = artist;
+      }
+      if (key != null && key.isNotEmpty) {
+        _selectedKey = key;
+      }
+      if (capo != null) {
+        _selectedCapo = capo;
+      }
+      if (tempo != null && tempo.isNotEmpty) {
+        _bpmController.text = tempo;
+      }
+      if (timeSignature != null && timeSignature.isNotEmpty) {
+        _selectedTimeSignature = timeSignature;
+      }
+      if (duration != null && duration.isNotEmpty) {
+        _durationController.text = duration;
+      }
+    });
+  }
+
+  void _showImportError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   Future<void> _importFromFile() async {
@@ -717,7 +888,7 @@ class _SongEditorScreenRefactoredState
             shouldTriggerMetadataLookup = true;
           }
         } else {
-          myDebug(
+          app_main.myDebug(
               'Skipping content metadata extraction - form fields already populated');
         }
       }

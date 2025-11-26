@@ -78,6 +78,7 @@ class SongImportService {
           timeSignature: metadata.time,
           duration: metadata.duration,
           body: result.chordProContent!,
+          rawContent: result.rawContent,
         );
       } else {
         return SongImportResult(
@@ -153,6 +154,7 @@ class SongImportResult {
   final String? timeSignature;
   final String? duration;
   final String? body;
+  final String? rawContent;
   final String? fileName;
   final String? error;
 
@@ -166,6 +168,7 @@ class SongImportResult {
     this.timeSignature,
     this.duration,
     this.body,
+    this.rawContent,
     this.fileName,
     this.error,
   });

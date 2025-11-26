@@ -9,6 +9,7 @@ class ImportResult {
   final String? title;
   final String? artist;
   final String? chordProContent;
+  final String? rawContent;
   final String? errorMessage;
 
   ImportResult({
@@ -16,6 +17,7 @@ class ImportResult {
     this.title,
     this.artist,
     this.chordProContent,
+    this.rawContent,
     this.errorMessage,
   });
 
@@ -23,11 +25,13 @@ class ImportResult {
     required String title,
     required String artist,
     required String chordProContent,
+    required String rawContent,
   }) : this(
           success: true,
           title: title,
           artist: artist,
           chordProContent: chordProContent,
+          rawContent: rawContent,
         );
 
   ImportResult.error(String message)
@@ -141,6 +145,7 @@ class UltimateGuitarImportService {
         title: songName,
         artist: artistName,
         chordProContent: chordProContent,
+        rawContent: content,
       );
     } catch (e) {
       return ImportResult.error(

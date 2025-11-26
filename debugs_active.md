@@ -60,6 +60,17 @@
 - **Trigger**: When metadata changes need to be reflected in UI
 - **Description**: Tracks synchronization between controller and screen state
 
+### Ultimate Guitar Import Debugging (NEW)
+- **File**: `lib/presentation/screens/song_editor_screen_refactored.dart`
+- **Functions**:
+  - `_importFromUltimateGuitar()`
+  - `_convertToChordPro()`
+- **Messages**:
+  - UG import lifecycle (dialog dismissed, start, success/failure, metadata lookup trigger)
+  - Content metadata extraction skips when form already populated
+- **Trigger**: When user taps "Import from Ultimate Guitar" or runs conversion logic that should skip metadata extraction
+- **Description**: Provides visibility into URL import flow, including fetch attempts, validation errors, and follow-on metadata lookups to aid post-launch troubleshooting.
+
 ### Global Error Handler
 - **File**: `lib/main.dart`
 - **Function**: Global error handlers in main()
