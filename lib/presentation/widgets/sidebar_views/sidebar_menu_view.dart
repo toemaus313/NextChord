@@ -55,6 +55,10 @@ class SidebarMenuView extends StatefulWidget {
 class _SidebarMenuViewState extends State<SidebarMenuView> {
   // Accordion state - only one section can be expanded at a time
   String? _expandedSection;
+  String? _pendingSection; // Next section to expand after current collapses
+
+  // Mobile-only: whether top-level menus should be centered (no section open)
+  bool _shouldCenterMenusOnPhone = true;
 
   // Song counts state
   int _totalSongsCount = 0;
@@ -68,21 +72,78 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     _loadSongCounts();
   }
 
-  void _expandSection(String sectionName) {
-    setState(() {
-      if (_expandedSection == sectionName) {
-        _expandedSection =
-            null; // Collapse if clicking the already expanded section
-      } else {
-        _expandedSection =
-            sectionName; // Expand new section, auto-collapsing others
-      }
-    });
-  }
-
   /// Check if a specific section is expanded
   bool _isSectionExpanded(String sectionName) {
     return _expandedSection == sectionName;
+  }
+
+  /// Handle taps on top-level sections with animated collapse-then-expand behavior
+  Future<void> _onSectionTap(
+    String sectionName,
+    Future<void> Function()? onExpanded,
+  ) async {
+    // Tapping the already-expanded section just collapses it
+    if (_expandedSection == sectionName) {
+      setState(() {
+        _expandedSection = null;
+        _pendingSection = null;
+        _shouldCenterMenusOnPhone = true; // Re-center when everything collapsed
+      });
+      return;
+    }
+
+    // Remember which section we ultimately want to open
+    _pendingSection = sectionName;
+
+    // If nothing is currently expanded, first slide menus from center -> left,
+    // then roll down the submenu
+    if (_expandedSection == null) {
+      setState(() {
+        // Stop centering on mobile to trigger slide-left animation
+        _shouldCenterMenusOnPhone = false;
+      });
+
+      // Allow the slide-left animation to play (~500ms)
+      await Future.delayed(const Duration(milliseconds: 140));
+      if (!mounted) return;
+
+      // If another tap changed the pending section in the meantime, respect that
+      if (_pendingSection != sectionName) {
+        return;
+      }
+
+      setState(() {
+        _expandedSection = sectionName;
+      });
+      if (onExpanded != null) {
+        await onExpanded();
+      }
+      return;
+    }
+
+    // Otherwise, collapse current section first
+    setState(() {
+      _expandedSection = null;
+      _shouldCenterMenusOnPhone =
+          false; // Keep menus left-aligned between sections
+    });
+
+    // Wait for the submenu close + slide-left alignment animations to complete
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+
+    // If another tap changed the pending section in the meantime, respect that
+    if (_pendingSection != sectionName) {
+      return;
+    }
+
+    setState(() {
+      _expandedSection = sectionName;
+    });
+
+    if (onExpanded != null) {
+      await onExpanded();
+    }
   }
 
   /// Load all song counts
@@ -129,6 +190,9 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
 
   @override
   Widget build(BuildContext context) {
+    final bool centerMenusOnPhone =
+        widget.isPhoneMode && _shouldCenterMenusOnPhone;
+
     return Column(
       children: [
         // Only show header if not on mobile (mobile has its own header)
@@ -141,13 +205,18 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSongsSection(context),
-              _buildSetlistsSection(context),
-              _buildToolsSection(context),
-              _buildSettingsSection(context),
+              _buildSongsSection(context, centerMenusOnPhone),
+              _buildSetlistsSection(context, centerMenusOnPhone),
+              _buildToolsSection(context, centerMenusOnPhone),
+              _buildSettingsSection(context, centerMenusOnPhone),
             ],
           ),
         ),
+
+        // Mobile-only branding
+        if (widget.isPhoneMode && _expandedSection == null)
+          _buildMobileBranding(context),
+        const SizedBox(height: 50),
         Padding(
           padding: const EdgeInsets.all(16),
           child: StandardWideButton(
@@ -160,21 +229,55 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
   }
 
-  Widget _buildSongsSection(BuildContext context) {
+  /// Mobile-only branding block shown when all sections are collapsed
+  Widget _buildMobileBranding(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
+    final logoWidth = (screenWidth * 0.6).clamp(250.0, 360.0);
+    final titleFontSize = (screenWidth * 0.06).clamp(60.0, 70.0);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/images/NextChord-Logo-transparent.png',
+            width: logoWidth,
+            fit: BoxFit.contain,
+            semanticLabel: 'NextChord logo',
+          ),
+          const SizedBox(height: 40),
+          Text(
+            'NextChord',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: titleFontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 0.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSongsSection(BuildContext context, bool centerOnPhone) {
     return SidebarMenuItem(
       icon: Icons.music_note,
       title: 'Songs',
       isSelected: false,
       onTap: () async {
-        final wasExpanded = _isSectionExpanded('songs');
-        _expandSection('songs');
-        // Load song counts when expanding
-        if (!wasExpanded && _isSectionExpanded('songs')) {
+        await _onSectionTap('songs', () async {
           await _loadSongCounts();
-        }
+        });
       },
       isExpanded: _isSectionExpanded('songs'),
       isPhoneMode: widget.isPhoneMode,
+      centerOnPhone: centerOnPhone,
       children: _isSectionExpanded('songs')
           ? [
               SidebarSubMenuItem(
@@ -210,22 +313,23 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
   }
 
-  Widget _buildSetlistsSection(BuildContext context) {
+  Widget _buildSetlistsSection(BuildContext context, bool centerOnPhone) {
     return SidebarMenuItem(
       icon: Icons.playlist_play,
       title: 'Setlists',
       isSelected: false,
       onTap: () async {
-        final wasExpanded = _isSectionExpanded('setlists');
-        _expandSection('setlists');
-        if (!wasExpanded && _isSectionExpanded('setlists')) {
+        await _onSectionTap('setlists', () async {
           try {
             await context.read<SetlistProvider>().loadSetlists();
-          } catch (e) {}
-        }
+          } catch (e) {
+            // Ignore load errors here; error UI is handled in builder
+          }
+        });
       },
       isExpanded: _isSectionExpanded('setlists'),
       isPhoneMode: widget.isPhoneMode,
+      centerOnPhone: centerOnPhone,
       children: _isSectionExpanded('setlists')
           ? [
               Consumer<SetlistProvider>(
@@ -300,16 +404,17 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
   }
 
-  Widget _buildToolsSection(BuildContext context) {
+  Widget _buildToolsSection(BuildContext context, bool centerOnPhone) {
     return SidebarMenuItem(
       icon: Icons.build,
       title: 'Tools',
       isSelected: false,
-      onTap: () {
-        _expandSection('tools');
+      onTap: () async {
+        await _onSectionTap('tools', null);
       },
       isExpanded: _isSectionExpanded('tools'),
       isPhoneMode: widget.isPhoneMode,
+      centerOnPhone: centerOnPhone,
       children: _isSectionExpanded('tools')
           ? [
               SidebarSubMenuItem(
@@ -329,16 +434,17 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context) {
+  Widget _buildSettingsSection(BuildContext context, bool centerOnPhone) {
     return SidebarMenuItem(
       icon: Icons.settings,
       title: 'Settings',
       isSelected: false,
-      onTap: () {
-        _expandSection('settings');
+      onTap: () async {
+        await _onSectionTap('settings', null);
       },
       isExpanded: _isSectionExpanded('settings'),
       isPhoneMode: widget.isPhoneMode,
+      centerOnPhone: centerOnPhone,
       children: _isSectionExpanded('settings')
           ? [
               SidebarSubMenuItem(

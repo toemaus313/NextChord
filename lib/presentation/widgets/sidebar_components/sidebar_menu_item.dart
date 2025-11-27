@@ -9,6 +9,7 @@ class SidebarMenuItem extends StatelessWidget {
   final List<Widget>? children;
   final bool isExpanded;
   final bool isPhoneMode;
+  final bool centerOnPhone;
 
   const SidebarMenuItem({
     Key? key,
@@ -19,6 +20,7 @@ class SidebarMenuItem extends StatelessWidget {
     this.children,
     this.isExpanded = false,
     this.isPhoneMode = false,
+    this.centerOnPhone = false,
   }) : super(key: key);
 
   /// Helper method for responsive text sizing (1.8x scaling on phones)
@@ -38,6 +40,7 @@ class SidebarMenuItem extends StatelessWidget {
     final verticalPadding = isIOS ? 18.0 : 14.0;
     final baseIconSize = isIOS ? 18.0 : 16.0;
     final responsiveIconSize = _getResponsiveIconSize(baseIconSize);
+    final usePhoneAnimation = isPhoneMode;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,37 +54,84 @@ class SidebarMenuItem extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected ? Colors.blueAccent : Colors.transparent,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: responsiveIconSize,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: _getResponsiveTextSize(13.0),
-                      fontWeight: FontWeight.w500,
+            child: usePhoneAnimation
+                ? AnimatedAlign(
+                    alignment:
+                        centerOnPhone ? Alignment.center : Alignment.centerLeft,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          icon,
+                          color: Colors.white,
+                          size: responsiveIconSize,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: _getResponsiveTextSize(13.0),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        if (children != null)
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: Colors.white70,
+                            size: responsiveIconSize * 0.9,
+                          ),
+                      ],
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+                  )
+                : Row(
+                    children: [
+                      Icon(
+                        icon,
+                        color: Colors.white,
+                        size: responsiveIconSize,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: _getResponsiveTextSize(13.0),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      if (children != null)
+                        Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: Colors.white70,
+                          size: responsiveIconSize * 0.9,
+                        ),
+                    ],
                   ),
-                ),
-                if (children != null)
-                  Icon(
-                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white70,
-                    size: responsiveIconSize * 0.9,
-                  ),
-              ],
-            ),
           ),
         ),
-        if (children != null && isExpanded) ...children!,
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: children != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: children!,
+                )
+              : const SizedBox.shrink(),
+          crossFadeState: (children != null && isExpanded)
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+          sizeCurve: Curves.easeInOut,
+        ),
       ],
     );
   }
