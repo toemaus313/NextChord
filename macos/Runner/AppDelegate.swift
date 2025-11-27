@@ -12,7 +12,6 @@ class AppDelegate: FlutterAppDelegate {
   }
   
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    // Register custom iCloud Drive plugin
-    ICloudDrivePlugin.register(with: self.registrar(forPlugin: "ICloudDrivePlugin")!)
+    // macOS-specific initialization can go here if needed.
   }
 }

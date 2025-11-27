@@ -53,6 +53,18 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.us.antonovich.nextchord</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>NextChord</string>
+			<key>NSUbiquitousContainerSupportedFolderLevel</key>
+			<string>One</string>
+		</dict>
+	</dict>
 	<key>CFBundleVersion</key>
 	<string>7</string>
 	<key>GIDClientID</key>

@@ -16,6 +16,18 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.us.antonovich.nextchord</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>NextChord</string>
+			<key>NSUbiquitousContainerSupportedFolderLevel</key>
+			<string>One</string>
+		</dict>
+	</dict>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleURLTypes</key>
