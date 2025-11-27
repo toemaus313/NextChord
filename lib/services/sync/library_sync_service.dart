@@ -203,7 +203,6 @@ class SetlistJson {
   final String items;
   final String? notes;
   final String? imagePath;
-  final bool setlistSpecificEditsEnabled;
   final int createdAt;
   final int updatedAt;
   final bool deleted;
@@ -214,7 +213,6 @@ class SetlistJson {
     required this.items,
     this.notes,
     this.imagePath,
-    required this.setlistSpecificEditsEnabled,
     required this.createdAt,
     required this.updatedAt,
     required this.deleted,
@@ -226,7 +224,6 @@ class SetlistJson {
         'items': items,
         'notes': notes,
         'imagePath': imagePath,
-        'setlistSpecificEditsEnabled': setlistSpecificEditsEnabled,
         'createdAt': createdAt,
         'updatedAt': updatedAt,
         'deleted': deleted,
@@ -238,8 +235,6 @@ class SetlistJson {
         items: json['items'] as String,
         notes: json['notes'] as String?,
         imagePath: json['imagePath'] as String?,
-        setlistSpecificEditsEnabled:
-            json['setlistSpecificEditsEnabled'] as bool,
         createdAt: json['createdAt'] as int,
         updatedAt: json['updatedAt'] as int,
         deleted: json['deleted'] as bool,
@@ -679,7 +674,6 @@ class LibrarySyncService {
                 items: s.items,
                 notes: s.notes,
                 imagePath: s.imagePath,
-                setlistSpecificEditsEnabled: s.setlistSpecificEditsEnabled,
                 createdAt: s.createdAt,
                 updatedAt: s.updatedAt,
                 deleted: s.isDeleted,
@@ -813,7 +807,7 @@ class LibrarySyncService {
           items: json.items,
           notes: json.notes,
           imagePath: json.imagePath,
-          setlistSpecificEditsEnabled: json.setlistSpecificEditsEnabled,
+          setlistSpecificEditsEnabled: true,
           createdAt: json.createdAt,
           updatedAt: json.updatedAt,
           isDeleted: json.deleted,

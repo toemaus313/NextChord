@@ -53,7 +53,6 @@ class SetlistService {
         items: items,
         notes: description,
         imagePath: imagePath,
-        setlistSpecificEditsEnabled: true,
         createdAt: createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );

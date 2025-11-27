@@ -419,14 +419,8 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                 setlistService.createSetlistSongItems(result, availableSongs);
 
             // Create updated setlist with new songs
-            final updatedSetlist = Setlist(
-              id: setlist.id,
-              name: setlist.name,
-              notes: setlist.notes,
-              imagePath: setlist.imagePath,
-              setlistSpecificEditsEnabled: setlist.setlistSpecificEditsEnabled,
+            final updatedSetlist = setlist.copyWith(
               items: [...setlist.items, ...newItems],
-              createdAt: setlist.createdAt,
               updatedAt: DateTime.now(),
             );
 

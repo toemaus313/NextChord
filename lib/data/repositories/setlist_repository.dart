@@ -19,7 +19,7 @@ class SetlistRepository {
       items: jsonEncode(_serializeItems(setlist.items)),
       notes: setlist.notes,
       imagePath: setlist.imagePath,
-      setlistSpecificEditsEnabled: setlist.setlistSpecificEditsEnabled,
+      setlistSpecificEditsEnabled: true,
       isDeleted: setlist.isDeleted,
       createdAt: setlist.createdAt.millisecondsSinceEpoch,
       updatedAt: setlist.updatedAt.millisecondsSinceEpoch,
@@ -36,7 +36,6 @@ class SetlistRepository {
       items: items,
       notes: model.notes ?? '',
       imagePath: model.imagePath,
-      setlistSpecificEditsEnabled: model.setlistSpecificEditsEnabled,
       createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
     );

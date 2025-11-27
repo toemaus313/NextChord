@@ -106,6 +106,15 @@
 - **Messages**: Database operation tracking and SQLite error reporting
 - **Trigger**: During database insert/update operations and SQLite failures
 
+### Song Viewer Adjustment Persistence (NEW)
+- **File**: `lib/presentation/providers/song_viewer_provider.dart`
+- **Function**: `_persistAdjustments()`
+- **Messages**:
+  - `"SongViewerProvider: saved setlist-only adjustments …"`
+  - `"SongViewerProvider: saved global song adjustments …"`
+- **Trigger**: When the capo/transpose buttons persist changes
+- **Description**: Differentiates whether adjustments were stored against the active setlist item or written directly to the song record.
+
 ---
 
 ## What Was Removed (Debug Cleanup)

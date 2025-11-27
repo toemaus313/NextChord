@@ -711,7 +711,9 @@ class _SongEditorScreenRefactoredState
       },
     );
 
-    controller.dispose();
+    // Avoid disposing immediately because the dialog's closing animation may still
+    // reference this controller on Android, which would trigger a use-after-dispose
+    // exception. Let it be garbage-collected instead.
     return url;
   }
 

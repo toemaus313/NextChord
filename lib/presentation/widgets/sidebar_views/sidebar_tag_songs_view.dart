@@ -79,15 +79,29 @@ class _SidebarTagSongsViewState extends State<SidebarTagSongsView> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          subtitle: song.artist.isNotEmpty
-                              ? Text(
+                          subtitle: Row(
+                            children: [
+                              if (song.artist.isNotEmpty) ...[
+                                Text(
                                   song.artist,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: 11,
                                   ),
-                                )
-                              : null,
+                                ),
+                                if (song.capo > 0) const SizedBox(width: 8),
+                              ],
+                              if (song.capo > 0)
+                                Text(
+                                  'CAPO ${song.capo}',
+                                  style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                            ],
+                          ),
                           onTap: () {
                             // Navigate to song with phone mode support
                             context

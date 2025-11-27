@@ -6,6 +6,8 @@ import '../../core/constants/song_viewer_constants.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
+import '../../main.dart' as app_main;
+import 'setlist_provider.dart';
 
 /// Enum for different flyout types
 enum FlyoutType {
@@ -47,7 +49,8 @@ class SongViewerProvider extends ChangeNotifier {
   double _fontSize;
   int _transposeSteps;
   int _currentCapo;
-  final SetlistSongItem? _setlistContext;
+  SetlistSongItem? _setlistContext;
+  final SetlistProvider? _setlistProvider;
 
   // Flyout visibility states
   bool _showSettingsFlyout = false;
@@ -67,12 +70,36 @@ class SongViewerProvider extends ChangeNotifier {
     required Song song,
     required SongRepository songRepository,
     SetlistSongItem? setlistContext,
+    SetlistProvider? setlistProvider,
   })  : _currentSong = song,
         _songRepository = songRepository,
-        _setlistContext = setlistContext,
+        _setlistProvider = setlistProvider,
         _fontSize = SongViewerConstants.defaultFontSize,
-        _transposeSteps = setlistContext?.transposeSteps ?? 0,
-        _currentCapo = setlistContext?.capo ?? song.capo {
+        _transposeSteps = 0,
+        _currentCapo = 0 {
+    // Lazy inference: if setlistContext is not provided but we have a setlistProvider,
+    // try to infer the context from the active setlist
+    if (setlistContext != null) {
+      _setlistContext = setlistContext;
+    } else if (setlistProvider != null && setlistProvider.isSetlistActive) {
+      // Try to get the current song item from the active setlist
+      final currentSongItem = setlistProvider.getCurrentSongItem();
+      // Only use it if it matches the current song
+      if (currentSongItem != null && currentSongItem.songId == song.id) {
+        _setlistContext = currentSongItem;
+        app_main.myDebug(
+          'SongViewerProvider: inferred setlistContext for song ${song.id} from SetlistProvider',
+        );
+      } else {
+        _setlistContext = null;
+      }
+    } else {
+      _setlistContext = null;
+    }
+
+    // Now set the actual values based on the inferred context
+    _transposeSteps = _setlistContext?.transposeSteps ?? 0;
+    _currentCapo = _setlistContext?.capo ?? song.capo;
     _initializeViewerAdjustments();
 
     // Set up stream subscription immediately to catch events during initial sync
@@ -111,8 +138,25 @@ class SongViewerProvider extends ChangeNotifier {
   // Update methods
   void updateSong(Song newSong) {
     _currentSong = newSong;
-    _transposeSteps = _setlistContext?.transposeSteps ?? 0;
-    _currentCapo = _setlistContext?.capo ?? newSong.capo;
+
+    // Apply lazy inference when updating song as well
+    SetlistSongItem? inferredContext;
+    if (_setlistContext != null) {
+      inferredContext = _setlistContext;
+    } else if (_setlistProvider != null && _setlistProvider!.isSetlistActive) {
+      // Try to get the current song item from the active setlist
+      final currentSongItem = _setlistProvider!.getCurrentSongItem();
+      // Only use it if it matches the current song
+      if (currentSongItem != null && currentSongItem.songId == newSong.id) {
+        inferredContext = currentSongItem;
+        app_main.myDebug(
+          'SongViewerProvider: inferred setlistContext for updated song ${newSong.id} from SetlistProvider',
+        );
+      }
+    }
+
+    _transposeSteps = inferredContext?.transposeSteps ?? 0;
+    _currentCapo = inferredContext?.capo ?? newSong.capo;
     _initializeViewerAdjustments();
 
     notifyListeners();
@@ -125,7 +169,6 @@ class SongViewerProvider extends ChangeNotifier {
       // Skip events that we triggered ourselves
       return;
     }
-
 
     // Only update the song data, preserve all UI state
     _currentSong = newSong;
@@ -143,7 +186,6 @@ class SongViewerProvider extends ChangeNotifier {
       return;
     }
 
-
     // Only react to song changes, and only if they affect the current song
     if (event.table == 'songs') {
       if (event.recordId == _currentSong.id) {
@@ -151,15 +193,13 @@ class SongViewerProvider extends ChangeNotifier {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _refreshCurrentSongFromDatabase();
         });
-      } else {
-      }
+      } else {}
     }
   }
 
   /// Refresh the current song from database without disrupting UI state
   Future<void> _refreshCurrentSongFromDatabase() async {
     if (_isUpdatingFromDatabase) return;
-
 
     try {
       _isUpdatingFromDatabase = true;
@@ -168,7 +208,6 @@ class SongViewerProvider extends ChangeNotifier {
       final updatedSong = await _songRepository.getSongById(_currentSong.id);
 
       if (updatedSong != null) {
-
         // Update only the song content, preserve all UI state (transpose, capo, font size, etc.)
         _currentSong = updatedSong;
 
@@ -176,8 +215,7 @@ class SongViewerProvider extends ChangeNotifier {
         // Don't call _initializeViewerAdjustments() as it would reset state
 
         notifyListeners();
-      } else {
-      }
+      } else {}
     } catch (e) {
     } finally {
       _isUpdatingFromDatabase = false;
@@ -200,6 +238,7 @@ class SongViewerProvider extends ChangeNotifier {
       _viewerAdjustments =
           _viewerAdjustments.copyWith(transposeSteps: newValue);
       notifyListeners();
+      _persistAdjustments(transposeSteps: newValue);
     }
   }
 
@@ -209,6 +248,7 @@ class SongViewerProvider extends ChangeNotifier {
       _currentCapo = newValue;
       _viewerAdjustments = _viewerAdjustments.copyWith(capo: newValue);
       notifyListeners();
+      _persistAdjustments(capo: newValue);
     }
   }
 
@@ -219,6 +259,7 @@ class SongViewerProvider extends ChangeNotifier {
       _viewerAdjustments =
           _viewerAdjustments.copyWith(transposeSteps: clampedValue);
       notifyListeners();
+      _persistAdjustments(transposeSteps: clampedValue);
     }
   }
 
@@ -228,6 +269,7 @@ class SongViewerProvider extends ChangeNotifier {
       _currentCapo = clampedValue;
       _viewerAdjustments = _viewerAdjustments.copyWith(capo: clampedValue);
       notifyListeners();
+      _persistAdjustments(capo: clampedValue);
     }
   }
 
@@ -312,6 +354,69 @@ class SongViewerProvider extends ChangeNotifier {
       capo: _currentCapo,
       appliesToSetlist: _setlistContext != null,
     );
+  }
+
+  Future<void> _persistAdjustments({int? transposeSteps, int? capo}) async {
+    final targetTranspose = transposeSteps ?? _transposeSteps;
+    final targetCapo = capo ?? _currentCapo;
+    final setlistProvider = _setlistProvider;
+
+    app_main.myDebug(
+        'SongViewerProvider: _persistAdjustments called - song=${_currentSong.id}, targetCapo=$targetCapo, _setlistContext=${_setlistContext != null ? "present" : "null"}, isSetlistActive=${setlistProvider?.isSetlistActive ?? false}');
+
+    // Prioritize using the inferred setlistContext if available
+    if (_setlistContext != null && setlistProvider?.isSetlistActive == true) {
+      await setlistProvider!.updateCurrentSongAdjustments(
+        transposeSteps: targetTranspose,
+        capo: targetCapo,
+      );
+      app_main.myDebug(
+        'SongViewerProvider: saved setlist-only adjustments for song ${_currentSong.id} using inferred context (transpose=$targetTranspose, capo=$targetCapo)',
+      );
+      return;
+    }
+
+    // Fallback to checking getCurrentSongItem() if no inferred context
+    if ((setlistProvider?.isSetlistActive ?? false) &&
+        setlistProvider?.getCurrentSongItem() != null) {
+      await setlistProvider!.updateCurrentSongAdjustments(
+        transposeSteps: targetTranspose,
+        capo: targetCapo,
+      );
+      app_main.myDebug(
+        'SongViewerProvider: saved setlist-only adjustments for song ${_currentSong.id} using getCurrentSongItem() (transpose=$targetTranspose, capo=$targetCapo)',
+      );
+      return;
+    }
+
+    // Save to global song if no setlist context available
+    app_main.myDebug(
+        'SongViewerProvider: saving to global song - no setlist context available');
+    final updatedSong = _currentSong.copyWith(
+      capo: targetCapo,
+      // Base song transpose is represented by storing the transposeSteps on the song body.
+      // Add a 'viewer_transpose' metadata field to preserve UI adjustments outside setlists.
+      notes: _mergeTransposeIntoNotes(_currentSong.notes, transposeSteps),
+    );
+    await _songRepository.updateSong(updatedSong);
+    _currentSong = updatedSong;
+    app_main.myDebug(
+      'SongViewerProvider: saved global song adjustments for song ${_currentSong.id} (transpose=$targetTranspose, capo=$targetCapo)',
+    );
+  }
+
+  String? _mergeTransposeIntoNotes(String? originalNotes, int? transposeSteps) {
+    if (transposeSteps == null) {
+      return originalNotes;
+    }
+
+    final marker = '[viewer_transpose:$transposeSteps]';
+    final sanitized = originalNotes ?? '';
+    final withoutExisting =
+        sanitized.replaceAll(RegExp(r'\[viewer_transpose:[-0-9]+\]'), '');
+    return withoutExisting.isEmpty
+        ? marker
+        : withoutExisting.trimRight() + '\n' + marker;
   }
 
   // Utility methods

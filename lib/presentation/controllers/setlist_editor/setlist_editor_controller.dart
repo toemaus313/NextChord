@@ -10,7 +10,6 @@ class SetlistEditorController extends ChangeNotifier {
   final TextEditingController notesController = TextEditingController();
 
   String? _imagePath;
-  bool _setlistSpecificEditsEnabled = true;
   List<SetlistItem> _items = [];
   bool _hasUnsavedChanges = false;
 
@@ -18,7 +17,6 @@ class SetlistEditorController extends ChangeNotifier {
   late final String _originalName;
   late final String _originalNotes;
   late final String? _originalImagePath;
-  late final bool _originalSetlistSpecificEditsEnabled;
   late final List<SetlistItem> _originalItems;
 
   SetlistEditorController({this.setlist}) {
@@ -30,23 +28,18 @@ class SetlistEditorController extends ChangeNotifier {
       _originalName = setlist!.name;
       _originalNotes = setlist!.notes;
       _originalImagePath = setlist!.imagePath;
-      _originalSetlistSpecificEditsEnabled =
-          setlist!.setlistSpecificEditsEnabled;
       _originalItems = List.from(setlist!.items);
 
       nameController.text = _originalName;
       notesController.text = _originalNotes;
       _imagePath = _originalImagePath;
-      _setlistSpecificEditsEnabled = _originalSetlistSpecificEditsEnabled;
       _items = List.from(_originalItems);
     } else {
       _originalName = '';
       _originalNotes = '';
       _originalImagePath = null;
-      _originalSetlistSpecificEditsEnabled = true;
       _originalItems = [];
 
-      _setlistSpecificEditsEnabled = true;
       _items = [];
     }
 
@@ -62,7 +55,6 @@ class SetlistEditorController extends ChangeNotifier {
     _hasUnsavedChanges = currentName != _originalName ||
         currentNotes != _originalNotes ||
         _imagePath != _originalImagePath ||
-        _setlistSpecificEditsEnabled != _originalSetlistSpecificEditsEnabled ||
         !listEquals(_items, _originalItems);
 
     notifyListeners();
@@ -70,7 +62,6 @@ class SetlistEditorController extends ChangeNotifier {
 
   // Getters
   String? get imagePath => _imagePath;
-  bool get setlistSpecificEditsEnabled => _setlistSpecificEditsEnabled;
   List<SetlistItem> get items => List.unmodifiable(_items);
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get isValid => nameController.text.trim().isNotEmpty;
@@ -78,11 +69,6 @@ class SetlistEditorController extends ChangeNotifier {
   // Setters
   void setImagePath(String? path) {
     _imagePath = path;
-    _onFormChanged();
-  }
-
-  void toggleSetlistSpecificEdits() {
-    _setlistSpecificEditsEnabled = !_setlistSpecificEditsEnabled;
     _onFormChanged();
   }
 
@@ -148,7 +134,6 @@ class SetlistEditorController extends ChangeNotifier {
           ? ''
           : notesController.text.trim(),
       imagePath: _imagePath,
-      setlistSpecificEditsEnabled: _setlistSpecificEditsEnabled,
       createdAt: setlist?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -171,7 +156,6 @@ class SetlistEditorController extends ChangeNotifier {
     nameController.text = _originalName;
     notesController.text = _originalNotes;
     _imagePath = _originalImagePath;
-    _setlistSpecificEditsEnabled = _originalSetlistSpecificEditsEnabled;
     _items = List.from(_originalItems);
     _hasUnsavedChanges = false;
     notifyListeners();
@@ -181,7 +165,6 @@ class SetlistEditorController extends ChangeNotifier {
     nameController.clear();
     notesController.clear();
     _imagePath = null;
-    _setlistSpecificEditsEnabled = true;
     _items = [];
     _hasUnsavedChanges = false;
     notifyListeners();

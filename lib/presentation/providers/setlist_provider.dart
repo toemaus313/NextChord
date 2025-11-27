@@ -66,7 +66,6 @@ class SetlistProvider extends ChangeNotifier {
       return;
     }
 
-
     // Only refresh if we're currently showing setlists or active setlist is affected
     if (event.table == 'setlists' || event.table == 'setlists_count') {
       // Defer refresh to avoid calling notifyListeners() during build phase
@@ -79,7 +78,6 @@ class SetlistProvider extends ChangeNotifier {
   /// Refresh data from database change event without disrupting UI state
   Future<void> _refreshFromDatabaseChange() async {
     if (_isLoading) return; // Don't refresh if already loading
-
 
     try {
       _isUpdatingFromDatabase = true;
@@ -101,8 +99,7 @@ class SetlistProvider extends ChangeNotifier {
       final newSetlists = await _repository.getAllSetlists();
       _setlists = newSetlists;
       notifyListeners();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Refresh active setlist if it exists
@@ -120,8 +117,7 @@ class SetlistProvider extends ChangeNotifier {
         _currentSongIndex = -1;
       }
       notifyListeners();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Get a single setlist by ID
@@ -271,11 +267,6 @@ class SetlistProvider extends ChangeNotifier {
 
     final currentSongItem = getCurrentSongItem();
     if (currentSongItem == null) {
-      return;
-    }
-
-    // Only update if setlist-specific edits are enabled
-    if (!_activeSetlist!.setlistSpecificEditsEnabled) {
       return;
     }
 

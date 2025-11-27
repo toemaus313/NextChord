@@ -5,6 +5,7 @@ import '../../providers/setlist_provider.dart';
 import '../sidebar_components/sidebar_menu_item.dart';
 import '../sidebar_components/sidebar_sub_menu_item.dart';
 import '../sidebar_components/sidebar_header.dart';
+import '../standard_wide_button.dart';
 import '../setlist_editor_dialog.dart';
 import '../../../domain/entities/setlist.dart';
 
@@ -23,6 +24,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToStorageSettings;
   final VoidCallback onNavigateToAppControl;
   final VoidCallback onNavigateToActionTest;
+  final VoidCallback onAddSong;
   final bool isPhoneMode;
   final bool showHeader;
 
@@ -41,6 +43,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToStorageSettings,
     required this.onNavigateToAppControl,
     required this.onNavigateToActionTest,
+    required this.onAddSong,
     this.isPhoneMode = false,
     this.showHeader = true,
   }) : super(key: key);
@@ -143,6 +146,14 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
               _buildToolsSection(context),
               _buildSettingsSection(context),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: StandardWideButton(
+            label: 'Add Song',
+            icon: Icons.add,
+            onPressed: widget.onAddSong,
           ),
         ),
       ],

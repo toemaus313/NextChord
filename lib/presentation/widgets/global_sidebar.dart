@@ -339,6 +339,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToStorageSettings: () => _showStorageSettings(),
           onNavigateToAppControl: () => _showAppControl(),
           onNavigateToActionTest: () => _showActionTest(),
+          onAddSong: () => _navigateToAddSong(),
           isPhoneMode: _isActualPhone(context),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
