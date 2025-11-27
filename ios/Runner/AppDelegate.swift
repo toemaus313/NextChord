@@ -12,6 +12,10 @@ import UIKit
       print("[APPDELEGATE] Launched with URL: \(url)")
     }
     GeneratedPluginRegistrant.register(with: self)
+    
+    // Register custom iCloud Drive plugin
+    ICloudDrivePlugin.register(with: self.registrar(forPlugin: "ICloudDrivePlugin")!)
+    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   

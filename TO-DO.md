@@ -29,9 +29,6 @@ SETTINGS
   - Make tools
   - Fix Metronome delay
   - iCloud for db storage
-- Different UI for phones - sidebar whole screen
-- Not refreshing quickly on db changes
-- No back button once in a Tag in Songs
 - Capo reminder when loading song 
  - Tools: MIDI Sender and MIDI Viewer 
 
@@ -44,6 +41,8 @@ SETTINGS
 - When the capo is adjusted using the onscreen button in the Viewer, that change is not being persisted when I leave the song and come back. I want that capo setting to “stick”. Same with Transpose. If a Setlist is active when those changes are made, the changes need to save so that they are only active when that setlist is active. 
 - Autoscroll and metronome remain active when changing to another song. These should be reset on song load
 - Autoscroll not showing the duration that I’m seeing in the edit field. We also need to make autoscroll adjustments persistent. Revisit this later and fix both at the same time
-- Put add song button on the main screen from any Songs view 
 - How do I query the db from the command line? 
-- I noticed duration for songs is currently stored in the database in a Notes field. Why is this not using the duration field of the database? 
+- Duration seems to not be saving, investigate more
+- Delete sometimes has to be repeated
+- Autoscroll always at 3 mins
+- 

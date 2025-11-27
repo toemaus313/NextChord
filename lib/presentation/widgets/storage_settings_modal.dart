@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../../providers/sync_provider.dart';
 import '../../../core/config/google_oauth_config.dart';
+import '../../../core/enums/sync_backend.dart';
 import 'templates/standard_modal_template.dart';
 
 /// Storage Settings Modal - Using StandardModalTemplate
@@ -24,6 +25,11 @@ class StorageSettingsModal extends StatefulWidget {
 }
 
 class _StorageSettingsModalState extends State<StorageSettingsModal> {
+  bool get _isApplePlatform {
+    return defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+  }
+
   bool get _isPlatformSupported {
     if (kIsWeb) return true;
 
@@ -63,7 +69,9 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
                 children: [
                   _buildSyncStatus(syncProvider),
                   const SizedBox(height: 8),
-                  _buildGoogleDriveSection(syncProvider),
+                  _buildBackendSelection(syncProvider),
+                  const SizedBox(height: 8),
+                  _buildStorageSection(syncProvider),
                   const SizedBox(height: 8),
                   _buildActionButtons(context, syncProvider),
                 ],
@@ -102,6 +110,87 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
       text: statusText,
       color: statusColor,
     );
+  }
+
+  Widget _buildBackendSelection(SyncProvider syncProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Storage Backend',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...SyncBackend.values
+            .where((backend) => backend.isAvailableOnCurrentPlatform)
+            .map((backend) {
+          return RadioListTile<SyncBackend>(
+            title: Text(
+              backend.displayName,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            subtitle: backend != SyncBackend.local
+                ? Text(
+                    backend.description,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  )
+                : null,
+            value: backend,
+            groupValue: syncProvider.syncBackend,
+            activeColor: Colors.blue[300],
+            onChanged: (SyncBackend? value) async {
+              if (value != null) {
+                await syncProvider.setSyncBackend(value);
+              }
+            },
+            contentPadding: EdgeInsets.zero,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildStorageSection(SyncProvider syncProvider) {
+    if (syncProvider.syncBackend == SyncBackend.local) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storage, color: Colors.white70, size: 20),
+              const SizedBox(width: 12),
+              const Text(
+                'Local Storage',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Your data is stored locally on this device only. No cloud sync or backup is available.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      );
+    }
+
+    if (syncProvider.syncBackend == SyncBackend.googleDrive) {
+      return _buildGoogleDriveSection(syncProvider);
+    }
+
+    if (syncProvider.syncBackend == SyncBackend.iCloud) {
+      return _buildICloudSection(syncProvider);
+    }
+
+    return Container();
   }
 
   Widget _buildGoogleDriveSection(SyncProvider syncProvider) {
@@ -167,10 +256,49 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
     );
   }
 
+  Widget _buildICloudSection(SyncProvider syncProvider) {
+    if (!_isApplePlatform) {
+      return Container(); // Should not happen since iCloud is filtered out
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.cloud_outlined, color: Colors.white70, size: 20),
+            const SizedBox(width: 12),
+            const Text(
+              'iCloud Files',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (syncProvider.isSyncEnabled) ...[
+          const Text(
+            'Your NextChord data is being synced with iCloud Drive and is visible in the Files app.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ] else ...[
+          const Text(
+            'Enable iCloud Drive to sync and backup your data across your Apple devices.',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildActionButtons(BuildContext context, SyncProvider syncProvider) {
     return Column(
       children: [
-        if (syncProvider.isSyncEnabled)
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            syncProvider.isSyncEnabled)
           StandardModalTemplate.buildButton(
             label: syncProvider.isSyncing ? 'Syncing...' : 'Sync Now',
             icon: Icons.sync,
@@ -180,8 +308,12 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
                     syncProvider.sync();
                   },
           ),
-        if (syncProvider.isSyncEnabled) const SizedBox(height: 8),
-        if (_isPlatformSupported && !syncProvider.isSyncEnabled)
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            syncProvider.isSyncEnabled)
+          const SizedBox(height: 8),
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            _isBackendSupported(syncProvider) &&
+            !syncProvider.isSyncEnabled)
           StandardModalTemplate.buildButton(
             label: 'Sign In',
             icon: Icons.login,
@@ -189,8 +321,12 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
               _handleSignIn(syncProvider);
             },
           ),
-        if (!syncProvider.isSyncEnabled) const SizedBox(height: 8),
-        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            !syncProvider.isSyncEnabled)
+          const SizedBox(height: 8),
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            _isBackendSupported(syncProvider) &&
+            syncProvider.isSyncEnabled)
           StandardModalTemplate.buildButton(
             label: 'Resync from Cloud',
             icon: Icons.cloud_download,
@@ -200,9 +336,13 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
                     _handleResyncFromCloud(context, syncProvider);
                   },
           ),
-        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            _isBackendSupported(syncProvider) &&
+            syncProvider.isSyncEnabled)
           const SizedBox(height: 8),
-        if (_isPlatformSupported && syncProvider.isSyncEnabled)
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            _isBackendSupported(syncProvider) &&
+            syncProvider.isSyncEnabled)
           StandardModalTemplate.buildButton(
             label: 'Sign Out',
             icon: Icons.logout,
@@ -210,7 +350,9 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
               _handleSignOut(syncProvider);
             },
           ),
-        if (syncProvider.isSyncEnabled) const SizedBox(height: 8),
+        if (syncProvider.syncBackend != SyncBackend.local &&
+            syncProvider.isSyncEnabled)
+          const SizedBox(height: 8),
         StandardModalTemplate.buildButton(
           label: 'Close',
           icon: Icons.close,
@@ -218,6 +360,15 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
         ),
       ],
     );
+  }
+
+  bool _isBackendSupported(SyncProvider syncProvider) {
+    if (syncProvider.syncBackend == SyncBackend.googleDrive) {
+      return _isPlatformSupported;
+    } else if (syncProvider.syncBackend == SyncBackend.iCloud) {
+      return _isApplePlatform;
+    }
+    return false;
   }
 
   Future<void> _handleSignIn(SyncProvider syncProvider) async {

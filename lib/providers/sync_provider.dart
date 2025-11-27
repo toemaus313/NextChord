@@ -3,21 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/sync/google_drive_sync_service.dart';
+import '../services/sync/icloud_sync_service.dart';
 import '../services/sync/cloud_db_backup_service.dart';
+import '../services/sync/icloud_db_backup_service.dart';
 import '../data/database/app_database.dart';
 import '../core/services/database_change_service.dart';
+import '../core/enums/sync_backend.dart';
 import '../main.dart' as main;
 
 class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   static const String _syncEnabledKey = 'isSyncEnabled';
-  late GoogleDriveSyncService _syncService;
-  late CloudDbBackupService _backupService;
+  static const String _syncBackendKey = 'syncBackend';
+
+  late GoogleDriveSyncService _googleDriveService;
+  late ICloudSyncService _icloudService;
+  dynamic _backupService;
   final VoidCallback? _onSyncCompleted;
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
   String? _lastError;
   bool _isSignedIn = false;
   bool _isSyncEnabled = false;
+  SyncBackend _syncBackend = SyncBackend.local;
   SharedPreferences? _prefs;
   final AppDatabase _database;
   bool _isAppInForeground = true;
@@ -27,6 +34,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   String? get lastError => _lastError;
   bool get isSignedIn => _isSignedIn;
   bool get isSyncEnabled => _isSyncEnabled;
+  SyncBackend get syncBackend => _syncBackend;
 
   SyncProvider({
     required AppDatabase database,
@@ -37,7 +45,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       // Initialize Google Drive sync service (loads Windows tokens for persistence)
       GoogleDriveSyncService.initialize().then((_) {}).catchError((e) {});
 
-      _syncService = GoogleDriveSyncService(
+      // Initialize both services
+      _googleDriveService = GoogleDriveSyncService(
         database: database,
         onDatabaseReplaced: () {
           if (_onSyncCompleted != null) {
@@ -46,11 +55,11 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         },
       );
 
-      // Initialize cloud backup service
-      _backupService = CloudDbBackupService(
-        syncService: _syncService,
+      _icloudService = ICloudSyncService(
         database: database,
       );
+
+      // Backup service will be created in _loadSyncPreference after backend is loaded
     } catch (e) {
       rethrow;
     }
@@ -59,9 +68,29 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _loadSyncPreference();
-    // Start metadata polling through the sync service
-    if (_isSyncEnabled) {
-      _syncService.startMetadataPolling();
+  }
+
+  /// Get the currently active sync service based on backend
+  dynamic get _currentSyncService {
+    switch (_syncBackend) {
+      case SyncBackend.googleDrive:
+        return _googleDriveService;
+      case SyncBackend.iCloud:
+        return _icloudService;
+      case SyncBackend.local:
+        return null;
+    }
+  }
+
+  /// Get the currently active backup service based on backend
+  dynamic get _currentBackupService {
+    switch (_syncBackend) {
+      case SyncBackend.googleDrive:
+        return _backupService;
+      case SyncBackend.iCloud:
+        return _backupService;
+      case SyncBackend.local:
+        return null;
     }
   }
 
@@ -70,20 +99,40 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     _prefs = await SharedPreferences.getInstance();
     _isSyncEnabled = _prefs?.getBool(_syncEnabledKey) ?? false;
 
-    main.myDebug("Loading sync preference - sync enabled: $_isSyncEnabled");
+    // Load backend preference with migration logic
+    final backendName = _prefs?.getString(_syncBackendKey);
+    if (backendName != null) {
+      _syncBackend = SyncBackend.values.firstWhere(
+        (backend) => backend.shortName == backendName,
+        orElse: () => SyncBackend.local,
+      );
+    } else {
+      // Migration: if sync was enabled but no backend set, default to Google Drive
+      _syncBackend =
+          _isSyncEnabled ? SyncBackend.googleDrive : SyncBackend.local;
+      await _prefs?.setString(_syncBackendKey, _syncBackend.shortName);
+      main.myDebug(
+          "Migrated to backend selection system - backend: $_syncBackend");
+    }
+
+    main.myDebug(
+        "Loading sync preference - sync enabled: $_isSyncEnabled, backend: $_syncBackend");
+
+    // Create backup service based on loaded backend
+    _createBackupService();
 
     // If sync was previously enabled, verify actual sign-in status
-    if (_isSyncEnabled) {
-      _isSignedIn = await _syncService.isSignedIn();
+    if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
+      _isSignedIn = await _currentSyncService.isSignedIn();
       main.myDebug("Sync was enabled, checking sign-in status: $_isSignedIn");
     } else {
       _isSignedIn = false;
-      main.myDebug("Sync was disabled, sign-in status set to false");
+      main.myDebug("Sync was disabled or local, sign-in status set to false");
     }
     notifyListeners();
 
     // Trigger initial sync after preferences are loaded
-    if (_isSyncEnabled) {
+    if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
       // Small delay to ensure app is fully initialized
       Future.delayed(const Duration(seconds: 5), () async {
         try {
@@ -97,9 +146,30 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
         // Start metadata polling after initial sync
         try {
-          _syncService.startMetadataPolling();
+          _currentSyncService.startMetadataPolling();
         } catch (e) {}
       });
+    }
+  }
+
+  /// Create backup service based on current backend
+  void _createBackupService() {
+    switch (_syncBackend) {
+      case SyncBackend.googleDrive:
+        _backupService = CloudDbBackupService(
+          syncService: _googleDriveService,
+          database: _database,
+        );
+        break;
+      case SyncBackend.iCloud:
+        _backupService = ICloudDbBackupService(
+          syncService: _icloudService,
+          database: _database,
+        );
+        break;
+      case SyncBackend.local:
+        _backupService = null as dynamic; // No backup service for local
+        break;
     }
   }
 
@@ -115,7 +185,41 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   Future<void> _saveSyncPreference() async {
     if (_prefs != null) {
       await _prefs!.setBool(_syncEnabledKey, _isSyncEnabled);
+      await _prefs!.setString(_syncBackendKey, _syncBackend.shortName);
     }
+  }
+
+  /// Set sync backend
+  Future<void> setSyncBackend(SyncBackend backend) async {
+    if (_syncBackend == backend) return;
+
+    // Stop current service polling
+    if (_currentSyncService != null) {
+      _currentSyncService.stopMetadataPolling();
+    }
+
+    // Sign out from current backend if switching backends
+    if (_syncBackend != SyncBackend.local && backend != _syncBackend) {
+      await _currentSyncService.signOut();
+    }
+
+    _syncBackend = backend;
+    _isSignedIn = false;
+    _lastSyncTime = null;
+    _lastError = null;
+
+    // Create new backup service for the backend
+    _createBackupService();
+
+    // If switching to local, disable sync
+    if (backend == SyncBackend.local) {
+      _isSyncEnabled = false;
+    }
+
+    await _saveSyncPreference();
+    notifyListeners();
+
+    main.myDebug("Sync backend changed to: $backend");
   }
 
   /// Enable or disable sync
@@ -141,8 +245,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         _isAppInForeground = true;
-        if (_isSyncEnabled) {
-          _syncService.startMetadataPolling();
+        if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
+          _currentSyncService.startMetadataPolling();
         }
         break;
       case AppLifecycleState.paused:
@@ -151,8 +255,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         // Windows and Mac continue polling even when unfocused
         if (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.android) {
-          _syncService.stopMetadataPolling();
-        } else {}
+          if (_syncBackend != SyncBackend.local) {
+            _currentSyncService.stopMetadataPolling();
+          }
+        }
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
@@ -161,14 +267,17 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         // Only stop polling on mobile platforms
         if (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.android) {
-          _syncService.stopMetadataPolling();
+          if (_syncBackend != SyncBackend.local) {
+            _currentSyncService.stopMetadataPolling();
+          }
         }
         break;
     }
   }
 
   Future<void> autoSync() async {
-    if (!_isSyncEnabled || _isSyncing) return;
+    if (!_isSyncEnabled || _isSyncing || _syncBackend == SyncBackend.local)
+      return;
 
     try {
       _isSyncing = true;
@@ -179,10 +288,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       DatabaseChangeService().setSyncInProgress(true);
 
       // Verify we're signed in before attempting sync
-      _isSignedIn = await _syncService.isSignedIn();
+      _isSignedIn = await _currentSyncService.isSignedIn();
       if (!_isSignedIn) return;
 
-      await _syncService.sync();
+      await _currentSyncService.sync();
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
 
@@ -212,12 +321,16 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<bool> signIn() async {
     try {
-      main.myDebug("Starting sign-in process");
+      if (_syncBackend == SyncBackend.local) {
+        throw Exception('Cannot sign in to local storage');
+      }
+
+      main.myDebug("Starting sign-in process for $_syncBackend");
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
 
-      _isSignedIn = await _syncService.signIn();
+      _isSignedIn = await _currentSyncService.signIn();
       main.myDebug("Sign-in result: $_isSignedIn");
 
       if (_isSignedIn) {
@@ -242,10 +355,12 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<void> signOut() async {
     try {
+      if (_syncBackend == SyncBackend.local) return;
+
       _isSyncing = true;
       notifyListeners();
 
-      await _syncService.signOut();
+      await _currentSyncService.signOut();
       _isSignedIn = false;
       _isSyncEnabled = false;
       await _prefs?.setBool(_syncEnabledKey, false);
@@ -261,7 +376,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> sync() async {
-    if (_isSyncing) return;
+    if (_isSyncing || _syncBackend == SyncBackend.local) return;
 
     _isSyncing = true;
     _lastError = null;
@@ -269,12 +384,13 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
     try {
       // Check if user is signed in before attempting sync
-      if (!await _syncService.isSignedIn()) {
-        _lastError = 'Please sign in to Google Drive to sync your library';
+      if (!await _currentSyncService.isSignedIn()) {
+        _lastError =
+            'Please sign in to ${_syncBackend.displayName} to sync your library';
         return;
       }
 
-      await _syncService.sync();
+      await _currentSyncService.sync();
       _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
@@ -285,14 +401,14 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> handleInitialSync() async {
-    if (_isSyncing) return;
+    if (_isSyncing || _syncBackend == SyncBackend.local) return;
 
     _isSyncing = true;
     _lastError = null;
     notifyListeners();
 
     try {
-      await _syncService.handleInitialSync();
+      await _currentSyncService.handleInitialSync();
       _lastSyncTime = DateTime.now();
     } catch (e) {
       _lastError = e.toString();
@@ -305,7 +421,9 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _syncService.stopMetadataPolling();
+    if (_syncBackend != SyncBackend.local) {
+      _currentSyncService.stopMetadataPolling();
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -313,7 +431,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   /// Check if cloud backup exists
   Future<bool> hasCloudBackup() async {
     try {
-      return await _backupService.hasCloudBackup();
+      if (_syncBackend == SyncBackend.local || _currentBackupService == null) {
+        return false;
+      }
+      return await _currentBackupService.hasCloudBackup();
     } catch (e) {
       return false;
     }
@@ -323,19 +444,19 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   /// Returns true if restore was successful, false otherwise
   Future<bool> restoreFromCloudBackup() async {
     try {
-      if (!_isSyncEnabled) {
-        throw Exception('Cloud sync is not enabled');
+      if (_syncBackend == SyncBackend.local) {
+        throw Exception('Cloud sync is not enabled for local storage');
       }
 
-      if (!await _syncService.isSignedIn()) {
-        throw Exception('Not signed in to Google Drive');
+      if (!await _currentSyncService.isSignedIn()) {
+        throw Exception('Not signed in to ${_syncBackend.displayName}');
       }
 
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
 
-      final success = await _backupService.restoreFromCloudBackup();
+      final success = await _currentBackupService.restoreFromCloudBackup();
 
       if (success) {
         _lastSyncTime = DateTime.now();
