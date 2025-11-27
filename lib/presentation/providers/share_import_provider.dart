@@ -74,8 +74,10 @@ class ShareImportProvider extends ChangeNotifier {
 
   Future<void> _handleUrlScheme(Uri uri) async {
     // Check if this is a share URL from our Share Extension
-    if (uri.scheme.startsWith('ShareMedia') && uri.host == 'share') {
+    if (uri.scheme.toLowerCase().startsWith('sharemedia') &&
+        uri.path == 'share') {
       final dataParam = uri.queryParameters['data'];
+
       if (dataParam != null && dataParam.isNotEmpty) {
         try {
           // Decode base64 and parse JSON

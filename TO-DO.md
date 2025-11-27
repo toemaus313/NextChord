@@ -41,14 +41,7 @@ SETTINGS
  - Evaluate/make a 'start metronome after count in' option for autoscroll
  - 
 
-
-- App is not calling  the metadata search on convert button. I want the convert button to kick off the same process as the Get Song Info button if a song title is present
-- Change restriction so that only a song title is required to attempt Get Song Info. Make the metadata search process only require a title as well
-- Not opening in editor when switch back to NextChord
-- Duration is importing just like all the other metadata, but it is not saving. The other metadata is saving properly
-- When the capo is adjusted using the adjustment buttons in capo_button.dart, that change is not being persisted when I leave the song and come back. I want that capo setting to “stick” when adjusted with the capo button, just as if it were changed in the song editor. 
-   - If a Setlist is active when those changes are made with the button, the changes need to save so that they are only active when that setlist is active. 
-   - If those buttons are used to make adjustments when a setlist is NOT active, the changes need to persist to the song itself in the database. 
+- When the capo is adjusted using the onscreen button in the Viewer, that change is not being persisted when I leave the song and come back. I want that capo setting to “stick”. Same with Transpose. If a Setlist is active when those changes are made, the changes need to save so that they are only active when that setlist is active. 
 - Autoscroll and metronome remain active when changing to another song. These should be reset on song load
 - Autoscroll not showing the duration that I’m seeing in the edit field. We also need to make autoscroll adjustments persistent. Revisit this later and fix both at the same time
 - Put add song button on the main screen from any Songs view 

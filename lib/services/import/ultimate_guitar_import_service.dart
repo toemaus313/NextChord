@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 import '../../core/utils/ultimate_guitar_parser.dart';
@@ -43,6 +44,14 @@ class ImportResult {
 
 /// Service for importing songs from Ultimate Guitar
 class UltimateGuitarImportService {
+  /// Check if running on desktop platform
+  bool _isDesktop() {
+    return kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux;
+  }
+
   /// Import a song from an Ultimate Guitar URL
   ///
   /// Example URL: https://tabs.ultimate-guitar.com/tab/icehouse/crazy-chords-125754
@@ -53,6 +62,13 @@ class UltimateGuitarImportService {
         return ImportResult.error(
           'Invalid Ultimate Guitar URL. Please use a URL like:\n'
           'https://tabs.ultimate-guitar.com/tab/artist/song-chords-123456',
+        );
+      }
+
+      // Block official tab URLs on mobile devices
+      if (!_isDesktop() && url.contains('-official-')) {
+        return ImportResult.error(
+          'Official tab URLs not supported with this import method - use "Open With..." option after pressing the Share button from Ultimate Guitar app instead',
         );
       }
 
@@ -109,30 +125,32 @@ class UltimateGuitarImportService {
         return ImportResult.error('Invalid tab data: missing data');
       }
 
+      // Try regular tab structure first (existing functionality)
+      String? content;
+      String? songName;
+      String? artistName;
+
       final tab = data['tab'] as Map<String, dynamic>?;
-      if (tab == null) {
+      if (tab != null) {
+        // Regular tab structure (existing code path)
+        final tabView = data['tab_view'] as Map<String, dynamic>?;
+        if (tabView == null) {
+          return ImportResult.error('Invalid tab data: missing tab_view');
+        }
+        final wikiTab = tabView['wiki_tab'] as Map<String, dynamic>?;
+        if (wikiTab == null) {
+          return ImportResult.error('Invalid tab data: missing wiki_tab');
+        }
+        content = wikiTab['content'] as String?;
+        songName = tab['song_name'] as String?;
+        artistName = tab['artist_name'] as String?;
+      } else {
         return ImportResult.error('Invalid tab data: missing tab');
       }
 
-      final tabView = data['tab_view'] as Map<String, dynamic>?;
-      if (tabView == null) {
-        return ImportResult.error('Invalid tab data: missing tab_view');
-      }
-
-      final wikiTab = tabView['wiki_tab'] as Map<String, dynamic>?;
-      if (wikiTab == null) {
-        return ImportResult.error('Invalid tab data: missing wiki_tab');
-      }
-
-      // Extract the content
-      final content = wikiTab['content'] as String?;
       if (content == null || content.isEmpty) {
         return ImportResult.error('No chord content found in the tab');
       }
-
-      // Extract metadata
-      final songName = tab['song_name'] as String? ?? 'Unknown';
-      final artistName = tab['artist_name'] as String? ?? 'Unknown';
 
       // Convert to ChordPro format
       final chordProContent = UltimateGuitarParser.convertToChordPro(content);
@@ -142,8 +160,8 @@ class UltimateGuitarImportService {
       }
 
       return ImportResult.success(
-        title: songName,
-        artist: artistName,
+        title: songName ?? 'Unknown',
+        artist: artistName ?? 'Unknown',
         chordProContent: chordProContent,
         rawContent: content,
       );
