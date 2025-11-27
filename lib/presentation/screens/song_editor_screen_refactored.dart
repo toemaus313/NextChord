@@ -62,6 +62,7 @@ class _SongEditorScreenRefactoredState
   int _selectedCapo = 0;
   String _selectedTimeSignature = '4/4';
   List<String> _tags = [];
+  bool _isAutoTransposeEnabled = true;
   bool _isSaving = false;
   String _lastBodyText = '';
   bool _isAutoCompleting = false;
@@ -283,13 +284,24 @@ class _SongEditorScreenRefactoredState
 
   void _handleKeySelection(String newKey) {
     if (newKey == _selectedKey) return;
-    final diff =
-        TranspositionService.calculateKeyDifference(_selectedKey, newKey);
-    if (diff != null && diff != 0) {
-      _transposeBody(diff);
+
+    // Only transpose if auto-transpose is enabled
+    if (_isAutoTransposeEnabled) {
+      final diff =
+          TranspositionService.calculateKeyDifference(_selectedKey, newKey);
+      if (diff != null && diff != 0) {
+        _transposeBody(diff);
+      }
     }
+
     setState(() {
       _selectedKey = newKey;
+    });
+  }
+
+  void _handleAutoTransposeChanged(bool enabled) {
+    setState(() {
+      _isAutoTransposeEnabled = enabled;
     });
   }
 
@@ -1130,6 +1142,9 @@ class _SongEditorScreenRefactoredState
                                 onCapoChanged: _handleCapoSelection,
                                 onTimeSignatureChanged:
                                     _handleTimeSignatureChanged,
+                                onAutoTransposeChanged:
+                                    _handleAutoTransposeChanged,
+                                isAutoTransposeEnabled: _isAutoTransposeEnabled,
                               ),
                             ],
                           ),

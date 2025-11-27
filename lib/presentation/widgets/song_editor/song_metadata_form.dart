@@ -20,6 +20,8 @@ class SongMetadataForm extends StatelessWidget {
   final ValueChanged<String> onKeyChanged;
   final ValueChanged<int> onCapoChanged;
   final ValueChanged<String> onTimeSignatureChanged;
+  final ValueChanged<bool> onAutoTransposeChanged;
+  final bool isAutoTransposeEnabled;
   final OnlineMetadataStatus onlineMetadataStatus;
 
   const SongMetadataForm({
@@ -37,6 +39,8 @@ class SongMetadataForm extends StatelessWidget {
     required this.onKeyChanged,
     required this.onCapoChanged,
     required this.onTimeSignatureChanged,
+    required this.onAutoTransposeChanged,
+    required this.isAutoTransposeEnabled,
     this.onlineMetadataStatus = OnlineMetadataStatus.idle,
   });
 
@@ -122,22 +126,25 @@ class SongMetadataForm extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // Single row with Key, BPM, Capo, Time Signature, Duration
+        // Single row with Auto-Transpose, Key, BPM, Capo, Time Signature, Duration
         LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 8.0;
             final availableWidth = constraints.maxWidth;
-            final columns = availableWidth > 1100
-                ? 5
-                : availableWidth > 900
-                    ? 4
-                    : availableWidth > 650
-                        ? 3
-                        : 2;
+            final columns = availableWidth > 1300
+                ? 6
+                : availableWidth > 1100
+                    ? 5
+                    : availableWidth > 900
+                        ? 4
+                        : availableWidth > 700
+                            ? 3
+                            : 2;
             final fieldWidth =
                 (availableWidth - spacing * (columns - 1)) / columns;
 
             final fields = <Widget>[
+              _buildAutoTransposeToggle(fieldWidth),
               _buildKeyDropdown(fieldWidth),
               _buildBpmField(fieldWidth),
               _buildCapoDropdown(fieldWidth),
@@ -354,6 +361,66 @@ class SongMetadataForm extends StatelessWidget {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildAutoTransposeToggle(double width) {
+    return Container(
+      width: width,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onAutoTransposeChanged(!isAutoTransposeEnabled),
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isAutoTransposeEnabled
+                    ? Colors.blue
+                    : (isDarkMode
+                        ? Colors.grey.shade600
+                        : Colors.grey.shade400),
+                width: 1.0,
+              ),
+              borderRadius: BorderRadius.circular(4),
+              color: isAutoTransposeEnabled
+                  ? Colors.blue.withValues(alpha: 0.1)
+                  : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isAutoTransposeEnabled ? Icons.check_circle : Icons.cancel,
+                  size: 16,
+                  color: isAutoTransposeEnabled
+                      ? Colors.blue
+                      : (isDarkMode
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Auto-Transpose',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isAutoTransposeEnabled
+                          ? Colors.blue
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade700),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
