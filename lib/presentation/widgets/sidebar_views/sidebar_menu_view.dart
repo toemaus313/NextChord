@@ -202,14 +202,16 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
             icon: Icons.library_music,
           ),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSongsSection(context, centerMenusOnPhone),
-              _buildSetlistsSection(context, centerMenusOnPhone),
-              _buildToolsSection(context, centerMenusOnPhone),
-              _buildSettingsSection(context, centerMenusOnPhone),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSongsSection(context, centerMenusOnPhone),
+                _buildSetlistsSection(context, centerMenusOnPhone),
+                _buildToolsSection(context, centerMenusOnPhone),
+                _buildSettingsSection(context, centerMenusOnPhone),
+              ],
+            ),
           ),
         ),
 
