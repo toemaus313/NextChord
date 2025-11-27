@@ -60,6 +60,7 @@ NextChord/
 │
 ├── README.md                              # Project overview
 ├── ARCHITECTURE.md                        # Design patterns guide
+├── docs/db_operations.md                  # DB and cloud sync behavior (library.json, Drive, iCloud)
 ├── WINDSURF_GUIDE.md                      # Development roadmap
 └── PROJECT_SETUP.md                       # This setup summary
 ```

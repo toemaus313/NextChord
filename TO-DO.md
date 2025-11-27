@@ -45,4 +45,5 @@ SETTINGS
 - Duration seems to not be saving, investigate more
 - Delete sometimes has to be repeated
 - Autoscroll always at 3 mins
-- 
+- Deleted songs aren't deleting
+

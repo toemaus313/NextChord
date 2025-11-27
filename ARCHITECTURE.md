@@ -16,6 +16,10 @@ Think of your app as a **3-layer cake**:
 
 Each layer only talks to the layer below it. The bottom layer knows nothing about the top layer.
 
+For a deeper dive into **how the database and cloud sync work (library.json, Google Drive, iCloud)**, see:
+
+- `docs/db_operations.md`
+
 ### Why This Matters
 
 - **Changes don't cascade**: If you redesign the UI, your database code doesn't break.
