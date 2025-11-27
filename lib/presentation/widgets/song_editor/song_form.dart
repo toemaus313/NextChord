@@ -66,6 +66,8 @@ class SongForm extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
       ),
       textInputAction: TextInputAction.next,
+      autocorrect: false,
+      enableSuggestions: false,
     );
   }
 

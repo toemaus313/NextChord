@@ -99,6 +99,8 @@ class SongMetadataForm extends StatelessWidget {
             isDense: true,
           ),
           textCapitalization: TextCapitalization.words,
+          autocorrect: false,
+          enableSuggestions: false,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'Title is required';
@@ -123,6 +125,8 @@ class SongMetadataForm extends StatelessWidget {
             isDense: true,
           ),
           textCapitalization: TextCapitalization.words,
+          autocorrect: false,
+          enableSuggestions: false,
         ),
         const SizedBox(height: 12),
 
