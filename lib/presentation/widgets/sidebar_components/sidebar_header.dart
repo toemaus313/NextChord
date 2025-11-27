@@ -68,7 +68,7 @@ class SidebarHeader extends StatelessWidget {
               title,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16, // Reduced from 18 for desktop/tablet
+                fontSize: 20, // Slightly larger on desktop/tablet
                 fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,

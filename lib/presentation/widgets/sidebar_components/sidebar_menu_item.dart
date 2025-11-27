@@ -23,7 +23,8 @@ class SidebarMenuItem extends StatelessWidget {
 
   /// Helper method for responsive text sizing (1.8x scaling on phones)
   double _getResponsiveTextSize(double baseSize) {
-    return isPhoneMode ? baseSize * 1.8 : baseSize;
+    // On phones, keep strong scaling; on desktop/tablet, make text ~15% larger
+    return isPhoneMode ? baseSize * 1.8 : baseSize * 1.5;
   }
 
   /// Helper method for responsive icon sizing (1.3x scaling on phones)

@@ -117,7 +117,8 @@ class _GlobalSidebarState extends State<GlobalSidebar>
       );
     } else {
       // Desktop/Tablet mode: animated sidebar
-      final sidebarWidth = Platform.isIOS ? 320.0 : 256.0;
+      // Make the sidebar 10% wider on desktop/tablet while keeping a fixed pixel width
+      final sidebarWidth = Platform.isIOS ? 352.0 : 282.0;
 
       return AnimatedBuilder(
         animation: _animation,

@@ -379,7 +379,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   Widget _buildSetlistMenuItem(BuildContext context, dynamic setlist) {
     // Helper method for responsive text sizing (1.8x scaling on phones)
     double _getResponsiveTextSize(double baseSize) {
-      return widget.isPhoneMode ? baseSize * 1.8 : baseSize;
+      return widget.isPhoneMode ? baseSize * 1.8 : baseSize * 1.5;
     }
 
     // Calculate song count by filtering for song items (not dividers)
