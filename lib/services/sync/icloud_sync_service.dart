@@ -110,10 +110,17 @@ class ICloudDriveChannel {
         (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS)) {
       try {
-        final Map<String, dynamic>? result =
-            await _channel.invokeMethod('getFileMetadata', {
+        // Platform channels return a Map<Object?, Object?> by default; we
+        // need to cast it to Map<String, dynamic> explicitly.
+        final dynamic raw = await _channel.invokeMethod('getFileMetadata', {
           'relativePath': relativePath,
         });
+
+        if (raw == null) {
+          return null;
+        }
+
+        final result = (raw as Map).cast<String, dynamic>();
         return result;
       } catch (e) {
         main.myDebug("Error getting file metadata from iCloud Drive: $e");
