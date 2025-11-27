@@ -43,18 +43,29 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Load all setlists from the repository
   Future<void> loadSetlists() async {
+    debugPrint('[SETLIST_PROVIDER] loadSetlists() called');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      debugPrint('[SETLIST_PROVIDER] Calling repository.getAllSetlists()');
       _setlists = await _repository.getAllSetlists();
+      debugPrint(
+          '[SETLIST_PROVIDER] getAllSetlists() returned ${_setlists.length} setlists');
+      for (final setlist in _setlists) {
+        debugPrint(
+            '[SETLIST_PROVIDER] - Setlist: "${setlist.name}" (ID: ${setlist.id}, deleted: ${setlist.isDeleted})');
+      }
       _errorMessage = null;
     } catch (e) {
+      debugPrint('[SETLIST_PROVIDER] ERROR in loadSetlists(): $e');
       _errorMessage = 'Failed to load setlists: $e';
       _setlists = [];
     } finally {
       _isLoading = false;
+      debugPrint(
+          '[SETLIST_PROVIDER] loadSetlists() completed, calling notifyListeners()');
       notifyListeners();
     }
   }
@@ -165,11 +176,18 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Delete a setlist
   Future<void> deleteSetlist(String id) async {
+    debugPrint('[SETLIST_PROVIDER] deleteSetlist() called with ID: $id');
     try {
       _isUpdatingFromDatabase = true; // Prevent feedback loop
+      debugPrint('[SETLIST_PROVIDER] Calling repository.deleteSetlist()');
       await _repository.deleteSetlist(id);
+      debugPrint(
+          '[SETLIST_PROVIDER] Repository.deleteSetlist() completed, calling loadSetlists()');
       await loadSetlists(); // Refresh the list
+      debugPrint(
+          '[SETLIST_PROVIDER] loadSetlists() completed, setlists count: ${_setlists.length}');
     } catch (e) {
+      debugPrint('[SETLIST_PROVIDER] ERROR in deleteSetlist(): $e');
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();
       rethrow;

@@ -470,6 +470,8 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   }
 
   Future<void> _deleteSetlist(BuildContext context, dynamic setlist) async {
+    debugPrint(
+        '[SETLIST_DELETE] Starting deletion for setlist: "${setlist.name}" (ID: ${setlist.id})');
     final setlistProvider = context.read<SetlistProvider>();
 
     final confirmed = await showDialog<bool>(
@@ -493,8 +495,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
 
     if (confirmed == true) {
+      debugPrint(
+          '[SETLIST_DELETE] User confirmed deletion, calling provider.deleteSetlist()');
       try {
         await setlistProvider.deleteSetlist(setlist.id);
+        debugPrint(
+            '[SETLIST_DELETE] Provider.deleteSetlist() completed successfully');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -504,6 +510,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
           );
         }
       } catch (e) {
+        debugPrint('[SETLIST_DELETE] ERROR: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -513,6 +520,8 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
           );
         }
       }
+    } else {
+      debugPrint('[SETLIST_DELETE] User cancelled deletion');
     }
   }
 

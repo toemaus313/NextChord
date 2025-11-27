@@ -54,27 +54,12 @@ class TransposeButton extends StatelessWidget {
       ],
     );
 
-    final capoOffset = provider.capoOffsetFromSong;
-    final capoNote = capoOffset == 0
-        ? null
-        : Text(
-            'Includes capo offset ${provider.formatSignedValue(capoOffset)}',
-            style: TextStyle(
-              fontSize: 11,
-              color: accent.withValues(alpha: 0.9),
-            ),
-          );
-
     Widget? extraContent;
-    if (capoNote != null || onScopeToggle != null) {
+    if (onScopeToggle != null) {
       extraContent = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (capoNote != null) capoNote,
-          if (onScopeToggle != null) ...[
-            if (capoNote != null) const SizedBox(height: 6),
-            // Scope toggle button would go here if needed
-          ],
+          // Scope toggle button would go here if needed
         ],
       );
     }

@@ -140,3 +140,16 @@ class PedalMappings extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Drift table for tracking deletions to sync across devices
+@DataClassName('DeletionTrackingModel')
+class DeletionTracking extends Table {
+  TextColumn get id => text()(); // Unique tracking ID
+  TextColumn get entityType => text()(); // 'setlist', 'song', etc.
+  TextColumn get entityId => text()(); // The ID of the deleted entity
+  IntColumn get deletedAt => integer()(); // When deletion occurred (epoch ms)
+  TextColumn get deviceId => text()(); // Which device performed the deletion
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

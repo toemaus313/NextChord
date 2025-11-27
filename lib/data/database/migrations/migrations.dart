@@ -143,6 +143,13 @@ class DatabaseMigrations {
               await m.addColumn(db.songs, db.songs.duration);
             } catch (e) {}
           }
+          if (from <= 12 && to >= 13) {
+            // Create deletion_tracking table for permanent deletion sync
+            final db = m.database as AppDatabase;
+            try {
+              await m.createTable(db.deletionTracking);
+            } catch (e) {}
+          }
         },
       );
 

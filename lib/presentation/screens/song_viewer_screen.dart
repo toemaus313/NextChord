@@ -354,7 +354,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
             chordProText: song.body,
             fontSize: _songViewerProvider.fontSize,
             isDarkMode: isDarkMode,
-            transposeSteps: _songViewerProvider.effectiveTransposeSteps,
+            transposeSteps: _songViewerProvider.transposeSteps -
+                _songViewerProvider.currentCapo,
           ),
         ],
       ),

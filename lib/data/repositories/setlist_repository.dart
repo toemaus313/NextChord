@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
@@ -178,11 +179,17 @@ class SetlistRepository {
 
   /// Delete a setlist by ID
   Future<void> deleteSetlist(String id) async {
+    debugPrint('[SETLIST_REPO] deleteSetlist() called with ID: $id');
     try {
+      debugPrint('[SETLIST_REPO] Calling database.deleteSetlist()');
       await _db.deleteSetlist(id);
+      debugPrint(
+          '[SETLIST_REPO] Database.deleteSetlist() completed successfully');
     } catch (e) {
+      debugPrint('[SETLIST_REPO] ERROR in deleteSetlist(): $e');
       // Handle error silently
     }
+    debugPrint('[SETLIST_REPO] Notifying database change service');
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'setlists', operation: 'update');
   }

@@ -124,16 +124,13 @@ class SongViewerProvider extends ChangeNotifier {
   ViewerAdjustmentMetadata get viewerAdjustments => _viewerAdjustments;
 
   // Computed properties
-  int get capoOffsetFromSong => _currentSong.capo - _currentCapo;
-  int get effectiveTransposeSteps => _transposeSteps + capoOffsetFromSong;
-
   String get transposeStatusLabel =>
-      SongAdjustmentService.formatTransposeLabel(effectiveTransposeSteps);
+      SongAdjustmentService.formatTransposeLabel(_transposeSteps);
   String get capoStatusLabel =>
       SongAdjustmentService.formatCapoLabel(_currentCapo, _currentSong.capo);
 
   String? get keyDisplayLabel => SongAdjustmentService.getKeyDisplayLabel(
-      _currentSong.key, effectiveTransposeSteps);
+      _currentSong.key, _transposeSteps);
 
   // Update methods
   void updateSong(Song newSong) {
