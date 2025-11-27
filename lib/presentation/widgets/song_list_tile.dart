@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/song.dart';
-import '../../main.dart' as app_main;
 
 /// A ListTile widget that displays song information
 /// Shows title, artist, key/capo info, and tags as chips
@@ -20,9 +19,6 @@ class SongListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    // Debug logging to check capo values
-    app_main.myDebug('SongListTile: ${song.title} - capo=${song.capo}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

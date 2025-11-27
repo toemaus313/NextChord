@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/song_provider.dart';
 import '../../providers/global_sidebar_provider.dart';
+import '../song_list_tile.dart';
 import '../sidebar_components/sidebar_header.dart';
 
 /// Tag songs view for the sidebar
@@ -54,54 +55,8 @@ class _SidebarTagSongsViewState extends State<SidebarTagSongsView> {
                       itemBuilder: (context, index) {
                         final song = tagSongs[index];
 
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.2),
-                            child: Text(
-                              song.title.isNotEmpty
-                                  ? song.title[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            song.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: Row(
-                            children: [
-                              if (song.artist.isNotEmpty) ...[
-                                Text(
-                                  song.artist,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                                if (song.capo > 0) const SizedBox(width: 8),
-                              ],
-                              if (song.capo > 0)
-                                Text(
-                                  'CAPO ${song.capo}',
-                                  style: const TextStyle(
-                                    color: Colors.orange,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                            ],
-                          ),
+                        return SongListTile(
+                          song: song,
                           onTap: () {
                             // Navigate to song with phone mode support
                             context

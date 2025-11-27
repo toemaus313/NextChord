@@ -5,7 +5,6 @@ import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../core/services/database_change_service.dart';
-import '../../main.dart' as app_main;
 
 /// Enum to track what type of song list is currently loaded
 enum SongListType { all, deleted, filtered }
@@ -20,12 +19,8 @@ class SongProvider extends ChangeNotifier {
   SongProvider(this._repository) {
     // Set up stream subscription to catch database changes for automatic UI updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      app_main
-          .myDebug('SongProvider: establishing database change subscription');
       _dbChangeSubscription =
           _dbChangeService.changeStream.listen(_handleDatabaseChange);
-      app_main
-          .myDebug('SongProvider: database change subscription established');
     });
   }
 
@@ -152,13 +147,8 @@ class SongProvider extends ChangeNotifier {
 
   /// Handle database change events for automatic updates
   void _handleDatabaseChange(DbChangeEvent event) {
-    app_main.myDebug(
-        'SongProvider: _handleDatabaseChange called - table=${event.table}, recordId=${event.recordId}');
-
     if (_isUpdatingFromDatabase) {
       // Skip events that we triggered ourselves
-      app_main.myDebug(
-          'SongProvider: skipping event - _isUpdatingFromDatabase is true');
       return;
     }
 
@@ -166,26 +156,16 @@ class SongProvider extends ChangeNotifier {
     if (event.table == 'songs' ||
         event.table == 'songs_count' ||
         event.table == 'deleted_songs_count') {
-      app_main
-          .myDebug('SongProvider: triggering refresh for table=${event.table}');
       // Defer refresh to avoid calling notifyListeners() during build phase
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _refreshFromDatabaseChange();
       });
-    } else {
-      app_main.myDebug('SongProvider: ignoring event for table=${event.table}');
     }
   }
 
   /// Refresh data from database change event without disrupting UI state
   Future<void> _refreshFromDatabaseChange() async {
-    app_main.myDebug(
-        'SongProvider: _refreshFromDatabaseChange called - _isLoading=$_isLoading, _currentListType=$_currentListType');
-
-    if (_isLoading) {
-      app_main.myDebug('SongProvider: skipping refresh - already loading');
-      return; // Don't refresh if already loading
-    }
+    if (_isLoading) return; // Don't refresh if already loading
 
     try {
       _isUpdatingFromDatabase = true;
@@ -193,7 +173,6 @@ class SongProvider extends ChangeNotifier {
       // Preserve current list type and refresh accordingly
       switch (_currentListType) {
         case SongListType.all:
-          app_main.myDebug('SongProvider: refreshing all songs list');
           await _refreshSongsList();
           break;
         case SongListType.deleted:
@@ -203,9 +182,7 @@ class SongProvider extends ChangeNotifier {
           await _refreshFilteredSongsList();
           break;
       }
-      app_main.myDebug('SongProvider: refresh completed successfully');
     } catch (e) {
-      app_main.myDebug('SongProvider: refresh failed with error: $e');
     } finally {
       _isUpdatingFromDatabase = false;
     }

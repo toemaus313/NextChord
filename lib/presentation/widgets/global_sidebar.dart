@@ -253,7 +253,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             child: SidebarArtistSongsView(
               artist: _controller.selectedArtist ?? '',
               onBack: () => _controller.navigateToView('artistsList'),
-              showHeader: false, // No header on mobile
+              showHeader: true, // Show header with back button on mobile
             ),
           );
         } else {
@@ -291,7 +291,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
             child: SidebarTagSongsView(
               tag: _controller.selectedTag ?? '',
               onBack: () => _controller.navigateToView('tagsList'),
-              showHeader: false, // No header on mobile
+              showHeader: true, // Show header with back button on mobile
             ),
           );
         } else {

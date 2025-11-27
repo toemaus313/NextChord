@@ -280,228 +280,72 @@ class _LibraryScreenState extends State<LibraryScreen> {
         final isSelected = provider.selectedSongIds.contains(song.id);
         final hasSelections = provider.hasSelectedSongs;
 
-        if (inSidebar) {
-          // Compact list item for sidebar
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                if (provider.selectionMode) {
-                  provider.toggleSongSelection(song.id);
-                } else {
-                  final isPhone = ResponsiveConfig.isPhone(context);
-                  if (isPhone) {
-                    // Phone: Navigate to full-screen song viewer
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SongViewerScreen(song: song),
-                      ),
-                    );
-                  } else if (widget.onSongSelected != null) {
-                    // Desktop/Tablet: Use existing callback
-                    widget.onSongSelected!(song);
-                  }
-                }
-              },
-              onLongPress: () {
-                if (hasSelections) {
-                  _showBulkOptions(context);
-                } else {
-                  _showSongOptions(context, song);
-                }
-              },
-              onSecondaryTap: () {
-                // Right-click for desktop users
-                if (hasSelections) {
-                  _showBulkOptions(context);
-                } else {
-                  _showSongOptions(context, song);
-                }
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected ? Colors.white.withValues(alpha: 0.1) : null,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Selection checkbox
-                    if (provider.selectionMode)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Checkbox(
-                          value: isSelected,
-                          onChanged: (value) {
-                            provider.toggleSongSelection(song.id);
-                          },
-                          fillColor: WidgetStateProperty.all(Colors.white),
-                          checkColor: Colors.black,
-                        ),
-                      ),
-                    // Song content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  song.title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Tags and key - aligned to the right
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Tags (max 2) - now before the key
-                                  if (song.tags.isNotEmpty)
-                                    ...song.tags.take(2).map((tag) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 3),
-                                          child:
-                                              _buildTagChip(tag, compact: true),
-                                        )),
-                                  if (song.key.isNotEmpty) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.white.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        song.key,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            song.artist,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11.5,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+        // Use SongListTile for both sidebar and full screen
+        return Row(
+          children: [
+            // Selection checkbox (sidebar only)
+            if (inSidebar && provider.selectionMode)
+              Padding(
+                padding: const EdgeInsets.only(left: 8, right: 8),
+                child: Checkbox(
+                  value: isSelected,
+                  onChanged: (value) {
+                    provider.toggleSongSelection(song.id);
+                  },
+                  fillColor: WidgetStateProperty.all(Colors.white),
+                  checkColor: Colors.black,
                 ),
               ),
+            // Song content
+            Expanded(
+              child: SongListTile(
+                song: song,
+                onTap: () {
+                  if (provider.selectionMode) {
+                    provider.toggleSongSelection(song.id);
+                  } else {
+                    final isPhone = ResponsiveConfig.isPhone(context);
+                    if (inSidebar) {
+                      if (isPhone) {
+                        // Phone: Navigate to full-screen song viewer
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SongViewerScreen(song: song),
+                          ),
+                        );
+                      } else if (widget.onSongSelected != null) {
+                        // Desktop/Tablet: Use existing callback
+                        widget.onSongSelected!(song);
+                      }
+                    } else {
+                      // Full screen mode
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SongViewerScreen(song: song),
+                        ),
+                      ).then((result) {
+                        if (result == true && context.mounted) {
+                          context.read<SongProvider>().loadSongs();
+                        }
+                      });
+                    }
+                  }
+                },
+                onLongPress: () {
+                  if (hasSelections) {
+                    _showBulkOptions(context);
+                  } else {
+                    _showSongOptions(context, song);
+                  }
+                },
+              ),
             ),
-          );
-        } else {
-          // Full song list tile for full screen mode
-          return SongListTile(
-            song: song,
-            onTap: () async {
-              if (provider.selectionMode) {
-                provider.toggleSongSelection(song.id);
-              } else {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SongViewerScreen(song: song),
-                  ),
-                );
-                if (result == true && context.mounted) {
-                  context.read<SongProvider>().loadSongs();
-                }
-              }
-            },
-            onLongPress: () {
-              if (hasSelections) {
-                _showBulkOptions(context);
-              } else {
-                _showSongOptions(context, song);
-              }
-            },
-          );
-        }
+          ],
+        );
       },
     );
-  }
-
-  /// Build a tag chip with matching styling from Edit Tags dialog
-  Widget _buildTagChip(String tag, {bool compact = false}) {
-    final (bgColor, tagTextColor) = _getTagColors(tag);
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 6 : 8,
-        vertical: compact ? 2 : 4,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(compact ? 12 : 16),
-        border: Border.all(
-          color: tagTextColor.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        tag,
-        style: TextStyle(
-          fontSize: compact ? 10 : 12,
-          color: tagTextColor,
-        ),
-      ),
-    );
-  }
-
-  /// Get color for a tag based on whether it's an instrument tag
-  (Color, Color) _getTagColors(String tag) {
-    const instrumentTags = {
-      'Acoustic',
-      'Electric',
-      'Piano',
-      'Guitar',
-      'Bass',
-      'Drums',
-      'Vocals',
-      'Instrumental'
-    };
-
-    if (instrumentTags.contains(tag)) {
-      return (Colors.orange.withValues(alpha: 0.2), Colors.orange);
-    } else {
-      return (
-        Theme.of(context).colorScheme.primaryContainer,
-        Theme.of(context).colorScheme.onPrimaryContainer
-      );
-    }
   }
 
   /// Show bulk operations menu for selected songs
