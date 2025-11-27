@@ -17,11 +17,11 @@ class SongProvider extends ChangeNotifier {
   final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
   SongProvider(this._repository) {
-    // TEMPORARILY DISABLED: Defer stream subscription to avoid build-phase issues
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _dbChangeSubscription =
-    //       _dbChangeService.changeStream.listen(_handleDatabaseChange);
-    // });
+    // Set up stream subscription to catch database changes for automatic UI updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _dbChangeSubscription =
+          _dbChangeService.changeStream.listen(_handleDatabaseChange);
+    });
   }
 
   // Public getter for repository access
@@ -179,7 +179,7 @@ class SongProvider extends ChangeNotifier {
           await _refreshDeletedSongsList();
           break;
         case SongListType.filtered:
-          await _refreshSongsList();
+          await _refreshFilteredSongsList();
           break;
       }
     } catch (e) {
@@ -203,6 +203,15 @@ class SongProvider extends ChangeNotifier {
     try {
       final newDeletedSongs = await _repository.getDeletedSongs();
       _deletedSongs = newDeletedSongs;
+      notifyListeners();
+    } catch (e) {}
+  }
+
+  /// Refresh filtered songs list without changing loading state
+  Future<void> _refreshFilteredSongsList() async {
+    try {
+      // Reapply current search/filter to get updated filtered songs
+      _applySearch();
       notifyListeners();
     } catch (e) {}
   }

@@ -75,10 +75,12 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
     // Initialize providers and services
     final songRepository = context.read<SongRepository>();
+    final setlistProvider = context.read<SetlistProvider>();
     _songViewerProvider = SongViewerProvider(
       song: widget.song,
       songRepository: songRepository,
       setlistContext: widget.setlistContext,
+      setlistProvider: setlistProvider,
     );
 
     _initializeServices();
@@ -352,7 +354,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
             chordProText: song.body,
             fontSize: _songViewerProvider.fontSize,
             isDarkMode: isDarkMode,
-            transposeSteps: _songViewerProvider.effectiveTransposeSteps,
+            transposeSteps: _songViewerProvider.transposeSteps -
+                _songViewerProvider.currentCapo,
           ),
         ],
       ),

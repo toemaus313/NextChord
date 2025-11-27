@@ -27,8 +27,6 @@ class _SetlistFormState extends State<SetlistForm> {
         const SizedBox(height: 16),
         _buildImagePicker(context),
         const SizedBox(height: 16),
-        _buildSetlistSpecificToggle(),
-        const SizedBox(height: 16),
         TextField(
           controller: widget.controller.notesController,
           style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -275,58 +273,6 @@ class _SetlistFormState extends State<SetlistForm> {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSetlistSpecificToggle() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.settings_outlined,
-            color: Colors.white.withValues(alpha: 0.7),
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Setlist-Specific Edits',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Allow individual song edits within this setlist',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: widget.controller.setlistSpecificEditsEnabled,
-            onChanged: (value) =>
-                widget.controller.toggleSetlistSpecificEdits(),
-            activeColor: Colors.blue,
           ),
         ],
       ),

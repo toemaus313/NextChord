@@ -462,6 +462,8 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
                 id: Uuid().v4(),
                 songId: song.id,
                 order: newItems.length,
+                transposeSteps: 0, // Default transpose for new setlist items
+                capo: song.capo, // Copy capo from base song
               ));
               addedToThisSetlist++;
             }

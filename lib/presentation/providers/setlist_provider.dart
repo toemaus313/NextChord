@@ -43,18 +43,29 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Load all setlists from the repository
   Future<void> loadSetlists() async {
+    debugPrint('[SETLIST_PROVIDER] loadSetlists() called');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      debugPrint('[SETLIST_PROVIDER] Calling repository.getAllSetlists()');
       _setlists = await _repository.getAllSetlists();
+      debugPrint(
+          '[SETLIST_PROVIDER] getAllSetlists() returned ${_setlists.length} setlists');
+      for (final setlist in _setlists) {
+        debugPrint(
+            '[SETLIST_PROVIDER] - Setlist: "${setlist.name}" (ID: ${setlist.id}, deleted: ${setlist.isDeleted})');
+      }
       _errorMessage = null;
     } catch (e) {
+      debugPrint('[SETLIST_PROVIDER] ERROR in loadSetlists(): $e');
       _errorMessage = 'Failed to load setlists: $e';
       _setlists = [];
     } finally {
       _isLoading = false;
+      debugPrint(
+          '[SETLIST_PROVIDER] loadSetlists() completed, calling notifyListeners()');
       notifyListeners();
     }
   }
@@ -65,7 +76,6 @@ class SetlistProvider extends ChangeNotifier {
       // Skip events that we triggered ourselves
       return;
     }
-
 
     // Only refresh if we're currently showing setlists or active setlist is affected
     if (event.table == 'setlists' || event.table == 'setlists_count') {
@@ -79,7 +89,6 @@ class SetlistProvider extends ChangeNotifier {
   /// Refresh data from database change event without disrupting UI state
   Future<void> _refreshFromDatabaseChange() async {
     if (_isLoading) return; // Don't refresh if already loading
-
 
     try {
       _isUpdatingFromDatabase = true;
@@ -101,8 +110,7 @@ class SetlistProvider extends ChangeNotifier {
       final newSetlists = await _repository.getAllSetlists();
       _setlists = newSetlists;
       notifyListeners();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Refresh active setlist if it exists
@@ -120,8 +128,7 @@ class SetlistProvider extends ChangeNotifier {
         _currentSongIndex = -1;
       }
       notifyListeners();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Get a single setlist by ID
@@ -169,11 +176,18 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Delete a setlist
   Future<void> deleteSetlist(String id) async {
+    debugPrint('[SETLIST_PROVIDER] deleteSetlist() called with ID: $id');
     try {
       _isUpdatingFromDatabase = true; // Prevent feedback loop
+      debugPrint('[SETLIST_PROVIDER] Calling repository.deleteSetlist()');
       await _repository.deleteSetlist(id);
+      debugPrint(
+          '[SETLIST_PROVIDER] Repository.deleteSetlist() completed, calling loadSetlists()');
       await loadSetlists(); // Refresh the list
+      debugPrint(
+          '[SETLIST_PROVIDER] loadSetlists() completed, setlists count: ${_setlists.length}');
     } catch (e) {
+      debugPrint('[SETLIST_PROVIDER] ERROR in deleteSetlist(): $e');
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();
       rethrow;
@@ -271,11 +285,6 @@ class SetlistProvider extends ChangeNotifier {
 
     final currentSongItem = getCurrentSongItem();
     if (currentSongItem == null) {
-      return;
-    }
-
-    // Only update if setlist-specific edits are enabled
-    if (!_activeSetlist!.setlistSpecificEditsEnabled) {
       return;
     }
 

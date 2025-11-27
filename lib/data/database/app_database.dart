@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 import '../../core/services/database_change_service.dart';
 import 'dart:convert';
 import 'dart:math';
@@ -20,13 +21,14 @@ part 'app_database.g.dart';
   MidiMappings,
   MidiProfiles,
   PedalMappings,
-  SyncState
+  SyncState,
+  DeletionTracking
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;
@@ -322,12 +324,61 @@ class AppDatabase extends _$AppDatabase {
     await update(setlists).replace(setlistWithTimestamp);
   }
 
-  /// Soft delete a setlist (mark as deleted)
+  /// Permanently delete a setlist and track for sync
   Future<void> deleteSetlist(String id) async {
-    await (update(setlists)..where((tbl) => tbl.id.equals(id))).write(
-        SetlistsCompanion(
-            isDeleted: const Value(true),
-            updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+    debugPrint('[DATABASE] deleteSetlist() called with ID: $id');
+    try {
+      // Get device ID for tracking
+      final deviceId = await _getDeviceId();
+      debugPrint('[DATABASE] Using deviceId: $deviceId for deletion tracking');
+
+      // Insert deletion tracking record first
+      await _insertDeletionTracking('setlist', id, deviceId);
+      debugPrint('[DATABASE] Deletion tracking record inserted');
+
+      // Hard delete the setlist
+      await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();
+      debugPrint('[DATABASE] Hard delete completed successfully for ID: $id');
+    } catch (e) {
+      debugPrint('[DATABASE] ERROR in deleteSetlist(): $e');
+      rethrow;
+    }
+  }
+
+  /// Get device ID from sync state
+  Future<String> _getDeviceId() async {
+    try {
+      final syncStateRecord =
+          await (select(syncState)..limit(1)).getSingleOrNull();
+      if (syncStateRecord != null) {
+        return syncStateRecord.deviceId;
+      }
+      // Fallback: generate a new device ID
+      return _generateDeviceId();
+    } catch (e) {
+      debugPrint('[DATABASE] ERROR getting deviceId, generating fallback: $e');
+      return _generateDeviceId();
+    }
+  }
+
+  /// Insert deletion tracking record
+  Future<void> _insertDeletionTracking(
+      String entityType, String entityId, String deviceId) async {
+    try {
+      final trackingRecord = DeletionTrackingCompanion(
+        id: Value(const Uuid().v4()),
+        entityType: Value(entityType),
+        entityId: Value(entityId),
+        deletedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        deviceId: Value(deviceId),
+      );
+      await into(deletionTracking).insert(trackingRecord);
+      debugPrint(
+          '[DATABASE] Deletion tracking inserted: $entityType/$entityId');
+    } catch (e) {
+      debugPrint('[DATABASE] ERROR inserting deletion tracking: $e');
+      rethrow;
+    }
   }
 
   /// Restore a soft-deleted setlist

@@ -46,3 +46,4 @@ SETTINGS
 - Autoscroll not showing the duration that I’m seeing in the edit field. We also need to make autoscroll adjustments persistent. Revisit this later and fix both at the same time
 - Put add song button on the main screen from any Songs view 
 - How do I query the db from the command line? 
+- I noticed duration for songs is currently stored in the database in a Notes field. Why is this not using the duration field of the database? 

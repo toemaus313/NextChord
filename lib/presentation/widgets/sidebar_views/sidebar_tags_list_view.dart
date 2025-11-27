@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/song_provider.dart';
+import '../../screens/song_editor_screen_refactored.dart';
 import '../sidebar_components/sidebar_header.dart';
+import '../standard_wide_button.dart';
 
 /// Tags list view for the sidebar
 class SidebarTagsListView extends StatefulWidget {
@@ -21,6 +23,21 @@ class SidebarTagsListView extends StatefulWidget {
 }
 
 class _SidebarTagsListViewState extends State<SidebarTagsListView> {
+  Future<void> _handleAddSong(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SongEditorScreenRefactored(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result == true) {
+      await context.read<SongProvider>().loadSongs();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<SongProvider>(
@@ -127,6 +144,14 @@ class _SidebarTagsListViewState extends State<SidebarTagsListView> {
                         );
                       },
                     ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: StandardWideButton(
+                label: 'Add Song',
+                icon: Icons.add,
+                onPressed: () => _handleAddSong(context),
+              ),
             ),
           ],
         );

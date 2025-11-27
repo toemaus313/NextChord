@@ -3404,6 +3404,321 @@ class SyncStateCompanion extends UpdateCompanion<SyncStateModel> {
   }
 }
 
+class $DeletionTrackingTable extends DeletionTracking
+    with TableInfo<$DeletionTrackingTable, DeletionTrackingModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletionTrackingTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _entityTypeMeta =
+      const VerificationMeta('entityType');
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+      'entity_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _entityIdMeta =
+      const VerificationMeta('entityId');
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+      'entity_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+      'deleted_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _deviceIdMeta =
+      const VerificationMeta('deviceId');
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+      'device_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, entityType, entityId, deletedAt, deviceId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deletion_tracking';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<DeletionTrackingModel> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+          _entityTypeMeta,
+          entityType.isAcceptableOrUnknown(
+              data['entity_type']!, _entityTypeMeta));
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(_entityIdMeta,
+          entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta));
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(_deviceIdMeta,
+          deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta));
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeletionTrackingModel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletionTrackingModel(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      entityType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entity_type'])!,
+      entityId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entity_id'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}deleted_at'])!,
+      deviceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}device_id'])!,
+    );
+  }
+
+  @override
+  $DeletionTrackingTable createAlias(String alias) {
+    return $DeletionTrackingTable(attachedDatabase, alias);
+  }
+}
+
+class DeletionTrackingModel extends DataClass
+    implements Insertable<DeletionTrackingModel> {
+  final String id;
+  final String entityType;
+  final String entityId;
+  final int deletedAt;
+  final String deviceId;
+  const DeletionTrackingModel(
+      {required this.id,
+      required this.entityType,
+      required this.entityId,
+      required this.deletedAt,
+      required this.deviceId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    map['deleted_at'] = Variable<int>(deletedAt);
+    map['device_id'] = Variable<String>(deviceId);
+    return map;
+  }
+
+  DeletionTrackingCompanion toCompanion(bool nullToAbsent) {
+    return DeletionTrackingCompanion(
+      id: Value(id),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      deletedAt: Value(deletedAt),
+      deviceId: Value(deviceId),
+    );
+  }
+
+  factory DeletionTrackingModel.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeletionTrackingModel(
+      id: serializer.fromJson<String>(json['id']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      deletedAt: serializer.fromJson<int>(json['deletedAt']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'deletedAt': serializer.toJson<int>(deletedAt),
+      'deviceId': serializer.toJson<String>(deviceId),
+    };
+  }
+
+  DeletionTrackingModel copyWith(
+          {String? id,
+          String? entityType,
+          String? entityId,
+          int? deletedAt,
+          String? deviceId}) =>
+      DeletionTrackingModel(
+        id: id ?? this.id,
+        entityType: entityType ?? this.entityType,
+        entityId: entityId ?? this.entityId,
+        deletedAt: deletedAt ?? this.deletedAt,
+        deviceId: deviceId ?? this.deviceId,
+      );
+  DeletionTrackingModel copyWithCompanion(DeletionTrackingCompanion data) {
+    return DeletionTrackingModel(
+      id: data.id.present ? data.id.value : this.id,
+      entityType:
+          data.entityType.present ? data.entityType.value : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletionTrackingModel(')
+          ..write('id: $id, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deviceId: $deviceId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, entityType, entityId, deletedAt, deviceId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeletionTrackingModel &&
+          other.id == this.id &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.deletedAt == this.deletedAt &&
+          other.deviceId == this.deviceId);
+}
+
+class DeletionTrackingCompanion extends UpdateCompanion<DeletionTrackingModel> {
+  final Value<String> id;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<int> deletedAt;
+  final Value<String> deviceId;
+  final Value<int> rowid;
+  const DeletionTrackingCompanion({
+    this.id = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeletionTrackingCompanion.insert({
+    required String id,
+    required String entityType,
+    required String entityId,
+    required int deletedAt,
+    required String deviceId,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        entityType = Value(entityType),
+        entityId = Value(entityId),
+        deletedAt = Value(deletedAt),
+        deviceId = Value(deviceId);
+  static Insertable<DeletionTrackingModel> custom({
+    Expression<String>? id,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<int>? deletedAt,
+    Expression<String>? deviceId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (deviceId != null) 'device_id': deviceId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeletionTrackingCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? entityType,
+      Value<String>? entityId,
+      Value<int>? deletedAt,
+      Value<String>? deviceId,
+      Value<int>? rowid}) {
+    return DeletionTrackingCompanion(
+      id: id ?? this.id,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deviceId: deviceId ?? this.deviceId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletionTrackingCompanion(')
+          ..write('id: $id, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3413,12 +3728,21 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MidiProfilesTable midiProfiles = $MidiProfilesTable(this);
   late final $PedalMappingsTable pedalMappings = $PedalMappingsTable(this);
   late final $SyncStateTable syncState = $SyncStateTable(this);
+  late final $DeletionTrackingTable deletionTracking =
+      $DeletionTrackingTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [songs, setlists, midiMappings, midiProfiles, pedalMappings, syncState];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        songs,
+        setlists,
+        midiMappings,
+        midiProfiles,
+        pedalMappings,
+        syncState,
+        deletionTracking
+      ];
 }
 
 typedef $$SongsTableCreateCompanionBuilder = SongsCompanion Function({
@@ -4998,6 +5322,182 @@ typedef $$SyncStateTableProcessedTableManager = ProcessedTableManager<
     ),
     SyncStateModel,
     PrefetchHooks Function()>;
+typedef $$DeletionTrackingTableCreateCompanionBuilder
+    = DeletionTrackingCompanion Function({
+  required String id,
+  required String entityType,
+  required String entityId,
+  required int deletedAt,
+  required String deviceId,
+  Value<int> rowid,
+});
+typedef $$DeletionTrackingTableUpdateCompanionBuilder
+    = DeletionTrackingCompanion Function({
+  Value<String> id,
+  Value<String> entityType,
+  Value<String> entityId,
+  Value<int> deletedAt,
+  Value<String> deviceId,
+  Value<int> rowid,
+});
+
+class $$DeletionTrackingTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletionTrackingTable> {
+  $$DeletionTrackingTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+      column: $table.entityType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+      column: $table.entityId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnFilters(column));
+}
+
+class $$DeletionTrackingTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletionTrackingTable> {
+  $$DeletionTrackingTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+      column: $table.entityType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+      column: $table.entityId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+      column: $table.deviceId, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DeletionTrackingTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletionTrackingTable> {
+  $$DeletionTrackingTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+      column: $table.entityType, builder: (column) => column);
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+}
+
+class $$DeletionTrackingTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DeletionTrackingTable,
+    DeletionTrackingModel,
+    $$DeletionTrackingTableFilterComposer,
+    $$DeletionTrackingTableOrderingComposer,
+    $$DeletionTrackingTableAnnotationComposer,
+    $$DeletionTrackingTableCreateCompanionBuilder,
+    $$DeletionTrackingTableUpdateCompanionBuilder,
+    (
+      DeletionTrackingModel,
+      BaseReferences<_$AppDatabase, $DeletionTrackingTable,
+          DeletionTrackingModel>
+    ),
+    DeletionTrackingModel,
+    PrefetchHooks Function()> {
+  $$DeletionTrackingTableTableManager(
+      _$AppDatabase db, $DeletionTrackingTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletionTrackingTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletionTrackingTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeletionTrackingTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> entityType = const Value.absent(),
+            Value<String> entityId = const Value.absent(),
+            Value<int> deletedAt = const Value.absent(),
+            Value<String> deviceId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DeletionTrackingCompanion(
+            id: id,
+            entityType: entityType,
+            entityId: entityId,
+            deletedAt: deletedAt,
+            deviceId: deviceId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String entityType,
+            required String entityId,
+            required int deletedAt,
+            required String deviceId,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DeletionTrackingCompanion.insert(
+            id: id,
+            entityType: entityType,
+            entityId: entityId,
+            deletedAt: deletedAt,
+            deviceId: deviceId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DeletionTrackingTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DeletionTrackingTable,
+    DeletionTrackingModel,
+    $$DeletionTrackingTableFilterComposer,
+    $$DeletionTrackingTableOrderingComposer,
+    $$DeletionTrackingTableAnnotationComposer,
+    $$DeletionTrackingTableCreateCompanionBuilder,
+    $$DeletionTrackingTableUpdateCompanionBuilder,
+    (
+      DeletionTrackingModel,
+      BaseReferences<_$AppDatabase, $DeletionTrackingTable,
+          DeletionTrackingModel>
+    ),
+    DeletionTrackingModel,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5014,4 +5514,6 @@ class $AppDatabaseManager {
       $$PedalMappingsTableTableManager(_db, _db.pedalMappings);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db, _db.syncState);
+  $$DeletionTrackingTableTableManager get deletionTracking =>
+      $$DeletionTrackingTableTableManager(_db, _db.deletionTracking);
 }
