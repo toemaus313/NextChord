@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'sync_service_locator.dart';
-import '../../main.dart' as main;
 
 /// Types of database change events
 enum DbChangeType { insert, update, delete, restore }
@@ -74,9 +73,6 @@ class DatabaseChangeService {
     if (_isSyncInProgress) {
       return;
     }
-
-    // Log local change detection
-    main.myDebug("Local db change detected - sending to cloud");
 
     // Cancel any pending sync
     _debounceTimer?.cancel();

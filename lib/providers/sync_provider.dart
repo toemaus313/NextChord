@@ -123,8 +123,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
     // If sync was previously enabled, verify actual sign-in status
     if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
+      main.myDebug(
+          "Sync was enabled, checking sign-in status for backend: $_syncBackend");
       _isSignedIn = await _currentSyncService.isSignedIn();
-      main.myDebug("Sync was enabled, checking sign-in status: $_isSignedIn");
+      main.myDebug("Sign-in status check result: $_isSignedIn");
     } else {
       _isSignedIn = false;
       main.myDebug("Sync was disabled or local, sign-in status set to false");
@@ -191,19 +193,28 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   /// Set sync backend
   Future<void> setSyncBackend(SyncBackend backend) async {
-    if (_syncBackend == backend) return;
+    main.myDebug(
+        "setSyncBackend called with backend: $backend (current: $_syncBackend)");
+
+    if (_syncBackend == backend) {
+      main.myDebug("Backend unchanged, returning");
+      return;
+    }
 
     // Stop current service polling
     if (_currentSyncService != null) {
+      main.myDebug("Stopping metadata polling for current backend");
       _currentSyncService.stopMetadataPolling();
     }
 
     // Sign out from current backend if switching backends
     if (_syncBackend != SyncBackend.local && backend != _syncBackend) {
+      main.myDebug("Signing out from current backend: $_syncBackend");
       await _currentSyncService.signOut();
     }
 
     _syncBackend = backend;
+    main.myDebug("Backend switched to: $backend");
     _isSignedIn = false;
     _lastSyncTime = null;
     _lastError = null;
@@ -213,10 +224,13 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
     // If switching to local, disable sync
     if (backend == SyncBackend.local) {
+      main.myDebug("Switching to local backend, disabling sync");
       _isSyncEnabled = false;
     }
 
     await _saveSyncPreference();
+    main.myDebug(
+        "Sync preference saved - backend: $_syncBackend, enabled: $_isSyncEnabled, signed in: $_isSignedIn");
     notifyListeners();
 
     main.myDebug("Sync backend changed to: $backend");
@@ -320,8 +334,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<bool> signIn() async {
+    main.myDebug("SyncProvider.signIn() called for backend: $_syncBackend");
     try {
       if (_syncBackend == SyncBackend.local) {
+        main.myDebug("Cannot sign in to local storage");
         throw Exception('Cannot sign in to local storage');
       }
 

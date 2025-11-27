@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -95,39 +94,18 @@ class AppDatabase extends _$AppDatabase {
 
   /// Insert a new song
   Future<void> insertSong(SongModel song) async {
-    debugPrint(
-        '[DB] insertSong called - ID: "${song.id}", title: "${song.title}"');
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
     await into(songs).insert(songWithTimestamp);
-    debugPrint('[DB] insertSong completed for ID: "${song.id}"');
-
-    // Verify the song was actually inserted
-    final inserted = await (select(songs)
-          ..where((tbl) => tbl.id.equals(song.id)))
-        .getSingleOrNull();
-    debugPrint(
-        '[DB] Verification query for "${song.id}": ${inserted != null ? "FOUND" : "NOT FOUND"}');
   }
 
   /// Update an existing song
   Future<void> updateSong(SongModel song) async {
-    debugPrint(
-        '[DB] updateSong called - ID: "${song.id}", title: "${song.title}"');
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
-    final rowsAffected = await update(songs).replace(songWithTimestamp);
-    debugPrint(
-        '[DB] updateSong completed for ID: "${song.id}", rows affected: $rowsAffected');
-
-    // Verify the song exists after update
-    final updated = await (select(songs)
-          ..where((tbl) => tbl.id.equals(song.id)))
-        .getSingleOrNull();
-    debugPrint(
-        '[DB] Verification query for "${song.id}": ${updated != null ? "FOUND (title: ${updated.title})" : "NOT FOUND"}');
+    await update(songs).replace(songWithTimestamp);
   }
 
   // Pedal Mappings CRUD operations
@@ -180,8 +158,6 @@ class AppDatabase extends _$AppDatabase {
         SongsCompanion(
             isDeleted: const Value(true),
             updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
-
-    // Notify database change service for auto-sync
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'songs', operation: 'update');
   }
@@ -192,8 +168,6 @@ class AppDatabase extends _$AppDatabase {
         SongsCompanion(
             isDeleted: const Value(false),
             updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
-
-    // Notify database change service for auto-sync
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'songs', operation: 'update');
   }
@@ -201,8 +175,6 @@ class AppDatabase extends _$AppDatabase {
   /// Permanently delete a song
   Future<void> permanentlyDeleteSong(String id) async {
     await (delete(songs)..where((tbl) => tbl.id.equals(id))).go();
-
-    // Notify database change service for auto-sync
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'songs', operation: 'delete');
   }
@@ -326,21 +298,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Permanently delete a setlist and track for sync
   Future<void> deleteSetlist(String id) async {
-    debugPrint('[DATABASE] deleteSetlist() called with ID: $id');
     try {
       // Get device ID for tracking
       final deviceId = await _getDeviceId();
-      debugPrint('[DATABASE] Using deviceId: $deviceId for deletion tracking');
 
       // Insert deletion tracking record first
       await _insertDeletionTracking('setlist', id, deviceId);
-      debugPrint('[DATABASE] Deletion tracking record inserted');
 
       // Hard delete the setlist
       await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();
-      debugPrint('[DATABASE] Hard delete completed successfully for ID: $id');
     } catch (e) {
-      debugPrint('[DATABASE] ERROR in deleteSetlist(): $e');
       rethrow;
     }
   }
@@ -356,7 +323,6 @@ class AppDatabase extends _$AppDatabase {
       // Fallback: generate a new device ID
       return _generateDeviceId();
     } catch (e) {
-      debugPrint('[DATABASE] ERROR getting deviceId, generating fallback: $e');
       return _generateDeviceId();
     }
   }
@@ -373,10 +339,7 @@ class AppDatabase extends _$AppDatabase {
         deviceId: Value(deviceId),
       );
       await into(deletionTracking).insert(trackingRecord);
-      debugPrint(
-          '[DATABASE] Deletion tracking inserted: $entityType/$entityId');
     } catch (e) {
-      debugPrint('[DATABASE] ERROR inserting deletion tracking: $e');
       rethrow;
     }
   }

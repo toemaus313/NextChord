@@ -898,7 +898,7 @@ class LibrarySyncService {
           dbChangeService.notifyDatabaseChanged(
               table: 'songs', operation: 'update', recordId: songId);
         }
-      }
+      } else {}
     } catch (e) {
       rethrow;
     }
@@ -1005,6 +1005,15 @@ class LibrarySyncService {
         final localDeleted = isDeleted(local);
         final remoteDeleted = isDeleted(remoteModel);
 
+        // Debug logging for timestamp comparison (only log first few records to avoid spam)
+        if (deltaSummary.songsAdded +
+                deltaSummary.songsUpdated +
+                deltaSummary.songsDeleted <
+            5) {
+          final recordId =
+              (local as dynamic).id ?? (remoteModel as dynamic).id ?? 'unknown';
+        }
+
         T winner;
         bool remoteWins = false;
 
@@ -1026,13 +1035,13 @@ class LibrarySyncService {
           remoteWins = remoteTimestamp > localTimestamp;
         }
 
-        // Track changes based on who won
-        if (remoteWins) {
+        // Track changes based on whether timestamps differ (regardless of winner)
+        if (localTimestamp != remoteTimestamp) {
           // Track update
           if (recordType == 'song') {
             deltaSummary.songsUpdated++;
             // Track song ID for database change notification
-            final id = (remoteModel as dynamic).id;
+            final id = (winner as dynamic).id;
             if (id != null) {
               deltaSummary.addUpdatedSongId(id);
             }
@@ -1059,17 +1068,23 @@ class LibrarySyncService {
           }
 
           // Track deletion status changes
-          if (!localDeleted && remoteDeleted) {
+          final winnerDeleted = isDeleted(winner);
+          if (localDeleted != remoteDeleted) {
+            // Deletion status changed between local and remote
             String recordName = 'Unknown';
-            if (remoteModel is SongModel)
-              recordName = remoteModel.title;
-            else if (remoteModel is SetlistModel) recordName = remoteModel.name;
+            if (winner is SongModel)
+              recordName = winner.title;
+            else if (winner is SetlistModel) recordName = winner.name;
 
-            if (recordType == 'song') {
-              deltaSummary.songsDeleted++;
-            } else if (recordType == 'setlist') {
-              deltaSummary.setlistsDeleted++;
+            if (winnerDeleted) {
+              // Winner is deleted - count as deletion
+              if (recordType == 'song') {
+                deltaSummary.songsDeleted++;
+              } else if (recordType == 'setlist') {
+                deltaSummary.setlistsDeleted++;
+              }
             }
+            // If winner is not deleted, it's already counted in songsUpdated above
           }
         }
 

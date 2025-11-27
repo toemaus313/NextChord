@@ -47,8 +47,8 @@ extension SyncBackendExtension on SyncBackend {
       case SyncBackend.googleDrive:
         return true; // Available on all platforms with proper setup
       case SyncBackend.iCloud:
-        // iCloud only available on Apple platforms
-        return _isApplePlatform();
+        // iCloud available on Apple platforms and Windows with iCloud Drive
+        return _isICloudAvailable();
     }
   }
 
@@ -56,6 +56,16 @@ extension SyncBackendExtension on SyncBackend {
   static bool _isApplePlatform() {
     return defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS;
+  }
+
+  /// Check if running on Windows platform
+  static bool _isWindowsPlatform() {
+    return defaultTargetPlatform == TargetPlatform.windows;
+  }
+
+  /// Check if iCloud is available (Apple platforms or Windows with iCloud Drive)
+  static bool _isICloudAvailable() {
+    return _isApplePlatform() || _isWindowsPlatform();
   }
 
   /// Get description for UI
