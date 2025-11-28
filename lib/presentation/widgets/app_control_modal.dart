@@ -10,6 +10,7 @@ import '../../services/midi/midi_command_parser.dart';
 import '../../domain/entities/midi_message.dart';
 import '../../presentation/widgets/templates/standard_modal_template.dart';
 import '../../presentation/providers/song_provider.dart';
+import '../../presentation/providers/appearance_provider.dart';
 
 /// Helper class for app control mappings with MIDI code support
 class AppControlMapping {
@@ -409,55 +410,60 @@ class _AppControlModalState extends State<AppControlModal> {
 
   @override
   Widget build(BuildContext context) {
-    return StandardModalTemplate.buildModalContainer(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with Cancel/Save buttons
-          StandardModalTemplate.buildHeader(
-            context: context,
-            title: 'App Control',
-            onCancel: () => _cancelChanges(context),
-            onOk: () => Navigator.pop(context),
-            okEnabled: !_isLoading,
-          ),
-
-          // Form content
-          StandardModalTemplate.buildContent(
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearanceProvider, child) {
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          appearanceProvider: appearanceProvider,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // MIDI Learn mode indicator
-              if (_isMidiLearnMode)
-                StandardModalTemplate.buildInfoBox(
-                  text:
-                      'MIDI Learn active - Press a pedal/button on your device',
-                  icon: Icons.mic,
-                  color: Colors.blue,
-                ),
+              // Header with Cancel/Save buttons
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title: 'App Control',
+                onCancel: () => _cancelChanges(context),
+                onOk: () => Navigator.pop(context),
+                okEnabled: !_isLoading,
+              ),
 
-              // Mapping list
-              _buildMappingList(),
-              StandardModalTemplate.spacing(),
+              // Form content
+              StandardModalTemplate.buildContent(
+                children: [
+                  // MIDI Learn mode indicator
+                  if (_isMidiLearnMode)
+                    StandardModalTemplate.buildInfoBox(
+                      text:
+                          'MIDI Learn active - Press a pedal/button on your device',
+                      icon: Icons.mic,
+                      color: Colors.blue,
+                    ),
 
-              // Device selection
-              _buildDeviceSelection(),
-              StandardModalTemplate.spacing(),
+                  // Mapping list
+                  _buildMappingList(),
+                  StandardModalTemplate.spacing(),
 
-              // MIDI Code input
-              _buildMidiCodeInput(),
-              StandardModalTemplate.spacing(),
+                  // Device selection
+                  _buildDeviceSelection(),
+                  StandardModalTemplate.spacing(),
 
-              // Action selection
-              _buildActionSelection(),
-              StandardModalTemplate.spacing(),
+                  // MIDI Code input
+                  _buildMidiCodeInput(),
+                  StandardModalTemplate.spacing(),
 
-              // Action buttons
-              _buildActionButtons(),
-              StandardModalTemplate.spacing(),
+                  // Action selection
+                  _buildActionSelection(),
+                  StandardModalTemplate.spacing(),
+
+                  // Action buttons
+                  _buildActionButtons(),
+                  StandardModalTemplate.spacing(),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

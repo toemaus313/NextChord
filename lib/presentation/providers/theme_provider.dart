@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Provider for managing theme (light/dark mode) across the app
+/// Theme mode enumeration
+enum ThemeModeType {
+  light,
+  dark,
+  system,
+}
+
+/// Provider for managing theme (light/dark/system mode) across the app
 /// Persists theme preference using SharedPreferences
 class ThemeProvider extends ChangeNotifier {
-  static const String _themeKey = 'isDarkMode';
-  bool _isDarkMode = false;
+  static const String _themeModeKey = 'themeMode';
+  ThemeModeType _themeMode = ThemeModeType.system;
+  bool _systemIsDark = false;
   SharedPreferences? _prefs;
 
-  bool get isDarkMode => _isDarkMode;
+  ThemeModeType get themeMode => _themeMode;
+  bool get isDarkMode =>
+      _themeMode == ThemeModeType.dark ||
+      (_themeMode == ThemeModeType.system && _systemIsDark);
 
   ThemeProvider() {
     _loadThemePreference();
@@ -17,29 +28,47 @@ class ThemeProvider extends ChangeNotifier {
   /// Load theme preference from SharedPreferences
   Future<void> _loadThemePreference() async {
     _prefs = await SharedPreferences.getInstance();
-    _isDarkMode = _prefs?.getBool(_themeKey) ?? false;
+    final themeModeIndex =
+        _prefs?.getInt(_themeModeKey) ?? ThemeModeType.system.index;
+    _themeMode = ThemeModeType.values[themeModeIndex];
+    _updateSystemBrightness();
     notifyListeners();
   }
 
-  /// Toggle between light and dark mode
-  Future<void> toggleTheme() async {
-    _isDarkMode = !_isDarkMode;
-    await _prefs?.setBool(_themeKey, _isDarkMode);
-    notifyListeners();
+  /// Update system brightness detection
+  void _updateSystemBrightness() {
+    // Get system brightness without context using platform dispatcher
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    _systemIsDark = brightness == Brightness.dark;
   }
 
-  /// Set theme explicitly
-  Future<void> setTheme(bool isDark) async {
-    if (_isDarkMode != isDark) {
-      _isDarkMode = isDark;
-      await _prefs?.setBool(_themeKey, _isDarkMode);
+  /// Set theme mode
+  Future<void> setThemeMode(ThemeModeType mode) async {
+    if (_themeMode != mode) {
+      _themeMode = mode;
+      await _prefs?.setInt(_themeModeKey, mode.index);
       notifyListeners();
     }
   }
 
+  /// Legacy method for backward compatibility
+  Future<void> toggleTheme() async {
+    final newMode = _themeMode == ThemeModeType.light
+        ? ThemeModeType.dark
+        : ThemeModeType.light;
+    await setThemeMode(newMode);
+  }
+
+  /// Legacy method for backward compatibility
+  Future<void> setTheme(bool isDark) async {
+    final newMode = isDark ? ThemeModeType.dark : ThemeModeType.light;
+    await setThemeMode(newMode);
+  }
+
   /// Get ThemeData based on current mode
   ThemeData get themeData {
-    return _isDarkMode ? _darkTheme : _lightTheme;
+    return isDarkMode ? _darkTheme : _lightTheme;
   }
 
   /// Get light theme

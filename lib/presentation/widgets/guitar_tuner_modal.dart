@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../services/audio/guitar_tuner_service.dart';
 import 'semicircle_tuner_display.dart';
 import 'templates/concise_modal_template.dart';
+import '../providers/appearance_provider.dart';
 
 /// **Concise Modal Template Implementation** - Guitar Tuner
 ///
@@ -14,9 +15,12 @@ class GuitarTunerModal extends StatefulWidget {
 
   /// Show the Guitar Tuner modal using the concise template
   static Future<void> show(BuildContext context) {
+    final appearanceProvider =
+        Provider.of<AppearanceProvider>(context, listen: false);
     return ConciseModalTemplate.showConciseModal<void>(
       context: context,
       barrierDismissible: false,
+      appearanceProvider: appearanceProvider,
       child: const GuitarTunerModal(),
     );
   }

@@ -7,6 +7,7 @@ import 'data/database/app_database.dart';
 import 'data/repositories/song_repository.dart';
 import 'data/repositories/setlist_repository.dart';
 import 'presentation/providers/theme_provider.dart';
+import 'presentation/providers/appearance_provider.dart';
 import 'presentation/providers/global_sidebar_provider.dart';
 import 'presentation/providers/metronome_provider.dart';
 import 'presentation/providers/metronome_settings_provider.dart';
@@ -178,6 +179,9 @@ class NextChordApp extends StatelessWidget {
           create: (_) => ThemeProvider(),
         ),
         ChangeNotifierProvider(
+          create: (_) => AppearanceProvider(),
+        ),
+        ChangeNotifierProvider(
           create: (_) => GlobalSidebarProvider(),
         ),
         ChangeNotifierProvider(
@@ -211,8 +215,11 @@ class NextChordApp extends StatelessWidget {
             title: 'NextChord',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode:
-                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeProvider.themeMode == ThemeModeType.system
+                ? ThemeMode.system
+                : (themeProvider.themeMode == ThemeModeType.dark
+                    ? ThemeMode.dark
+                    : ThemeMode.light),
             home: const AppWrapper(),
           );
         },

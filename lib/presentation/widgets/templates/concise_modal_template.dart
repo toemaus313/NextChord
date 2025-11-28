@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/responsive_config.dart';
+import '../../providers/appearance_provider.dart';
 
 /// Mixin for modal content with consistent styling and spacing
 mixin ConciseModalContentMixin<T extends StatefulWidget> on State<T> {
@@ -54,8 +55,15 @@ abstract class ConciseModalTemplate extends StatefulWidget {
     required BuildContext context,
     required Widget child,
     bool barrierDismissible = false,
+    AppearanceProvider? appearanceProvider,
   }) {
     final isPhone = ResponsiveConfig.isPhone(context);
+
+    // Get gradient colors from appearance provider or use defaults
+    final gradientStart =
+        appearanceProvider?.gradientStart ?? const Color(0xFF0468cc);
+    final gradientEnd = appearanceProvider?.gradientEnd ??
+        const Color.fromARGB(150, 3, 73, 153);
 
     if (isPhone) {
       // Phone: Show as full-screen dialog
@@ -65,6 +73,8 @@ abstract class ConciseModalTemplate extends StatefulWidget {
           builder: (context) => _PhoneModalWrapper(
             title: 'Settings',
             child: child,
+            gradientStart: gradientStart,
+            gradientEnd: gradientEnd,
           ),
           fullscreenDialog: true,
         ),
@@ -84,10 +94,10 @@ abstract class ConciseModalTemplate extends StatefulWidget {
               maxHeight: 650, // Matching MIDI Profiles modal
             ),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
+                colors: [gradientStart, gradientEnd],
               ),
               borderRadius:
                   BorderRadius.circular(22), // Matching MIDI Profiles modal
@@ -498,11 +508,15 @@ abstract class ConciseModalTemplate extends StatefulWidget {
 class _PhoneModalWrapper extends StatelessWidget {
   final Widget child;
   final String title;
+  final Color gradientStart;
+  final Color gradientEnd;
 
   const _PhoneModalWrapper({
     Key? key,
     required this.child,
     required this.title,
+    required this.gradientStart,
+    required this.gradientEnd,
   }) : super(key: key);
 
   @override
@@ -517,13 +531,13 @@ class _PhoneModalWrapper extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      backgroundColor: const Color(0xFF0468cc),
+      backgroundColor: gradientStart,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
+            colors: [gradientStart, gradientEnd],
           ),
         ),
         child: child,

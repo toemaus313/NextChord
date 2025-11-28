@@ -1,11 +1,8 @@
-- Import chord-over-lyric - refine to work with other than UG official
 - switch between ChordPro and CoL 
 - Add chord viewer and click on chords
  - RUn through and delete unused/unreferenced code
  - View by Keys in Songs
-- MIDI listener and config for functions (sroll/page up/down. Metronome/ascroll start/stop)
 - Music director features - cue sending and syncing 
-- DB in iCloud
 
 
 ##Future features
@@ -32,6 +29,7 @@ SETTINGS
 - Capo reminder when loading song 
  - Tools: MIDI Sender and MIDI Viewer 
 
+
 **MIDI Actions testing
  - When starting metronome, it missed an accent beat
  - When metronome is active and repeat count in is executed, it needs to wait for the "1" and then execute inline and in time with the existing metronome.
@@ -47,4 +45,6 @@ SETTINGS
 - Autoscroll always at 3 mins
 - Deleted songs aren't deleting
 - iCloud is kinda working, but incrementals aren't syncing up, either automatically or manual, unless you do a full restore
-
+- Can’t edit on mobile, keyboard in the way
+- Songs and set lists not hard deleting 
+- Going portrait to landscape on mobile takes you out of the song 

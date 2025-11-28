@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/midi/midi_service.dart';
+import '../providers/appearance_provider.dart';
 import 'templates/standard_modal_template.dart';
 
 /// MIDI Settings Modal - Using StandardModalTemplate
@@ -62,59 +63,66 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitializing) {
-      return StandardModalTemplate.buildModalContainer(
-        context: context,
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (_initError != null) {
-      return StandardModalTemplate.buildModalContainer(
-        context: context,
-        child: AlertDialog(
-          title: const Text('MIDI Error'),
-          content: Text('Failed to initialize MIDI service: $_initError'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearanceProvider, child) {
+        if (_isInitializing) {
+          return StandardModalTemplate.buildModalContainer(
+            context: context,
+            appearanceProvider: appearanceProvider,
+            child: const Center(
+              child: CircularProgressIndicator(),
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return Consumer<MidiService>(
-      builder: (context, midiService, child) {
-        return StandardModalTemplate.buildModalContainer(
-          context: context,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              StandardModalTemplate.buildHeader(
-                context: context,
-                title: 'MIDI Settings',
-                onCancel: () => _cancelChanges(context, midiService),
-                onOk: () => _saveChanges(context, midiService),
-              ),
-              StandardModalTemplate.buildContent(
+        if (_initError != null) {
+          return StandardModalTemplate.buildModalContainer(
+            context: context,
+            appearanceProvider: appearanceProvider,
+            child: AlertDialog(
+              title: const Text('MIDI Error'),
+              content: Text('Failed to initialize MIDI service: $_initError'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Consumer<MidiService>(
+          builder: (context, midiService, child) {
+            return StandardModalTemplate.buildModalContainer(
+              context: context,
+              appearanceProvider: appearanceProvider,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildMidiChannelSetting(midiService),
-                  const SizedBox(height: 8),
-                  _buildMidiClockSetting(midiService),
-                  const SizedBox(height: 8),
-                  _buildConnectionStatus(midiService),
-                  const SizedBox(height: 8),
-                  _buildDeviceList(midiService),
-                  const SizedBox(height: 8),
-                  _buildActionButtons(midiService),
+                  StandardModalTemplate.buildHeader(
+                    context: context,
+                    title: 'MIDI Settings',
+                    onCancel: () => _cancelChanges(context, midiService),
+                    onOk: () => _saveChanges(context, midiService),
+                  ),
+                  StandardModalTemplate.buildContent(
+                    children: [
+                      _buildMidiChannelSetting(midiService),
+                      const SizedBox(height: 8),
+                      _buildMidiClockSetting(midiService),
+                      const SizedBox(height: 8),
+                      _buildConnectionStatus(midiService),
+                      const SizedBox(height: 8),
+                      _buildDeviceList(midiService),
+                      const SizedBox(height: 8),
+                      _buildActionButtons(midiService),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

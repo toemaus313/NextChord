@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/metronome_settings_provider.dart';
+import '../providers/appearance_provider.dart';
 import '../../services/midi/midi_service.dart';
 import 'templates/standard_modal_template.dart';
 
@@ -76,33 +77,39 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
       builder: (context, settingsProvider, child) {
         return Consumer<MidiService>(
           builder: (context, midiService, child) {
-            return StandardModalTemplate.buildModalContainer(
-              context: context,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  StandardModalTemplate.buildHeader(
-                    context: context,
-                    title: 'Metronome Settings',
-                    onCancel: () => _cancelChanges(context, settingsProvider),
-                    onOk: _midiSendError == null
-                        ? () => _saveChanges(context)
-                        : () {},
-                    okEnabled: _midiSendError == null,
-                  ),
-                  StandardModalTemplate.buildContent(
+            return Consumer<AppearanceProvider>(
+              builder: (context, appearanceProvider, child) {
+                return StandardModalTemplate.buildModalContainer(
+                  context: context,
+                  appearanceProvider: appearanceProvider,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildCountInSetting(settingsProvider),
-                      const SizedBox(height: 8),
-                      _buildTickActionSetting(settingsProvider),
-                      const SizedBox(height: 8),
-                      _buildMidiSendSetting(settingsProvider, midiService),
-                      const SizedBox(height: 8),
-                      _buildMidiStatusInfo(midiService),
+                      StandardModalTemplate.buildHeader(
+                        context: context,
+                        title: 'Metronome Settings',
+                        onCancel: () =>
+                            _cancelChanges(context, settingsProvider),
+                        onOk: _midiSendError == null
+                            ? () => _saveChanges(context)
+                            : () {},
+                        okEnabled: _midiSendError == null,
+                      ),
+                      StandardModalTemplate.buildContent(
+                        children: [
+                          _buildCountInSetting(settingsProvider),
+                          const SizedBox(height: 8),
+                          _buildTickActionSetting(settingsProvider),
+                          const SizedBox(height: 8),
+                          _buildMidiSendSetting(settingsProvider, midiService),
+                          const SizedBox(height: 8),
+                          _buildMidiStatusInfo(midiService),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

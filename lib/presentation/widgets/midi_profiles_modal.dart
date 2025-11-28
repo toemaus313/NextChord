@@ -9,6 +9,7 @@ import 'midi_profiles/profile_name_input.dart';
 import 'midi_profiles/midi_code_input.dart';
 import 'midi_profiles/midi_commands_list.dart';
 import 'midi_profiles/midi_action_buttons.dart';
+import '../providers/appearance_provider.dart';
 import 'templates/standard_modal_template.dart';
 
 /// Modal for creating and managing MIDI profiles
@@ -284,64 +285,69 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
 
   @override
   Widget build(BuildContext context) {
-    return StandardModalTemplate.buildModalContainer(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with Cancel/Save buttons
-          StandardModalTemplate.buildHeader(
-            context: context,
-            title: 'MIDI Profiles',
-            onCancel: () => _cancelChanges(context),
-            onOk: () => _saveProfile(),
-          ),
-          // Form content
-          StandardModalTemplate.buildContent(
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearanceProvider, child) {
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          appearanceProvider: appearanceProvider,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Profile selector
-              ProfileSelector(
-                profiles: _profiles,
-                selectedProfile: _selectedProfile,
-                onProfileSelected: _selectProfile,
+              // Header with Cancel/Save buttons
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title: 'MIDI Profiles',
+                onCancel: () => _cancelChanges(context),
+                onOk: () => _saveProfile(),
               ),
-              const SizedBox(height: 8),
-              // Profile name input
-              ProfileNameInput(
-                nameController: _nameController,
+              // Form content
+              StandardModalTemplate.buildContent(
+                children: [
+                  // Profile selector
+                  ProfileSelector(
+                    profiles: _profiles,
+                    selectedProfile: _selectedProfile,
+                    onProfileSelected: _selectProfile,
+                  ),
+                  const SizedBox(height: 8),
+                  // Profile name input
+                  ProfileNameInput(
+                    nameController: _nameController,
+                  ),
+                  const SizedBox(height: 8),
+                  // MIDI code input
+                  MidiCodeInput(
+                    controlChangeController: _controlChangeController,
+                    notesController: _notesController,
+                    midiCodeFocusNode: _midiCodeFocusNode,
+                    onAddCommand: _addControlChange,
+                  ),
+                  const SizedBox(height: 8),
+                  // MIDI commands list
+                  Flexible(
+                    child: MidiCommandsList(
+                      controlChanges: _controlChanges,
+                      timing: _timing,
+                      onRemoveCommand: _removeControlChange,
+                      onRemoveTiming: _removeTiming,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Action buttons
+                  MidiActionButtons(
+                    selectedProfile: _selectedProfile,
+                    isLoading: _isLoading,
+                    onSave: _saveProfile,
+                    onTest: _testProfileMidiCommands,
+                    onDelete: _deleteProfile,
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 8),
-              // MIDI code input
-              MidiCodeInput(
-                controlChangeController: _controlChangeController,
-                notesController: _notesController,
-                midiCodeFocusNode: _midiCodeFocusNode,
-                onAddCommand: _addControlChange,
-              ),
-              const SizedBox(height: 8),
-              // MIDI commands list
-              Flexible(
-                child: MidiCommandsList(
-                  controlChanges: _controlChanges,
-                  timing: _timing,
-                  onRemoveCommand: _removeControlChange,
-                  onRemoveTiming: _removeTiming,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Action buttons
-              MidiActionButtons(
-                selectedProfile: _selectedProfile,
-                isLoading: _isLoading,
-                onSave: _saveProfile,
-                onTest: _testProfileMidiCommands,
-                onDelete: _deleteProfile,
-              ),
-              const SizedBox(height: 16),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

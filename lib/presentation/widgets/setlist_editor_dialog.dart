@@ -1,12 +1,13 @@
 import 'dart:typed_data';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../domain/entities/setlist.dart';
 import '../../domain/entities/song.dart';
 import '../providers/setlist_provider.dart';
 import '../providers/song_provider.dart';
+import '../providers/appearance_provider.dart';
 import '../../services/setlist/setlist_service.dart';
+import 'templates/standard_modal_template.dart';
 import 'setlist_editor/image_picker.dart';
 
 /// Gradient-styled dialog for creating or editing a setlist
@@ -19,16 +20,10 @@ class SetlistEditorDialog extends StatefulWidget {
     BuildContext context, {
     Setlist? setlist,
   }) {
-    final isMobile = Platform.isIOS || Platform.isAndroid;
-
-    return showDialog<bool>(
+    return StandardModalTemplate.show<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(4),
-        child: SetlistEditorDialog(setlist: setlist),
-      ),
+      child: SetlistEditorDialog(setlist: setlist),
     );
   }
 
@@ -48,162 +43,139 @@ class SetlistEditorDialog extends StatefulWidget {
 
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 800),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0468cc),
-                Color.fromARGB(150, 3, 73, 153),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (context) {
+        return Consumer<AppearanceProvider>(
+          builder: (context, appearanceProvider, _) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: StandardModalTemplate.buildModalContainer(
+                context: context,
+                appearanceProvider: appearanceProvider,
+                maxHeight: 800,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Cancel button in upper left
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withAlpha(20),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                    // Centered title
-                    const Expanded(
-                      child: Text(
-                        'Add Songs',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    // Save button in upper right
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(
+                    // Standard header with Cancel / Save
+                    StandardModalTemplate.buildHeader(
+                      context: context,
+                      title: 'Add Songs',
+                      onCancel: () => Navigator.of(context).pop(),
+                      onOk: () => Navigator.of(context).pop(
                         songProvider.selectedSongIds.toList(),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withAlpha(20),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Save'),
+                    ),
+                    // Content area
+                    StandardModalTemplate.buildContent(
+                      children: [
+                        // Search bar
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          child: TextField(
+                            controller: searchController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Search songs...',
+                              hintStyle: const TextStyle(color: Colors.white38),
+                              prefixIcon: const Icon(Icons.search,
+                                  color: Colors.white38),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    const BorderSide(color: Colors.white24),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    const BorderSide(color: Colors.white24),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide:
+                                    const BorderSide(color: Colors.white),
+                              ),
+                            ),
+                            onChanged: (query) {
+                              songProvider.searchSongs(query);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Song list (fixed height inside scrollable content)
+                        SizedBox(
+                          height: 360,
+                          child: Consumer<SongProvider>(
+                            builder: (context, songProvider, _) {
+                              if (songProvider.isLoading) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                );
+                              }
+
+                              if (songProvider.songs.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    'No songs found',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                itemCount: songProvider.songs.length,
+                                itemBuilder: (context, index) {
+                                  final song = songProvider.songs[index];
+                                  final isSelected = songProvider
+                                      .selectedSongIds
+                                      .contains(song.id);
+                                  final alreadyAdded = currentItems
+                                      .any((item) => item.songId == song.id);
+
+                                  // Skip songs that are already added
+                                  if (alreadyAdded) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    onChanged: (value) {
+                                      if (value == true) {
+                                        songProvider.selectSong(song);
+                                      } else {
+                                        songProvider.deselectSong(song);
+                                      }
+                                    },
+                                    title: Text(
+                                      song.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      song.artist,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                    activeColor: Colors.white,
+                                    checkColor: const Color(0xFF0468cc),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              // Search bar
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: searchController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Search songs...',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    prefixIcon: const Icon(Icons.search, color: Colors.white38),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white24),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white24),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  onChanged: (query) {
-                    songProvider.searchSongs(query);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Song list
-              Expanded(
-                child: Consumer<SongProvider>(
-                  builder: (context, songProvider, _) {
-                    if (songProvider.isLoading) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      );
-                    }
-
-                    if (songProvider.songs.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No songs found',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      itemCount: songProvider.songs.length,
-                      itemBuilder: (context, index) {
-                        final song = songProvider.songs[index];
-                        final isSelected =
-                            songProvider.selectedSongIds.contains(song.id);
-                        final alreadyAdded =
-                            currentItems.any((item) => item.songId == song.id);
-
-                        // Skip songs that are already added
-                        if (alreadyAdded) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return CheckboxListTile(
-                          value: isSelected,
-                          onChanged: (value) {
-                            if (value == true) {
-                              songProvider.selectSong(song);
-                            } else {
-                              songProvider.deselectSong(song);
-                            }
-                          },
-                          title: Text(
-                            song.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-                          subtitle: Text(
-                            song.artist,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                            ),
-                          ),
-                          activeColor: Colors.white,
-                          checkColor: const Color(0xFF0468cc),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
 
     // Clean up
@@ -404,134 +376,75 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 800),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0468cc),
-              Color.fromARGB(150, 3, 73, 153),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearanceProvider, _) {
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          appearanceProvider: appearanceProvider,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title:
+                    widget.setlist == null ? 'Create Setlist' : 'Edit Setlist',
+                onCancel: _isLoading ? () {} : _cancel,
+                onOk: _isLoading ? () {} : _saveSetlist,
+                okEnabled: !_isLoading,
+              ),
+              StandardModalTemplate.buildContent(
                 children: [
-                  // Cancel button in upper left
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _cancel,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withAlpha(20),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      minimumSize: const Size(60, 36),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 14)),
-                  ),
-                  // Centered title
-                  Expanded(
-                    child: Text(
-                      widget.setlist == null
-                          ? 'Create Setlist'
-                          : 'Edit Setlist',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  // Save button in upper right
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _saveSetlist,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withAlpha(20),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      minimumSize: const Size(60, 36),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                  // Wrap fields in a Form so _formKey.currentState is non-null
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image picker at top
+                        SetlistImagePicker(
+                          imagePath: _imagePath,
+                          imageBytes: _imageBytes,
+                          isLoading: _imageLoading,
+                          onPickImage: _pickImage,
+                          onRemoveImage: _removeImage,
+                        ),
+                        const SizedBox(height: 16),
+                        // Name field underneath image
+                        TextFormField(
+                          controller: _nameController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Setlist Name',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            hintText: 'Enter setlist name',
+                            hintStyle: TextStyle(color: Colors.white38),
+                            border: OutlineInputBorder(),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.white24),
                             ),
-                          )
-                        : const Text('Save', style: TextStyle(fontSize: 14)),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.white),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter a setlist name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        // Custom songs list matching sidebar implementation
+                        _buildSongsList(),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-            // Form content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image picker at top
-                      SetlistImagePicker(
-                        imagePath: _imagePath,
-                        imageBytes: _imageBytes,
-                        isLoading: _imageLoading,
-                        onPickImage: _pickImage,
-                        onRemoveImage: _removeImage,
-                      ),
-                      const SizedBox(height: 16),
-                      // Name field underneath image
-                      TextFormField(
-                        controller: _nameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Setlist Name',
-                          labelStyle: TextStyle(color: Colors.white70),
-                          hintText: 'Enter setlist name',
-                          hintStyle: TextStyle(color: Colors.white38),
-                          border: OutlineInputBorder(),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white24),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a setlist name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      // Custom songs list matching sidebar implementation
-                      _buildSongsList(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 

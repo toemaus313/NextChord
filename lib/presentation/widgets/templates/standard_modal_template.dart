@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../providers/appearance_provider.dart';
 
 /// **Standard Modal Template** - Based on MIDI Profiles Modal Design
 ///
 /// **App Modal Design Standard**:
 /// - maxWidth: 480, maxHeight: 650 (constrained dialog)
-/// - Gradient: Color(0xFF0468cc) to Color.fromARGB(150, 3, 73, 153)
+/// - Gradient: Dynamic from AppearanceProvider or fallback to Color(0xFF0468cc) to Color.fromARGB(150, 3, 73, 153)
 /// - Border radius: 22, Shadow: blurRadius 20, offset (0, 10)
 /// - Text: Primary white, secondary white70, borders white24
 /// - Buttons: Rounded borders (999), padding (21, 11), fontSize 14
@@ -32,6 +33,7 @@ class StandardModalTemplate {
     required BuildContext context,
     required Widget child,
     double? maxHeight,
+    AppearanceProvider? appearanceProvider,
   }) {
     // Calculate available screen height with padding
     final screenHeight = MediaQuery.of(context).size.height;
@@ -39,18 +41,26 @@ class StandardModalTemplate {
     final effectiveMaxHeight =
         maxHeight ?? (availableHeight < 650 ? availableHeight : 650.0);
 
+    // Get gradient colors from appearance provider or use defaults
+    final gradientStart =
+        appearanceProvider?.gradientStart ?? const Color(0xFF0468cc);
+    final gradientEnd = appearanceProvider?.gradientEnd ??
+        const Color.fromARGB(150, 3, 73, 153);
+
     return Container(
       constraints: BoxConstraints(
         maxWidth: 480,
         maxHeight: effectiveMaxHeight,
       ),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        // Solid base color ensures the modal panel itself is fully opaque
+        color: gradientStart,
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0468cc),
-            Color.fromARGB(150, 3, 73, 153),
+            gradientStart.withValues(alpha: 0.97),
+            gradientEnd.withValues(alpha: 0.97),
           ],
         ),
         borderRadius: BorderRadius.circular(22),
@@ -125,17 +135,19 @@ class StandardModalTemplate {
     );
   }
 
-  /// Build the content area with standard padding
+  /// Build the content area with standard padding and scrolling support
   static Widget buildContent({
     required List<Widget> children,
   }) {
     return Flexible(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
         ),
       ),
     );

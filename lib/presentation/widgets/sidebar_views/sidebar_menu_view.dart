@@ -24,6 +24,7 @@ class SidebarMenuView extends StatefulWidget {
   final VoidCallback onNavigateToStorageSettings;
   final VoidCallback onNavigateToAppControl;
   final VoidCallback onNavigateToActionTest;
+  final VoidCallback onNavigateToAppearanceSettings;
   final VoidCallback onAddSong;
   final bool isPhoneMode;
   final bool showHeader;
@@ -43,6 +44,7 @@ class SidebarMenuView extends StatefulWidget {
     required this.onNavigateToStorageSettings,
     required this.onNavigateToAppControl,
     required this.onNavigateToActionTest,
+    required this.onNavigateToAppearanceSettings,
     required this.onAddSong,
     this.isPhoneMode = false,
     this.showHeader = true,
@@ -241,7 +243,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     final titleFontSize = (screenWidth * 0.06).clamp(60.0, 70.0);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -465,6 +467,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
                 title: 'Metronome',
                 isSelected: false,
                 onTap: widget.onNavigateToMetronomeSettings,
+                isPhoneMode: widget.isPhoneMode,
+              ),
+              SidebarSubMenuItem(
+                title: 'Appearance',
+                isSelected: false,
+                onTap: widget.onNavigateToAppearanceSettings,
                 isPhoneMode: widget.isPhoneMode,
               ),
               SidebarSubMenuItem(

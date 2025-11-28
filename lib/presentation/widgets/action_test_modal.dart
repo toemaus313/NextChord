@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../domain/entities/app_control_action.dart';
 import '../../services/midi/midi_action_dispatcher.dart';
 import '../../presentation/widgets/templates/standard_modal_template.dart';
+import '../providers/appearance_provider.dart';
 
 /// Modal for testing app control actions without MIDI mappings
 class ActionTestModal extends StatefulWidget {
@@ -125,42 +127,47 @@ class _ActionTestModalState extends State<ActionTestModal> {
 
   @override
   Widget build(BuildContext context) {
-    return StandardModalTemplate.buildModalContainer(
-      context: context,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with Cancel/Close buttons
-          StandardModalTemplate.buildHeader(
-            context: context,
-            title: 'Action Test',
-            onCancel: () => _cancelChanges(context),
-            onOk: () => Navigator.pop(context),
-            okLabel: 'Close',
-          ),
-
-          // Form content
-          StandardModalTemplate.buildContent(
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearanceProvider, child) {
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          appearanceProvider: appearanceProvider,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Info box
-              StandardModalTemplate.buildInfoBox(
-                text: 'Test actions without creating MIDI mappings',
-                icon: Icons.info_outline,
-                color: Colors.blue,
+              // Header with Cancel/Close buttons
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title: 'Action Test',
+                onCancel: () => _cancelChanges(context),
+                onOk: () => Navigator.pop(context),
+                okLabel: 'Close',
               ),
-              StandardModalTemplate.spacing(),
 
-              // Action selection
-              _buildActionSelection(),
-              StandardModalTemplate.spacing(),
+              // Form content
+              StandardModalTemplate.buildContent(
+                children: [
+                  // Info box
+                  StandardModalTemplate.buildInfoBox(
+                    text: 'Test actions without creating MIDI mappings',
+                    icon: Icons.info_outline,
+                    color: Colors.blue,
+                  ),
+                  StandardModalTemplate.spacing(),
 
-              // Test button
-              _buildTestButton(),
-              StandardModalTemplate.spacing(),
+                  // Action selection
+                  _buildActionSelection(),
+                  StandardModalTemplate.spacing(),
+
+                  // Test button
+                  _buildTestButton(),
+                  StandardModalTemplate.spacing(),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

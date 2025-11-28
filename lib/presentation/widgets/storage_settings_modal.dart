@@ -7,6 +7,7 @@ import '../../../providers/sync_provider.dart';
 import '../../../core/config/google_oauth_config.dart';
 import '../../../core/enums/sync_backend.dart';
 import '../../../main.dart' as main;
+import '../providers/appearance_provider.dart';
 import 'templates/standard_modal_template.dart';
 
 /// Storage Settings Modal - Using StandardModalTemplate
@@ -55,30 +56,35 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
   Widget build(BuildContext context) {
     return Consumer<SyncProvider>(
       builder: (context, syncProvider, _) {
-        return StandardModalTemplate.buildModalContainer(
-          context: context,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              StandardModalTemplate.buildHeader(
-                context: context,
-                title: 'Cloud Storage',
-                onCancel: () => Navigator.of(context).pop(),
-                onOk: () => Navigator.of(context).pop(),
-              ),
-              StandardModalTemplate.buildContent(
+        return Consumer<AppearanceProvider>(
+          builder: (context, appearanceProvider, _) {
+            return StandardModalTemplate.buildModalContainer(
+              context: context,
+              appearanceProvider: appearanceProvider,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildSyncStatus(syncProvider),
-                  const SizedBox(height: 8),
-                  _buildBackendSelection(syncProvider),
-                  const SizedBox(height: 8),
-                  _buildStorageSection(syncProvider),
-                  const SizedBox(height: 8),
-                  _buildActionButtons(context, syncProvider),
+                  StandardModalTemplate.buildHeader(
+                    context: context,
+                    title: 'Cloud Storage',
+                    onCancel: () => Navigator.of(context).pop(),
+                    onOk: () => Navigator.of(context).pop(),
+                  ),
+                  StandardModalTemplate.buildContent(
+                    children: [
+                      _buildSyncStatus(syncProvider),
+                      const SizedBox(height: 8),
+                      _buildBackendSelection(syncProvider),
+                      const SizedBox(height: 8),
+                      _buildStorageSection(syncProvider),
+                      const SizedBox(height: 8),
+                      _buildActionButtons(context, syncProvider),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

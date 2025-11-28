@@ -4,6 +4,7 @@ import 'dart:io';
 import '../providers/global_sidebar_provider.dart';
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/appearance_provider.dart';
 import '../providers/setlist_provider.dart';
 import '../controllers/global_sidebar_controller.dart';
 import '../../services/midi/midi_device_manager.dart';
@@ -15,6 +16,7 @@ import 'guitar_tuner_modal.dart';
 import 'storage_settings_modal.dart';
 import 'app_control_modal.dart';
 import 'action_test_modal.dart';
+import 'appearance_settings_modal.dart';
 import 'sidebar_views/sidebar_menu_view.dart';
 import 'sidebar_views/sidebar_all_songs_view.dart';
 import 'sidebar_views/sidebar_setlist_view.dart';
@@ -92,6 +94,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final appearanceProvider = context.watch<AppearanceProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final backgroundColor = isDarkMode ? Colors.grey[900] : Colors.white;
     final isPhone = ResponsiveConfig.isPhone(context);
@@ -101,12 +104,12 @@ class _GlobalSidebarState extends State<GlobalSidebar>
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF0468cc),
-                Color.fromARGB(99, 3, 73, 153),
+                appearanceProvider.gradientStart,
+                appearanceProvider.gradientEnd,
               ],
             ),
           ),
@@ -141,6 +144,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
   }
 
   Widget _buildSidebar(BuildContext context, double sidebarWidth) {
+    final appearanceProvider = context.watch<AppearanceProvider>();
     final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
 
     return IconButtonTheme(
@@ -162,12 +166,12 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           child: Container(
             width: sidebarWidth,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF0468cc),
-                  Color.fromARGB(99, 3, 73, 153),
+                  appearanceProvider.gradientStart,
+                  appearanceProvider.gradientEnd,
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -340,6 +344,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           onNavigateToStorageSettings: () => _showStorageSettings(),
           onNavigateToAppControl: () => _showAppControl(),
           onNavigateToActionTest: () => _showActionTest(),
+          onNavigateToAppearanceSettings: () => _showAppearanceSettings(),
           onAddSong: () => _navigateToAddSong(),
           isPhoneMode: _isActualPhone(context),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
@@ -402,6 +407,10 @@ class _GlobalSidebarState extends State<GlobalSidebar>
 
   void _showActionTest() {
     ActionTestModal.show(context);
+  }
+
+  void _showAppearanceSettings() {
+    AppearanceSettingsModal.show(context);
   }
 
   void _showAddSongsToSetlist() {

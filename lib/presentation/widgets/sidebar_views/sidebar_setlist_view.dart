@@ -9,6 +9,7 @@ import '../sidebar_components/sidebar_header.dart';
 import '../../screens/song_editor_screen_refactored.dart';
 import '../tag_edit_dialog.dart';
 import '../setlist_editor_dialog.dart';
+import '../standard_wide_button.dart';
 import '../../../services/setlist/setlist_service.dart';
 import 'dart:io';
 
@@ -421,14 +422,9 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
   Widget _buildAddButton(BuildContext context, Setlist setlist) {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF0468cc),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          minimumSize: const Size(0, 0),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
+      child: StandardWideButton(
+        label: 'Add...',
+        icon: Icons.add,
         onPressed: () async {
           if (!mounted) return;
           final setlistProvider =
@@ -458,11 +454,6 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
             await setlistProvider.updateSetlist(updatedSetlist);
           }
         },
-        icon: const Icon(Icons.add, size: 16),
-        label: const Text(
-          'Add ...',
-          style: TextStyle(fontSize: 12),
-        ),
       ),
     );
   }

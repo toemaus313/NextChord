@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../providers/setlist_provider.dart';
+import '../providers/appearance_provider.dart';
+import 'templates/standard_modal_template.dart';
 
 /// Modal-style dialog for adding songs to multiple setlists
 ///
@@ -22,27 +24,19 @@ class AddSongsToSetlistModal extends StatefulWidget {
 
   /// Show the Add Songs to Setlist modal for a single song
   static Future<void> show(BuildContext context, Song song) {
-    return showDialog<void>(
+    return StandardModalTemplate.show<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: AddSongsToSetlistModal(songs: [song]),
-      ),
+      child: AddSongsToSetlistModal(songs: [song]),
     );
   }
 
   /// Show the Add Songs to Setlist modal for multiple songs
   static Future<void> showMultiple(BuildContext context, List<Song> songs) {
-    return showDialog<void>(
+    return StandardModalTemplate.show<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: AddSongsToSetlistModal(songs: songs),
-      ),
+      child: AddSongsToSetlistModal(songs: songs),
     );
   }
 
@@ -104,120 +98,41 @@ class _AddSongsToSetlistModalState extends State<AddSongsToSetlistModal> {
       );
     }
 
-    return Consumer<SetlistProvider>(
-      builder: (context, setlistProvider, child) {
-        return Center(
-          child: ConstrainedBox(
-            // App Modal Design Standard: Constrained dialog size
-            constraints: const BoxConstraints(
-              maxWidth: 480,
-              minWidth: 320,
-              maxHeight: 650,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                // App Modal Design Standard: Gradient background
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF0468cc), Color.fromARGB(150, 3, 73, 153)],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(100),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+    return Consumer2<AppearanceProvider, SetlistProvider>(
+      builder: (context, appearanceProvider, setlistProvider, child) {
+        return StandardModalTemplate.buildModalContainer(
+          context: context,
+          appearanceProvider: appearanceProvider,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StandardModalTemplate.buildHeader(
+                context: context,
+                title: 'Add to Setlist',
+                onCancel: () => Navigator.of(context).pop(),
+                onOk: _selectedSetlistIds.isEmpty
+                    ? () {}
+                    : () {
+                        // Defer the entire operation to avoid setState during build
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _addToSetlists(context);
+                        });
+                      },
+                okEnabled: _selectedSetlistIds.isNotEmpty,
+                okLabel: 'Add',
               ),
-              // App Modal Design Standard: Consistent padding
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              StandardModalTemplate.buildContent(
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 8),
                   _buildSongInfo(),
                   const SizedBox(height: 12),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildSetlistList(setlistProvider),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildSetlistList(setlistProvider),
+                  const SizedBox(height: 8),
                 ],
               ),
-            ),
+            ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        // Cancel button (upper left)
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: const BorderSide(color: Colors.white24),
-            ),
-          ),
-          child: const Text('Cancel',
-              style: TextStyle(fontSize: 10.5)), // Reduced by 25% from 14
-        ),
-        const Spacer(),
-        const Text(
-          'Add to Setlist',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 12, // Reduced by 25% from 16
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const Spacer(),
-        // Add button (upper right)
-        TextButton(
-          onPressed: _selectedSetlistIds.isEmpty
-              ? null
-              : () {
-                  // Defer the entire operation to avoid setState during build
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _addToSetlists(context);
-                  });
-                },
-          style: TextButton.styleFrom(
-            foregroundColor:
-                _selectedSetlistIds.isEmpty ? Colors.white54 : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 11),
-            minimumSize: const Size(0, 0),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(
-                color: _selectedSetlistIds.isEmpty
-                    ? Colors.white12
-                    : Colors.white24,
-              ),
-            ),
-          ),
-          child: const Text('Add',
-              style: TextStyle(fontSize: 10.5)), // Reduced by 25% from 14
-        ),
-      ],
     );
   }
 
