@@ -381,8 +381,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ListTile(
                     leading: const Icon(Icons.tag),
                     title: const Text('Edit Tags...'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
+                      await showEditTagsDialog();
                     },
                   ),
                   // Add to setlist option
@@ -577,8 +578,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ListTile(
                 leading: const Icon(Icons.tag),
                 title: const Text('Edit Tags...'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
+                  await showEditTagsDialogForSong(song);
                 },
               ),
               ListTile(

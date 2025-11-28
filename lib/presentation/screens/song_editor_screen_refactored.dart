@@ -11,7 +11,6 @@ import '../providers/global_sidebar_provider.dart';
 import '../widgets/song_editor/song_editor_header.dart';
 import '../widgets/song_editor/song_metadata_form.dart';
 import '../widgets/song_editor/midi_profile_selector.dart';
-import '../widgets/song_editor/tag_editor.dart';
 import '../widgets/song_editor/title_only_confirmation_dialog.dart';
 import '../controllers/song_editor/song_editor_controller.dart';
 import '../../services/song_editor/song_import_service.dart';
@@ -323,12 +322,6 @@ class _SongEditorScreenRefactoredState
   void _handleTimeSignatureChanged(String newTimeSignature) {
     setState(() {
       _selectedTimeSignature = newTimeSignature;
-    });
-  }
-
-  void _handleTagsChanged(List<String> newTags) {
-    setState(() {
-      _tags = newTags;
     });
   }
 
@@ -1007,11 +1000,6 @@ class _SongEditorScreenRefactoredState
     });
   }
 
-  void _openTagsDialog() {
-    // TODO: Implement tag editing dialog
-    // For now, this is a placeholder to avoid compilation errors
-  }
-
   /// Update editor font size with clamping
   void _updateEditorFontSize(double newSize) {
     setState(() {
@@ -1159,57 +1147,26 @@ class _SongEditorScreenRefactoredState
                           ),
                           const SizedBox(height: 12),
 
-                          // MIDI Sends and Tags in the same row
-                          Row(
-                            children: [
-                              // MIDI Sends section - left half
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: isDarkMode
-                                          ? Colors.grey.shade700
-                                          : Colors.grey.shade400,
-                                      width: 1.0,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: MidiProfileSelector(
-                                    selectedProfile: _selectedMidiProfile,
-                                    onProfileChanged: _handleMidiProfileChanged,
-                                    profiles: _midiProfiles,
-                                    isLoading: _isLoadingProfiles,
-                                    onProfilesReloaded: _loadMidiProfiles,
-                                  ),
-                                ),
+                          // MIDI Sends section
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isDarkMode
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade400,
+                                width: 1.0,
                               ),
-                              const SizedBox(width: 12),
-                              // Tags section - right half
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: isDarkMode
-                                          ? Colors.grey.shade700
-                                          : Colors.grey.shade400,
-                                      width: 1.0,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: TagEditor(
-                                    tags: _tags,
-                                    textColor: textColor,
-                                    isDarkMode: isDarkMode,
-                                    onTagsChanged: _handleTagsChanged,
-                                    onEditTags: _openTagsDialog,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: MidiProfileSelector(
+                              selectedProfile: _selectedMidiProfile,
+                              onProfileChanged: _handleMidiProfileChanged,
+                              profiles: _midiProfiles,
+                              isLoading: _isLoadingProfiles,
+                              onProfilesReloaded: _loadMidiProfiles,
+                            ),
                           ),
                           const SizedBox(height: 16),
                         ],
