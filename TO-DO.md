@@ -50,3 +50,4 @@ SETTINGS
 - Going portrait to landscape on mobile takes you out of the song 
 - Edit tags dialog not opening
 
+
