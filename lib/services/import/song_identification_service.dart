@@ -13,15 +13,10 @@ class SongIdentificationService {
   /// Returns a map with rich metadata if found, null otherwise
   static Future<Map<String, dynamic>?> identifySong(String chordChart) async {
     try {
-      print("🎵 SongIdentificationService: Starting identification");
-
       // Step 1: Extract up to 3 lines of lyrics from chorus (most distinctive)
       final chorusLyrics = _extractFirstLyricLine(chordChart);
-      print(
-          "🎵 SongIdentificationService: Extracted chorus lyrics: '$chorusLyrics'");
 
       if (chorusLyrics == null || chorusLyrics.trim().isEmpty) {
-        print("🎵 SongIdentificationService: No valid chorus lyrics found");
         return null;
       }
 
@@ -29,7 +24,6 @@ class SongIdentificationService {
       final geniusResult = await _searchGenius(chorusLyrics);
 
       if (geniusResult == null) {
-        print("🎵 SongIdentificationService: No Genius result returned");
         return null;
       }
 
@@ -37,25 +31,16 @@ class SongIdentificationService {
       final artist = geniusResult['artist'];
 
       if (title == null || artist == null) {
-        print(
-            "🎵 SongIdentificationService: Missing title or artist from Genius");
         return null;
       }
 
-      print(
-          "🎵 SongIdentificationService: Genius identified - Title: '$title', Artist: '$artist'");
-
       // Step 3: Fetch metadata from existing SongBPM + MusicBrainz pipeline
-      print(
-          "🎵 SongIdentificationService: Fetching metadata from SongBPM/MusicBrainz...");
       final metadataResult = await _metadataService.fetchMetadata(
         title: title,
         artist: artist,
       );
 
       if (!metadataResult.success) {
-        print(
-            "🎵 SongIdentificationService: Metadata fetch failed: ${metadataResult.error}");
         // Return just title/artist if metadata fetch fails
         return {
           'title': title,
@@ -78,11 +63,8 @@ class SongIdentificationService {
             : null,
         'time_signature': metadataResult.timeSignature,
       };
-
-      print("🎵 SongIdentificationService: Final result: $combinedResult");
       return combinedResult;
     } catch (e) {
-      print("🎵 SongIdentificationService: Error during identification: $e");
       // Silently fail - song identification is optional
       return null;
     }
@@ -102,50 +84,37 @@ class SongIdentificationService {
       if (line.toLowerCase().contains('[chorus') ||
           line.toLowerCase().contains('[refrain')) {
         foundChorusMarker = true;
-        print("🎵 SongIdentificationService: Found chorus marker: '$line'");
         continue;
       }
 
       // If we found another section marker, stop collecting chorus lines
       if (foundChorusMarker && line.startsWith('[')) {
-        print(
-            "🎵 SongIdentificationService: Found new section marker, stopping chorus collection");
         break;
       }
 
       // If we found a chorus marker, collect up to 3 lines with actual words
       if (foundChorusMarker && line.isNotEmpty) {
-        print("🎵 SongIdentificationService: Checking line: '$line'");
-
         // If line contains multiple actual words (not just chord names)
         // Real lyrics have multiple words like "You are the only"
         // Chord lines have isolated patterns like "G  Dm  Cmaj7"
         final wordPattern = RegExp(r'\b[a-z]{3,}\s+[a-z]{3,}');
         if (wordPattern.hasMatch(line)) {
           chorusLines.add(line);
-          print("🎵 SongIdentificationService: Added chorus line: '$line'");
 
           // Stop after collecting 3 lines
           if (chorusLines.length >= 3) {
-            print(
-                "🎵 SongIdentificationService: Collected 3 chorus lines, stopping");
             break;
           }
-        } else {
-          print(
-              "🎵 SongIdentificationService: Skipping non-lyric line: '$line'");
-        }
+        } else {}
       }
     }
 
     if (chorusLines.isEmpty) {
-      print("🎵 SongIdentificationService: No chorus lyric lines found!");
       return null;
     }
 
     // Join the collected chorus lines with newlines
     final fullChorus = chorusLines.join('\n');
-    print("🎵 SongIdentificationService: FOUND CHORUS LYRICS: '$fullChorus'");
     return fullChorus;
   }
 
@@ -162,17 +131,11 @@ class SongIdentificationService {
         },
       ).timeout(const Duration(seconds: 10));
 
-      print(
-          "🎵 SongIdentificationService: Genius API response status: ${response.statusCode}");
-
       if (response.statusCode == 200) {
-        print("🎵 SongIdentificationService: Genius API response received");
-
         final data = json.decode(response.body) as Map<String, dynamic>;
         final hits = data['response']['hits'] as List<dynamic>?;
 
         if (hits == null || hits.isEmpty) {
-          print("🎵 SongIdentificationService: No Genius results found");
           return null;
         }
 
@@ -190,12 +153,8 @@ class SongIdentificationService {
             'artist': artist,
           };
         }
-      } else {
-        print(
-            "🎵 SongIdentificationService: Genius API non-200 response: ${response.statusCode}");
-      }
+      } else {}
     } catch (e) {
-      print("🎵 SongIdentificationService: Genius API request error: $e");
       // Silently fail on network errors
     }
     return null;

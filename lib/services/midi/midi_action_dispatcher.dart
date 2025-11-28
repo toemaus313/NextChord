@@ -264,8 +264,6 @@ class MidiActionDispatcher {
   Future<void> executeAction(AppControlActionType action,
       {AppControlActionParams? params}) async {
     if (!_isInitialized) {
-      debugPrint(
-          'MidiActionDispatcher not initialized - cannot execute action');
       return;
     }
 

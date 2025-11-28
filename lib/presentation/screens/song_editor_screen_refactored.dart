@@ -21,7 +21,6 @@ import '../../services/import/content_type_detector.dart';
 import '../../services/import/share_import_service.dart';
 import '../../services/song_metadata_service.dart';
 import '../../core/utils/ug_text_converter.dart';
-import '../../main.dart' as app_main;
 
 /// Screen for creating or editing a song - Refactored version
 class SongEditorScreenRefactored extends StatefulWidget {
@@ -137,8 +136,6 @@ class _SongEditorScreenRefactoredState
     // Sync metadata from controller to screen controllers when lookup completes
     if (_controller.onlineMetadataStatus == OnlineMetadataStatus.found &&
         mounted) {
-      print('DEBUG: Syncing metadata from controller to screen');
-
       // Check if no duration data was found and show warning
       if (_controller.lastLookupResult?.missingDuration == true) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -155,30 +152,24 @@ class _SongEditorScreenRefactoredState
         // Sync BPM
         if (_controller.bpmController.text.isNotEmpty) {
           _bpmController.text = _controller.bpmController.text;
-          print('DEBUG: Synced BPM: ${_bpmController.text}');
         }
 
         // Sync duration
         if (_controller.durationController.text.isNotEmpty) {
           _durationController.text = _controller.durationController.text;
-          print('DEBUG: Synced duration: ${_durationController.text}');
         }
 
         // Sync title and artist
         if (_controller.titleController.text.isNotEmpty) {
           _titleController.text = _controller.titleController.text;
-          print('DEBUG: Synced title: ${_titleController.text}');
         }
         if (_controller.artistController.text.isNotEmpty) {
           _artistController.text = _controller.artistController.text;
-          print('DEBUG: Synced artist: ${_artistController.text}');
         }
 
         // Sync key and time signature
         _selectedKey = _controller.selectedKey;
         _selectedTimeSignature = _controller.timeSignature;
-        print(
-            'DEBUG: Synced key: $_selectedKey, time signature: $_selectedTimeSignature');
       });
     }
   }
@@ -591,14 +582,11 @@ class _SongEditorScreenRefactoredState
 
   Future<void> _importFromUltimateGuitar() async {
     if (_isImportingFromUrl) {
-      app_main.myDebug(
-          'UG import attempted while already running; ignoring duplicate tap');
       return;
     }
 
     final url = await _promptForUltimateGuitarUrl();
     if (!mounted || url == null || url.trim().isEmpty) {
-      app_main.myDebug('UG import dialog dismissed or empty URL provided');
       return;
     }
 
@@ -606,14 +594,11 @@ class _SongEditorScreenRefactoredState
       _isImportingFromUrl = true;
     });
 
-    app_main.myDebug('Starting Ultimate Guitar import for URL: $url');
-
     try {
       final importResult =
           await SongImportService.importFromUltimateGuitar(url);
 
       if (!mounted) {
-        app_main.myDebug('UG import completed but screen unmounted; aborting');
         return;
       }
 
@@ -621,13 +606,9 @@ class _SongEditorScreenRefactoredState
           importResult.body == null ||
           importResult.body!.trim().isEmpty) {
         final error = importResult.error ?? 'Unknown error';
-        app_main.myDebug('UG import failed for $url: $error');
         _showImportError(error);
         return;
       }
-
-      app_main
-          .myDebug('UG import succeeded for $url, applying content to editor');
 
       _applyImportedContent(
         body: importResult.body!,
@@ -657,15 +638,11 @@ class _SongEditorScreenRefactoredState
       if (title.isNotEmpty) {
         Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted) {
-            app_main.myDebug(
-                'Triggering metadata lookup after UG import (title: $title, artist: $artist)');
             _controller.triggerOnlineLookup(title, artist);
           }
         });
       }
     } catch (e) {
-      final message = 'Failed to import Ultimate Guitar tab: $e';
-      app_main.myDebug(message);
       if (mounted) {
         _showImportError('Failed to import tab. Please try again.');
       }
@@ -903,10 +880,7 @@ class _SongEditorScreenRefactoredState
           if (hasTitle && hasArtist) {
             shouldTriggerMetadataLookup = true;
           }
-        } else {
-          app_main.myDebug(
-              'Skipping content metadata extraction - form fields already populated');
-        }
+        } else {}
       }
 
       // Update the body controller with converted text

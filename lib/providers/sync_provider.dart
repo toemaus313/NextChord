@@ -111,25 +111,16 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _syncBackend =
           _isSyncEnabled ? SyncBackend.googleDrive : SyncBackend.local;
       await _prefs?.setString(_syncBackendKey, _syncBackend.shortName);
-      main.myDebug(
-          "Migrated to backend selection system - backend: $_syncBackend");
     }
-
-    main.myDebug(
-        "Loading sync preference - sync enabled: $_isSyncEnabled, backend: $_syncBackend");
 
     // Create backup service based on loaded backend
     _createBackupService();
 
     // If sync was previously enabled, verify actual sign-in status
     if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
-      main.myDebug(
-          "Sync was enabled, checking sign-in status for backend: $_syncBackend");
       _isSignedIn = await _currentSyncService.isSignedIn();
-      main.myDebug("Sign-in status check result: $_isSignedIn");
     } else {
       _isSignedIn = false;
-      main.myDebug("Sync was disabled or local, sign-in status set to false");
     }
     notifyListeners();
 
@@ -193,28 +184,21 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   /// Set sync backend
   Future<void> setSyncBackend(SyncBackend backend) async {
-    main.myDebug(
-        "setSyncBackend called with backend: $backend (current: $_syncBackend)");
-
     if (_syncBackend == backend) {
-      main.myDebug("Backend unchanged, returning");
       return;
     }
 
     // Stop current service polling
     if (_currentSyncService != null) {
-      main.myDebug("Stopping metadata polling for current backend");
       _currentSyncService.stopMetadataPolling();
     }
 
     // Sign out from current backend if switching backends
     if (_syncBackend != SyncBackend.local && backend != _syncBackend) {
-      main.myDebug("Signing out from current backend: $_syncBackend");
       await _currentSyncService.signOut();
     }
 
     _syncBackend = backend;
-    main.myDebug("Backend switched to: $backend");
     _isSignedIn = false;
     _lastSyncTime = null;
     _lastError = null;
@@ -224,16 +208,11 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
     // If switching to local, disable sync
     if (backend == SyncBackend.local) {
-      main.myDebug("Switching to local backend, disabling sync");
       _isSyncEnabled = false;
     }
 
     await _saveSyncPreference();
-    main.myDebug(
-        "Sync preference saved - backend: $_syncBackend, enabled: $_isSyncEnabled, signed in: $_isSignedIn");
     notifyListeners();
-
-    main.myDebug("Sync backend changed to: $backend");
   }
 
   /// Enable or disable sync
@@ -309,9 +288,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
 
-      // Log successful local change upload
-      main.myDebug("Local db change successfully sent to cloud");
-
       // Trigger UI refresh after successful auto-sync
       if (_onSyncCompleted != null) {
         _onSyncCompleted!();
@@ -334,33 +310,24 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<bool> signIn() async {
-    main.myDebug("SyncProvider.signIn() called for backend: $_syncBackend");
     try {
       if (_syncBackend == SyncBackend.local) {
-        main.myDebug("Cannot sign in to local storage");
         throw Exception('Cannot sign in to local storage');
       }
 
-      main.myDebug("Starting sign-in process for $_syncBackend");
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
 
       _isSignedIn = await _currentSyncService.signIn();
-      main.myDebug("Sign-in result: $_isSignedIn");
 
       if (_isSignedIn) {
         // Enable sync when successfully signed in
-        main.myDebug(
-            "Sign-in successful, enabling sync and running initial sync");
         await setSyncEnabled(true);
         await handleInitialSync();
-      } else {
-        main.myDebug("Sign-in failed or was cancelled");
-      }
+      } else {}
       return _isSignedIn;
     } catch (e) {
-      main.myDebug("Sign-in error: $e");
       _lastError = e.toString();
       return false;
     } finally {

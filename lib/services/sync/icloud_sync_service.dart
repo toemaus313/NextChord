@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
-import '../../main.dart' as main;
 import 'library_sync_service.dart';
 import 'windows_icloud_utils.dart';
 
@@ -26,7 +25,6 @@ class ICloudDriveChannel {
               await _channel.invokeMethod('isICloudDriveAvailable');
           return result;
         } catch (e) {
-          main.myDebug("Error checking iCloud Drive availability: $e");
           return false;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -47,7 +45,6 @@ class ICloudDriveChannel {
               await _channel.invokeMethod('getICloudDriveFolderPath');
           return result;
         } catch (e) {
-          main.myDebug("Error getting iCloud Drive folder path: $e");
           return null;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -68,7 +65,6 @@ class ICloudDriveChannel {
               await _channel.invokeMethod('ensureNextChordFolder');
           return result;
         } catch (e) {
-          main.myDebug("Error ensuring NextChord folder exists: $e");
           return false;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -91,7 +87,6 @@ class ICloudDriveChannel {
           });
           return result;
         } catch (e) {
-          main.myDebug("Error uploading file to iCloud Drive: $e");
           return false;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -99,7 +94,6 @@ class ICloudDriveChannel {
         try {
           return await WindowsICloudUtils.uploadFile(localPath, relativePath);
         } catch (e) {
-          main.myDebug("Error uploading file to iCloud Drive on Windows: $e");
           return false;
         }
       }
@@ -118,7 +112,6 @@ class ICloudDriveChannel {
           });
           return result;
         } catch (e) {
-          main.myDebug("Error downloading file from iCloud Drive: $e");
           return null;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -126,8 +119,6 @@ class ICloudDriveChannel {
         try {
           return await WindowsICloudUtils.downloadFile(relativePath);
         } catch (e) {
-          main.myDebug(
-              "Error downloading file from iCloud Drive on Windows: $e");
           return null;
         }
       }
@@ -155,7 +146,6 @@ class ICloudDriveChannel {
           final result = (raw as Map).cast<String, dynamic>();
           return result;
         } catch (e) {
-          main.myDebug("Error getting file metadata from iCloud Drive: $e");
           return null;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -163,8 +153,6 @@ class ICloudDriveChannel {
         try {
           return await WindowsICloudUtils.getFileMetadata(relativePath);
         } catch (e) {
-          main.myDebug(
-              "Error getting file metadata from iCloud Drive on Windows: $e");
           return null;
         }
       }
@@ -183,7 +171,6 @@ class ICloudDriveChannel {
           });
           return result;
         } catch (e) {
-          main.myDebug("Error checking file existence in iCloud Drive: $e");
           return false;
         }
       } else if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -191,8 +178,6 @@ class ICloudDriveChannel {
         try {
           return await WindowsICloudUtils.fileExists(relativePath);
         } catch (e) {
-          main.myDebug(
-              "Error checking file existence in iCloud Drive on Windows: $e");
           return false;
         }
       }
@@ -238,19 +223,13 @@ class ICloudSyncService {
   /// Check if user is signed in to iCloud Drive
   Future<bool> isSignedIn() async {
     try {
-      main.myDebug("ICloudSyncService.isSignedIn() called");
       if (!_isPlatformSupported()) {
-        main.myDebug("iCloud platform not supported, returning false");
         return false;
       }
-      main.myDebug("iCloud platform supported, checking availability...");
 
       final result = await ICloudDriveChannel.isICloudDriveAvailable();
-      main.myDebug(
-          "ICloudDriveChannel.isICloudDriveAvailable() returned: $result");
       return result;
     } catch (e) {
-      main.myDebug("Error checking iCloud sign-in status: $e");
       return false;
     }
   }
@@ -258,30 +237,21 @@ class ICloudSyncService {
   /// Sign in to iCloud Drive (system-level, no app-level sign-in needed)
   Future<bool> signIn() async {
     try {
-      main.myDebug("ICloudSyncService.signIn() called");
       if (!_isPlatformSupported()) {
-        main.myDebug("iCloud platform not supported, returning false");
         return false;
       }
 
       // iCloud Drive authentication is system-level
       // Just check if it's available and ensure folder exists
-      main.myDebug("Checking iCloud Drive availability during sign-in...");
       final isAvailable = await ICloudDriveChannel.isICloudDriveAvailable();
-      main.myDebug("iCloud Drive availability check returned: $isAvailable");
 
       if (isAvailable) {
-        main.myDebug(
-            "iCloud Drive is available, ensuring NextChord folder exists...");
         final folderResult = await ICloudDriveChannel.ensureNextChordFolder();
-        main.myDebug("ensureNextChordFolder() returned: $folderResult");
         return folderResult;
       }
 
-      main.myDebug("iCloud Drive not available, sign-in failed");
       return false;
     } catch (e) {
-      main.myDebug("Error during iCloud sign-in: $e");
       return false;
     }
   }
@@ -291,7 +261,6 @@ class ICloudSyncService {
     // No app-level sign-out needed for iCloud Drive
     // Just stop polling and clean up
     stopMetadataPolling();
-    main.myDebug("iCloud Drive sign-out completed (system-level)");
   }
 
   /// Get metadata for library.json file without downloading content
@@ -323,7 +292,6 @@ class ICloudSyncService {
 
       return ICloudLibraryMetadata.fromMap(metadata);
     } catch (e) {
-      main.myDebug("Error getting library metadata from iCloud Drive: $e");
       return null;
     }
   }
@@ -345,7 +313,6 @@ class ICloudSyncService {
       // Perform JSON-based sync
       await _performJsonSync();
     } catch (e) {
-      main.myDebug("Error during iCloud sync: $e");
       rethrow;
     }
   }
@@ -353,50 +320,36 @@ class ICloudSyncService {
   /// Perform JSON-based sync with iCloud Drive
   Future<void> _performJsonSync() async {
     try {
-      main.myDebug("ICloudSyncService._performJsonSync() started");
-
       // Try to download existing library JSON from iCloud Drive
       String? remoteJson;
       ICloudLibraryMetadata? remoteMetadata;
 
-      main.myDebug("Checking if library file exists in iCloud Drive...");
       final fileExists = await ICloudDriveChannel.fileExists(_libraryFileName);
-      main.myDebug("Library file exists check result: $fileExists");
 
       if (fileExists) {
         try {
-          main.myDebug("Downloading library file from iCloud Drive...");
           final downloadedPath =
               await ICloudDriveChannel.downloadFile(_libraryFileName);
-          main.myDebug("Download result: $downloadedPath");
 
           if (downloadedPath != null) {
             final file = File(downloadedPath);
             remoteJson = await file.readAsString();
-            main.myDebug(
-                "Successfully read remote JSON, length: ${remoteJson.length}");
 
             // Validate JSON format
             jsonDecode(remoteJson); // Will throw if invalid
-            main.myDebug("Remote JSON validation passed");
 
             // Get metadata for the remote file
-            main.myDebug("Getting metadata for remote library file...");
             final metadata =
                 await ICloudDriveChannel.getFileMetadata(_libraryFileName);
-            main.myDebug("Remote metadata result: $metadata");
 
             if (metadata != null) {
               remoteMetadata = ICloudLibraryMetadata.fromMap(metadata);
-              main.myDebug("Remote metadata parsed successfully");
             }
 
             // Clean up temporary file
             await file.delete();
           }
         } catch (e) {
-          main.myDebug(
-              "Error downloading/reading library file from iCloud Drive: $e");
           remoteJson = null;
           remoteMetadata = null;
         }
@@ -404,37 +357,24 @@ class ICloudSyncService {
 
       // Get current sync state to compare versions
       final syncState = await _librarySyncService.getSyncState();
-      main.myDebug(
-          "Current sync state: lastRemoteVersion=${syncState?.lastRemoteVersion}, lastSyncAt=${syncState?.lastSyncAt}");
 
       // Merge remote library into local database (if remote exists and is valid)
       if (remoteJson != null && remoteJson.isNotEmpty) {
-        main.myDebug("Starting import and merge of remote library...");
         await _librarySyncService.importAndMergeLibraryFromJson(remoteJson);
-        main.myDebug("Remote changes successfully applied to local database");
-      } else {
-        main.myDebug("No remote library data to import");
-      }
+      } else {}
 
       // Export the merged library (now includes remote changes)
-      main.myDebug("Exporting merged library after import...");
       final mergedJson = await _librarySyncService.exportLibraryToJson();
-      main.myDebug("Merged library length: ${mergedJson.length}");
 
       // Determine if upload is needed
       bool shouldUpload = false;
       if (remoteJson == null || remoteJson.isEmpty) {
         // No remote file exists, always upload
         shouldUpload = true;
-        main.myDebug("No remote file exists, should upload: true");
       } else {
         // Check if merged library differs from remote
-        main.myDebug(
-            "Comparing merged library with remote to determine upload need...");
         shouldUpload =
             _librarySyncService.hasMergedLibraryChanged(mergedJson, remoteJson);
-        main.myDebug(
-            "Library comparison result - should upload: $shouldUpload");
       }
 
       // Upload only if there are changes
@@ -473,7 +413,6 @@ class ICloudSyncService {
         }
       }
     } catch (e) {
-      main.myDebug("Error during iCloud JSON sync: $e");
       rethrow;
     }
   }
@@ -494,15 +433,12 @@ class ICloudSyncService {
       // Clean up temporary file
       try {
         await tempFile.delete();
-      } catch (e) {
-        main.myDebug("Error cleaning up temporary library file: $e");
-      }
+      } catch (e) {}
 
       if (!success) {
         throw Exception('Failed to upload library.json to iCloud Drive');
       }
     } catch (e) {
-      main.myDebug("Error uploading library JSON to iCloud Drive: $e");
       rethrow;
     }
   }
@@ -515,10 +451,7 @@ class ICloudSyncService {
       if (!isAuthenticated) {
         return;
       }
-      main.myDebug("iCloud Drive initial sync completed");
-    } catch (e) {
-      main.myDebug("Error during iCloud initial sync: $e");
-    }
+    } catch (e) {}
   }
 
   /// Start metadata polling for automatic sync when app is active
@@ -551,15 +484,11 @@ class ICloudSyncService {
           );
 
           if (hasRemoteChanges) {
-            main.myDebug(
-                "Remote change detected in iCloud Drive - triggering sync");
             // Trigger full sync through the sync provider
             await SyncServiceLocator.triggerAutoSync();
           }
         }
-      } catch (e) {
-        main.myDebug("Error during iCloud metadata polling: $e");
-      }
+      } catch (e) {}
     });
   }
 

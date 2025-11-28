@@ -6,7 +6,6 @@ import 'dart:io';
 import '../../../providers/sync_provider.dart';
 import '../../../core/config/google_oauth_config.dart';
 import '../../../core/enums/sync_backend.dart';
-import '../../../main.dart' as main;
 import '../providers/appearance_provider.dart';
 import 'templates/standard_modal_template.dart';
 
@@ -302,19 +301,9 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
   }
 
   Widget _buildActionButtons(BuildContext context, SyncProvider syncProvider) {
-    main.myDebug("StorageSettingsModal._buildActionButtons called");
-    main.myDebug(
-        "Button visibility check - backend: ${syncProvider.syncBackend}, enabled: ${syncProvider.isSyncEnabled}, signedIn: ${syncProvider.isSignedIn}");
-
     final shouldShowSyncButton =
         syncProvider.syncBackend != SyncBackend.local &&
             syncProvider.isSyncEnabled;
-
-    if (shouldShowSyncButton) {
-      main.myDebug("Sync Now button should be visible - conditions met");
-    } else {
-      main.myDebug("Sync Now button hidden - conditions not met");
-    }
 
     return Column(
       children: [
@@ -383,24 +372,17 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
   }
 
   bool _isBackendSupported(SyncProvider syncProvider) {
-    main.myDebug(
-        "_isBackendSupported called for backend: ${syncProvider.syncBackend}");
-
     if (syncProvider.syncBackend == SyncBackend.googleDrive) {
       final supported = _isPlatformSupported;
-      main.myDebug("Google Drive supported: $supported");
       return supported;
     } else if (syncProvider.syncBackend == SyncBackend.iCloud) {
       // iCloud is now supported on both Apple platforms and Windows
       final isApple = _isApplePlatform;
       final isWindows = defaultTargetPlatform == TargetPlatform.windows;
       final supported = isApple || isWindows;
-      main.myDebug(
-          "iCloud supported - Apple: $isApple, Windows: $isWindows, Overall: $supported");
       return supported;
     }
 
-    main.myDebug("Local storage always supported");
     return true; // Local storage is always supported
   }
 

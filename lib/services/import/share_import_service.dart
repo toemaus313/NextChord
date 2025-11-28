@@ -22,11 +22,6 @@ class ShareImportService {
   /// This follows the exact same flow as creating a new song
   Future<Song?> handleSharedContent(SharedImportPayload payload) async {
     try {
-      print("📥 ShareImportService: handleSharedContent called");
-      print("📥 ShareImportService: sourceApp = '${payload.sourceApp}'");
-      print(
-          "📥 ShareImportService: text length = ${payload.text?.length ?? 0}");
-
       if (payload.text != null && payload.text!.isNotEmpty) {
         // Try to identify song from lyrics and fetch metadata
         String title = '';
@@ -37,12 +32,8 @@ class ShareImportService {
         String? timeSignature;
 
         if (payload.sourceApp == 'Ultimate Guitar') {
-          print(
-              "📥 ShareImportService: Source is Ultimate Guitar, attempting song identification");
           final identification =
               await SongIdentificationService.identifySong(payload.text!);
-          print(
-              "📥 ShareImportService: Identification result: $identification");
           if (identification != null) {
             title = identification['title'] ?? '';
             artist = identification['artist'] ?? '';
@@ -55,24 +46,15 @@ class ShareImportService {
               duration = '$minutes:${seconds.toString().padLeft(2, '0')}';
             }
             timeSignature = identification['time_signature'] as String?;
-            print(
-                "📥 ShareImportService: Extracted metadata - Title: '$title', Artist: '$artist', BPM: $bpm, Key: $key, Duration: $duration, Time Sig: $timeSignature");
           }
-        } else {
-          print(
-              "📥 ShareImportService: Source is not Ultimate Guitar, skipping identification");
-        }
+        } else {}
 
         // Step 4: Convert raw UG text to ChordPro format
-        print("📥 ShareImportService: Converting to ChordPro format...");
         final conversionResult =
             UGTextConverter.convertToChordPro(payload.text!);
         final chordProText = conversionResult['chordpro'] as String;
-        print("📥 ShareImportService: ChordPro conversion complete");
 
         // Create song with identified metadata and converted ChordPro body
-        print(
-            "📥 ShareImportService: Creating Song with title: '$title', artist: '$artist'");
         return Song(
           id: '', // EMPTY ID - insertSong will generate it
           title: title, // Auto-populated if identified, otherwise empty
@@ -91,7 +73,6 @@ class ShareImportService {
         throw Exception('No text content in shared data');
       }
     } catch (e) {
-      print("📥 ShareImportService: Error: $e");
       throw Exception('Failed to handle shared content: $e');
     }
   }

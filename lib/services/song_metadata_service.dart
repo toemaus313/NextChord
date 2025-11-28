@@ -1,15 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-// Debug logging for metadata lookup
-bool isDebug = true;
-void myDebug(String message) {
-  if (isDebug) {
-    final timestamp = DateTime.now().toString().substring(11, 19);
-    print('[$timestamp] METADATA_DEBUG: $message');
-  }
-}
-
 /// Result of an online song metadata lookup
 class SongMetadataLookupResult {
   final double? tempoBpm;
@@ -132,8 +123,6 @@ class SongMetadataService {
   Future<SongMetadataLookupResult> fetchTitleOnlyMetadata({
     required String title,
   }) async {
-    myDebug('Starting fetchTitleOnlyMetadata for title: "$title"');
-
     // Check if SongBPM API key is properly configured
     if (_songBpmApiKey.isEmpty) {
       return SongMetadataLookupResult.error('SongBPM API key not configured');
@@ -142,8 +131,6 @@ class SongMetadataService {
     try {
       // Only fetch from SongBPM for title-only search
       final songBpmResult = await _fetchFromSongBpm(title, null);
-      myDebug(
-          'SongBPM title-only result: tempo=${songBpmResult?.tempo}, key=${songBpmResult?.key}');
 
       if (songBpmResult == null) {
         return SongMetadataLookupResult.error(
@@ -161,7 +148,6 @@ class SongMetadataService {
         source: 'SongBPM (title-only)',
       );
     } catch (e) {
-      myDebug('Error in fetchTitleOnlyMetadata: $e');
       return SongMetadataLookupResult.error('Network error: $e');
     }
   }
@@ -174,16 +160,9 @@ class SongMetadataService {
     required String? key,
     required String? timeSignature,
   }) async {
-    myDebug(
-        'Starting completeTitleOnlyLookup for title: "$title", artist: "$artist", tempo: $tempo');
-
     try {
       // Fetch duration from MusicBrainz
-      myDebug('Calling MusicBrainz API for duration lookup');
       final musicBrainzResult = await _fetchFromMusicBrainz(title, artist);
-
-      myDebug(
-          'MusicBrainz result: duration=${musicBrainzResult?.durationMs}, title="${musicBrainzResult?.correctedTitle}", artist="${musicBrainzResult?.correctedArtist}"');
 
       final result = SongMetadataLookupResult.success(
         tempoBpm: tempo.toDouble(),
@@ -195,11 +174,8 @@ class SongMetadataService {
         source: 'SongBPM + MusicBrainz',
       );
 
-      myDebug(
-          'Created final result with tempo=${result.tempoBpm}, key=${result.key}, duration=${result.durationMs}');
       return result;
     } catch (e) {
-      myDebug('Error in completeTitleOnlyLookup: $e');
       return SongMetadataLookupResult.error('Failed to fetch duration: $e');
     }
   }
@@ -270,9 +246,6 @@ class SongMetadataService {
       final url = Uri.parse(
           '$_musicBrainzBaseUrl/recording/?query=$query&fmt=json&limit=5');
 
-      myDebug('MusicBrainz API query: $url');
-      myDebug('MusicBrainz query string: "$query"');
-
       final response = await http.get(
         url,
         headers: {
@@ -280,21 +253,15 @@ class SongMetadataService {
         },
       );
 
-      myDebug('MusicBrainz response status: ${response.statusCode}');
-
       if (response.statusCode != 200) {
-        myDebug(
-            'MusicBrainz API error: Status ${response.statusCode}, body: ${response.body}');
         return null;
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
-      myDebug('MusicBrainz response data: ${response.body}');
 
       final recordings = data['recordings'] as List<dynamic>?;
 
       if (recordings == null || recordings.isEmpty) {
-        myDebug('No recordings found in MusicBrainz response');
         return null;
       }
 
@@ -305,8 +272,6 @@ class SongMetadataService {
 
       for (int i = 0; i < recordings.length; i++) {
         final recording = recordings[i] as Map<String, dynamic>;
-        myDebug(
-            'Checking recording ${i + 1}/${recordings.length}: ${recording['title']}');
 
         if (bestRecording == null) {
           bestRecording = recording; // Use first recording for metadata
@@ -315,20 +280,11 @@ class SongMetadataService {
         if (recording.containsKey('length')) {
           durationMs = recording['length'] as int?;
           recordingWithDuration = recording;
-          myDebug(
-              'Found duration in MusicBrainz recording ${i + 1}: ${durationMs}ms');
           break; // Found duration, stop searching
         }
       }
 
-      if (durationMs == null) {
-        myDebug(
-            'No duration found in any of ${recordings.length} MusicBrainz recordings');
-      }
-
-      // Use the first recording for metadata consistency, even if duration comes from a different one
-      final finalRecording = recordingWithDuration ?? bestRecording!;
-      myDebug('Selected recording for metadata: ${finalRecording['title']}');
+      if (durationMs == null) {}
 
       return _MusicBrainzResult(
         durationMs: durationMs,
@@ -344,7 +300,6 @@ class SongMetadataService {
         missingDuration: durationMs == null && recordings.isNotEmpty,
       );
     } catch (e) {
-      myDebug('Exception in MusicBrainz API call: $e');
       return null;
     }
   }

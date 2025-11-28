@@ -12,7 +12,7 @@ Ensure all debugging in this project uses a single standardized method (myDebug)
 ## Rule: Enforce Standard Debug Function
 
 ### Developer Intent
-- All debugging logs must use a single wrapper function: myDebug().
+- All debugging logs must use a single wrapper function: main.myDebug().
 - No direct use of print(), debugPrint(), log(), or ad-hoc logs.
 - Debug output must be globally toggleable.
 - Removing debug statements must never break syntax.
@@ -32,12 +32,13 @@ When Cascade generates or modifies code:
 
 2. All debug logs must use:
 
-       myDebug("Your message");
+       main.myDebug("Your message");
 
 3. Cascade must never produce:
    - print("...")
    - debugPrint("...")
    - logger.log(...)
+   - myDebug() - always use the main.myDebug instead
    - temporary debug-only variables
    - inline debug expressions or trailing expressions
    - logs placed inside unrelated function calls
@@ -52,14 +53,14 @@ When the user instructs Cascade to remove debug statements:
 
 Cascade must:
 
-1. Delete only entire lines containing myDebug(...).
+1. Check debug_exceptions.md for items not to be touched, then delete only entire lines containing main.myDebug(...). 
 2. Run flutter analyze.
 3. Fix all syntax errors.
 4. Re-run flutter analyze.
 5. Repeat until zero errors remain.
 
 Cascade must not:
-- Partially delete a myDebug() call
+- Partially delete a main.myDebug() call
 - Remove surrounding logic, punctuation, or arguments
 - Leave dangling commas, parentheses, or empty blocks
 
@@ -78,17 +79,18 @@ Cascade must not remove this toggle unless explicitly commanded.
 
 ## Rule: Blocking Undesired Debug Patterns
 
-Cascade must automatically rewrite any of the following into myDebug():
+Cascade must automatically rewrite any of the following into main.myDebug():
 
 - print()
 - debugPrint()
 - log()
+- myDebug()
 - inline logging expressions
 - commented-out debug lines
 
 Example rewrite:
 
-       myDebug("...");
+       main.myDebug("...");
 
 Unless the user explicitly requests an exception.
 

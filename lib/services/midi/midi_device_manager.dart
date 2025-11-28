@@ -284,9 +284,7 @@ class MidiDeviceManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final ids = _connectedDevices.keys.toList();
       await prefs.setStringList('preferred_midi_device_ids', ids);
-    } catch (e) {
-      debugPrint('Failed to save preferred device IDs: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get device reference by ID

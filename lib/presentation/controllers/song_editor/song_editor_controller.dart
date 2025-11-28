@@ -295,29 +295,24 @@ class SongEditorController extends ChangeNotifier {
   bool _shouldTriggerOnlineLookup(String title, String artist) {
     // Don't trigger if title/artist were auto-populated by parser
     if (_titleArtistAutoPopulated) {
-      print('DEBUG: Lookup blocked - title/artist auto-populated');
       return false;
     }
 
     // Don't trigger if title is empty (artist is now optional)
     if (title.trim().isEmpty) {
-      print('DEBUG: Lookup blocked - title is empty');
       return false;
     }
 
     // Don't trigger if we've already attempted lookup for this song
     if (_hasAttemptedOnlineLookup) {
-      print('DEBUG: Lookup blocked - has attempted online lookup');
       return false;
     }
 
     // Don't trigger if we've already successfully completed lookup
     if (_onlineLookupCompletedSuccessfully) {
-      print('DEBUG: Lookup blocked - online lookup completed successfully');
       return false;
     }
 
-    print('DEBUG: Lookup allowed - all checks passed');
     return true;
   }
 
@@ -425,9 +420,6 @@ class SongEditorController extends ChangeNotifier {
 
   /// Apply metadata from lookup result, respecting user-entered values
   void _applyMetadataResult(SongMetadataLookupResult result) {
-    print(
-        'DEBUG: _applyMetadataResult called with tempo=${result.tempoBpm}, key=${result.key}, duration=${result.durationMs}');
-
     // Store the complete result for UI access (e.g., warning snackbars)
     _lastLookupResult = result;
 
@@ -435,19 +427,16 @@ class SongEditorController extends ChangeNotifier {
     final currentBpm = int.tryParse(bpmController.text);
     if (result.tempoBpm != null && (currentBpm == null || currentBpm == 120)) {
       bpmController.text = result.tempoBpm!.round().toString();
-      print('DEBUG: Updated bpmController to ${result.tempoBpm!.round()}');
     }
 
     // Only apply key if at default value
     if (result.key != null && _selectedKey == 'C') {
       setSelectedKey(result.key!);
-      print('DEBUG: Updated key to ${result.key}');
     }
 
     // Only apply time signature if at default value
     if (result.timeSignature != null && _timeSignature == '4/4') {
       setTimeSignature(result.timeSignature!);
-      print('DEBUG: Updated time signature to ${result.timeSignature}');
     }
 
     // Only apply duration if empty
@@ -456,22 +445,18 @@ class SongEditorController extends ChangeNotifier {
           SongMetadataLookupResult.formatDuration(result.durationMs);
       if (formattedDuration != null) {
         durationController.text = formattedDuration;
-        print('DEBUG: Updated durationController to $formattedDuration');
       }
     }
 
     // Update title and artist if they were auto-corrected
     if (result.correctedTitle != null && result.correctedTitle!.isNotEmpty) {
       titleController.text = result.correctedTitle!;
-      print('DEBUG: Updated title to ${result.correctedTitle}');
     }
     if (result.correctedArtist != null && result.correctedArtist!.isNotEmpty) {
       artistController.text = result.correctedArtist!;
-      print('DEBUG: Updated artist to ${result.correctedArtist}');
     }
 
     notifyListeners(); // Notify screen of metadata changes
-    print('DEBUG: Notified listeners of metadata changes');
   }
 
   void transposeBody(int semitones) {

@@ -6,7 +6,6 @@ import '../../core/constants/song_viewer_constants.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
-import '../../main.dart' as app_main;
 import 'setlist_provider.dart';
 
 /// Enum for different flyout types
@@ -87,9 +86,6 @@ class SongViewerProvider extends ChangeNotifier {
       // Only use it if it matches the current song
       if (currentSongItem != null && currentSongItem.songId == song.id) {
         _setlistContext = currentSongItem;
-        app_main.myDebug(
-          'SongViewerProvider: inferred setlistContext for song ${song.id} from SetlistProvider',
-        );
       } else {
         _setlistContext = null;
       }
@@ -146,9 +142,6 @@ class SongViewerProvider extends ChangeNotifier {
       // Only use it if it matches the current song
       if (currentSongItem != null && currentSongItem.songId == newSong.id) {
         inferredContext = currentSongItem;
-        app_main.myDebug(
-          'SongViewerProvider: inferred setlistContext for updated song ${newSong.id} from SetlistProvider',
-        );
       }
     }
 
@@ -358,17 +351,11 @@ class SongViewerProvider extends ChangeNotifier {
     final targetCapo = capo ?? _currentCapo;
     final setlistProvider = _setlistProvider;
 
-    app_main.myDebug(
-        'SongViewerProvider: _persistAdjustments called - song=${_currentSong.id}, targetCapo=$targetCapo, _setlistContext=${_setlistContext != null ? "present" : "null"}, isSetlistActive=${setlistProvider?.isSetlistActive ?? false}');
-
     // Prioritize using the inferred setlistContext if available
     if (_setlistContext != null && setlistProvider?.isSetlistActive == true) {
       await setlistProvider!.updateCurrentSongAdjustments(
         transposeSteps: targetTranspose,
         capo: targetCapo,
-      );
-      app_main.myDebug(
-        'SongViewerProvider: saved setlist-only adjustments for song ${_currentSong.id} using inferred context (transpose=$targetTranspose, capo=$targetCapo)',
       );
       return;
     }
@@ -380,15 +367,10 @@ class SongViewerProvider extends ChangeNotifier {
         transposeSteps: targetTranspose,
         capo: targetCapo,
       );
-      app_main.myDebug(
-        'SongViewerProvider: saved setlist-only adjustments for song ${_currentSong.id} using getCurrentSongItem() (transpose=$targetTranspose, capo=$targetCapo)',
-      );
       return;
     }
 
     // Save to global song if no setlist context available
-    app_main.myDebug(
-        'SongViewerProvider: saving to global song - no setlist context available');
     final updatedSong = _currentSong.copyWith(
       capo: targetCapo,
       // Base song transpose is represented by storing the transposeSteps on the song body.
@@ -397,9 +379,6 @@ class SongViewerProvider extends ChangeNotifier {
     );
     await _songRepository.updateSong(updatedSong);
     _currentSong = updatedSong;
-    app_main.myDebug(
-      'SongViewerProvider: saved global song adjustments for song ${_currentSong.id} (transpose=$targetTranspose, capo=$targetCapo)',
-    );
   }
 
   String? _mergeTransposeIntoNotes(String? originalNotes, int? transposeSteps) {

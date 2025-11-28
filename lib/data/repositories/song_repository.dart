@@ -7,16 +7,6 @@ import '../../domain/entities/midi_profile.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
 
-// Debug setup
-bool isDebug = true;
-
-void myDebug(String message) {
-  if (isDebug) {
-    final timestamp = DateTime.now().toIso8601String().substring(11, 19);
-    debugPrint('[$timestamp] $message');
-  }
-}
-
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
 class SongRepository {
@@ -133,8 +123,6 @@ class SongRepository {
   /// Insert a new song
   /// If no ID is provided, generates a UUID
   Future<String> insertSong(Song song) async {
-    myDebug(
-        'SongRepository: insertSong called - title="${song.title}", artist="${song.artist}"');
     try {
       final songToInsert = song.id.isEmpty
           ? song.copyWith(
@@ -144,44 +132,31 @@ class SongRepository {
             )
           : song.copyWith(updatedAt: DateTime.now());
 
-      myDebug(
-          'SongRepository: Created songToInsert with ID: ${songToInsert.id}');
       final model = _songToModel(songToInsert);
-      myDebug('SongRepository: Calling database.insertSong');
       await _db.insertSong(model);
-      myDebug('SongRepository: database.insertSong completed successfully');
 
       // Notify database change for auto-sync
       DatabaseChangeService()
           .notifyDatabaseChanged(table: 'songs', operation: 'update');
 
-      myDebug(
-          'SongRepository: insertSong successful, returning ID: ${songToInsert.id}');
       return songToInsert.id;
     } catch (e) {
-      myDebug('SongRepository: insertSong failed with error: $e');
-      return song.id; // Return original ID on error
+      rethrow;
     }
   }
 
   /// Update an existing song
   Future<void> updateSong(Song song) async {
-    myDebug(
-        'SongRepository: updateSong called - ID="${song.id}", title="${song.title}"');
     try {
       final updatedSong = song.copyWith(updatedAt: DateTime.now());
       final model = _songToModel(updatedSong);
-      myDebug('SongRepository: Calling database.updateSong');
       await _db.updateSong(model);
-      myDebug('SongRepository: database.updateSong completed successfully');
 
       // Notify database change for auto-sync
       DatabaseChangeService()
           .notifyDatabaseChanged(table: 'songs', operation: 'update');
-      myDebug('SongRepository: updateSong successful');
     } catch (e) {
-      myDebug('SongRepository: updateSong failed with error: $e');
-      // Silently handle update errors for now
+      rethrow;
     }
   }
 
@@ -547,9 +522,7 @@ class SongRepository {
       DatabaseChangeService()
           .notifyDatabaseChanged(table: 'pedal_mappings', operation: 'update');
     } catch (e) {
-      // Log SQLite errors for debugging
-      myDebug('REPOSITORY ERROR: SQLite insert failed - $e');
-      throw SongRepositoryException('Failed to insert pedal mapping: $e');
+      rethrow;
     }
   }
 

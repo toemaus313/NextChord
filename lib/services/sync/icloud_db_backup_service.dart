@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'icloud_sync_service.dart';
 import '../../data/database/app_database.dart';
-import '../../main.dart' as main;
 
 /// Service for managing iCloud Drive database backups
 class ICloudDbBackupService {
@@ -67,7 +66,6 @@ class ICloudDbBackupService {
         }
       }
     } catch (e) {
-      main.myDebug("Error maintaining iCloud backup: $e");
       return false;
     }
   }
@@ -108,13 +106,10 @@ class ICloudDbBackupService {
       // Clean up temporary file
       try {
         await File(tempBackupPath).delete();
-      } catch (e) {
-        main.myDebug("Error cleaning up temporary backup file: $e");
-      }
+      } catch (e) {}
 
       return true;
     } catch (e) {
-      main.myDebug("Error restoring from iCloud backup: $e");
       return false;
     }
   }
@@ -135,10 +130,7 @@ class ICloudDbBackupService {
       if (!success) {
         throw Exception('Failed to upload database backup to iCloud Drive');
       }
-
-      main.myDebug("Successfully uploaded database backup to iCloud Drive");
     } catch (e) {
-      main.myDebug("Error uploading database backup to iCloud Drive: $e");
       rethrow;
     }
   }
@@ -155,7 +147,6 @@ class ICloudDbBackupService {
 
       return downloadedPath;
     } catch (e) {
-      main.myDebug("Error downloading backup from iCloud Drive: $e");
       rethrow;
     }
   }
@@ -178,7 +169,6 @@ class ICloudDbBackupService {
 
       return true;
     } catch (e) {
-      main.myDebug("Error validating database file: $e");
       return false;
     }
   }
@@ -202,26 +192,20 @@ class ICloudDbBackupService {
         // Replace the database file
         await backupFile.copy(localDbFile.path);
       } catch (e) {
-        main.myDebug("Error replacing database file: $e");
         // If replacement fails, try to restore from backup
         try {
           if (await File(backupCurrentPath).exists()) {
             await File(backupCurrentPath).copy(localDbFile.path);
           }
-        } catch (restoreError) {
-          main.myDebug("Error restoring database backup: $restoreError");
-        }
+        } catch (restoreError) {}
         rethrow;
       }
 
       // Clean up the safety backup after successful replacement
       try {
         await File(backupCurrentPath).delete();
-      } catch (e) {
-        main.myDebug("Error cleaning up safety backup: $e");
-      }
+      } catch (e) {}
     } catch (e) {
-      main.myDebug("Error replacing local database: $e");
       rethrow;
     }
   }
@@ -249,7 +233,6 @@ class ICloudDbBackupService {
           await _syncService.findExistingFile(folderId, _backupFileName);
       return backupFile;
     } catch (e) {
-      main.myDebug("Error checking iCloud backup existence: $e");
       return false;
     }
   }
