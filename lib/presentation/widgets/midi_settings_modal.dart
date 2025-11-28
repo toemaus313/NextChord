@@ -133,6 +133,7 @@ class _MidiSettingsModalState extends State<MidiSettingsModal> {
       icon: Icons.tune,
       label: 'MIDI Channel',
       control: StandardModalTemplate.buildDropdown<int>(
+        context: context,
         value: midiService.displayMidiChannel,
         items: List.generate(16, (index) {
           final channel = index + 1;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../domain/entities/midi_profile.dart';
+import '../../providers/appearance_provider.dart';
 
 /// Dropdown selector for MIDI profiles
 class ProfileSelector extends StatelessWidget {
@@ -16,6 +18,14 @@ class ProfileSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get themed dropdown background color from AppearanceProvider
+    final appearanceProvider = Provider.of<AppearanceProvider?>(
+      context,
+      listen: false,
+    );
+    final dropdownBackgroundColor =
+        appearanceProvider?.gradientStart ?? const Color(0xFF0468cc);
+
     return Container(
       padding: const EdgeInsets.all(8),
       child: Row(
@@ -45,8 +55,7 @@ class ProfileSelector extends StatelessWidget {
                   fontSize: 11.9, // Reduced by 15% from 14
                 ),
               ),
-              dropdownColor: const Color(
-                  0xFF0468cc), // Changed to blue to match midi_settings_modal
+              dropdownColor: dropdownBackgroundColor,
               items: profiles.map((profile) {
                 return DropdownMenuItem<MidiProfile>(
                   value: profile,

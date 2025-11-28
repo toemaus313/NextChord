@@ -109,6 +109,7 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
       icon: Icons.brightness_6,
       label: 'Theme Mode',
       control: StandardModalTemplate.buildDropdown<ThemeModeType>(
+        context: context,
         value: themeProvider.themeMode,
         items: ThemeModeType.values.map((mode) {
           return DropdownMenuItem<ThemeModeType>(

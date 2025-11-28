@@ -65,64 +65,60 @@ abstract class ConciseModalTemplate extends StatefulWidget {
     final gradientEnd = appearanceProvider?.gradientEnd ??
         const Color.fromARGB(150, 3, 73, 153);
 
-    if (isPhone) {
-      // Phone: Show as full-screen dialog
-      return Navigator.push<T>(
-        context,
-        MaterialPageRoute<T>(
-          builder: (context) => _PhoneModalWrapper(
-            title: 'Settings',
-            child: child,
-            gradientStart: gradientStart,
-            gradientEnd: gradientEnd,
+    // Use a single dialog implementation for all form factors.
+    // On phones, make the dialog effectively full-screen by removing insets
+    // and expanding constraints to the available screen size.
+    final mediaQuery = MediaQuery.of(context);
+    final screenSize = mediaQuery.size;
+
+    final insetPadding = isPhone ? EdgeInsets.zero : const EdgeInsets.all(24.0);
+
+    // Desktop/Tablet: make the modal about 10% wider than the original 480px
+    final maxWidth = isPhone ? screenSize.width : 528.0;
+    final minWidth = isPhone ? screenSize.width : 350.0;
+    final maxHeight = isPhone ? screenSize.height : 650.0;
+
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: insetPadding,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            minWidth: minWidth,
+            maxHeight: maxHeight,
           ),
-          fullscreenDialog: true,
-        ),
-      );
-    } else {
-      // Desktop/Tablet: Show as compact modal dialog matching MIDI Profiles structure
-      return showDialog<T>(
-        context: context,
-        barrierDismissible: barrierDismissible,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: Container(
-            constraints: const BoxConstraints(
-              maxWidth: 480, // Matching MIDI Profiles modal
-              minWidth: 320, // Standard minimum width
-              maxHeight: 650, // Matching MIDI Profiles modal
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [gradientStart, gradientEnd],
             ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [gradientStart, gradientEnd],
+            borderRadius:
+                BorderRadius.circular(22), // Matching MIDI Profiles modal
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(51), // Standard opacity
+                blurRadius: 20, // Matching MIDI Profiles modal
+                offset: const Offset(0, 10), // Matching MIDI Profiles modal
               ),
-              borderRadius:
-                  BorderRadius.circular(22), // Matching MIDI Profiles modal
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(51), // Standard opacity
-                  blurRadius: 20, // Matching MIDI Profiles modal
-                  offset: const Offset(0, 10), // Matching MIDI Profiles modal
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with Cancel/Save buttons (matching MIDI Profiles structure)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: child,
-                ),
-              ],
-            ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with Cancel/Save buttons (matching MIDI Profiles structure)
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: child,
+              ),
+            ],
           ),
         ),
-      );
-    }
+      ),
+    );
   }
 
   /// Build the modal header with consistent styling
@@ -502,48 +498,6 @@ abstract class ConciseModalTemplate extends StatefulWidget {
 
   @override
   State<ConciseModalTemplate> createState() => _ConciseModalTemplateState();
-}
-
-/// Phone modal wrapper for full-screen modal display
-class _PhoneModalWrapper extends StatelessWidget {
-  final Widget child;
-  final String title;
-  final Color gradientStart;
-  final Color gradientEnd;
-
-  const _PhoneModalWrapper({
-    Key? key,
-    required this.child,
-    required this.title,
-    required this.gradientStart,
-    required this.gradientEnd,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: const Color(0xFF0468cc),
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      backgroundColor: gradientStart,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [gradientStart, gradientEnd],
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
 }
 
 class _ConciseModalTemplateState extends State<ConciseModalTemplate> {

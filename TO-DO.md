@@ -48,3 +48,5 @@ SETTINGS
 - Can’t edit on mobile, keyboard in the way
 - Songs and set lists not hard deleting 
 - Going portrait to landscape on mobile takes you out of the song 
+- Edit tags dialog not opening
+

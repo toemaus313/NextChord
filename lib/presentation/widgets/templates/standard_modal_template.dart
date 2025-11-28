@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../providers/appearance_provider.dart';
 
 /// **Standard Modal Template** - Based on MIDI Profiles Modal Design
@@ -187,10 +188,19 @@ class StandardModalTemplate {
 
   /// Build a standard dropdown
   static Widget buildDropdown<T>({
+    required BuildContext context,
     required T value,
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
+    // Try to get themed color from AppearanceProvider; fall back to original blue
+    final appearanceProvider = Provider.of<AppearanceProvider?>(
+      context,
+      listen: false,
+    );
+    final dropdownBackgroundColor =
+        appearanceProvider?.gradientStart ?? const Color(0xFF0468cc);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -202,7 +212,7 @@ class StandardModalTemplate {
         value: value,
         items: items,
         onChanged: onChanged,
-        dropdownColor: const Color(0xFF0468cc),
+        dropdownColor: dropdownBackgroundColor,
         style: const TextStyle(color: Colors.white, fontSize: 12),
         icon:
             const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 20),

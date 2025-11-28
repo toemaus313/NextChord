@@ -122,6 +122,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
       icon: Icons.timer,
       label: 'Count In',
       control: StandardModalTemplate.buildDropdown<int>(
+        context: context,
         value: settingsProvider.countInMeasures,
         items: const [
           DropdownMenuItem<int>(
@@ -154,6 +155,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
       icon: Icons.vibration,
       label: 'Tick Action',
       control: StandardModalTemplate.buildDropdown<String>(
+        context: context,
         value: settingsProvider.tickAction,
         items: MetronomeSettingsProvider.availableTickActions
             .map((action) => DropdownMenuItem<String>(

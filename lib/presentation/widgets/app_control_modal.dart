@@ -616,6 +616,7 @@ class _AppControlModalState extends State<AppControlModal> {
       icon: Icons.devices,
       label: 'Device',
       control: StandardModalTemplate.buildDropdown<String>(
+        context: context,
         value: validSelectedId ?? 'any',
         items: [
           const DropdownMenuItem(value: 'any', child: Text('Any Device')),
@@ -682,6 +683,7 @@ class _AppControlModalState extends State<AppControlModal> {
       icon: Icons.touch_app,
       label: 'Action',
       control: StandardModalTemplate.buildDropdown<AppControlActionType>(
+        context: context,
         value: _selectedAction,
         items: availableAppControlActions
             .map((action) => DropdownMenuItem(

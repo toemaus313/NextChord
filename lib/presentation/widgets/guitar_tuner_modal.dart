@@ -148,80 +148,93 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
   }
 
   Widget _buildTunerDisplay(GuitarTunerService tunerService) {
-    return Column(
-      children: [
-        // Semicircle tuner display with moving dots
-        SemicircleTunerDisplay(
-          tuningResult: tunerService.currentResult,
-          width: 400,
-          height: 120,
-        ),
-      ],
+    // Make the tuner display responsive so it fits on smaller screens
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Leave some horizontal margin inside the modal; clamp to a sensible max
+    final displayWidth = screenWidth.clamp(0, 400).toDouble() - 32;
+
+    return Center(
+      child: Column(
+        children: [
+          // Semicircle tuner display with moving dots
+          SemicircleTunerDisplay(
+            tuningResult: tunerService.currentResult,
+            width: displayWidth,
+            height: 120,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStringSelector(GuitarTunerService tunerService) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Standard Tuning',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Standard Tuning',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: GuitarTunerService.standardTuning.map((string) {
-              final isActive =
-                  tunerService.currentResult?.closestString?.stringNumber ==
-                      string.stringNumber;
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isActive ? Colors.white : Colors.white24,
-                    width: isActive ? 2 : 1,
+            const SizedBox(height: 8),
+            // Use Wrap instead of Row so string buttons can flow on small screens
+            Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: 8,
+              runSpacing: 8,
+              children: GuitarTunerService.standardTuning.map((string) {
+                final isActive =
+                    tunerService.currentResult?.closestString?.stringNumber ==
+                        string.stringNumber;
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isActive ? Colors.white : Colors.white24,
+                      width: isActive ? 2 : 1,
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      string.name,
-                      style: TextStyle(
-                        color: isActive ? Colors.white : Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        string.name,
+                        style: TextStyle(
+                          color: isActive ? Colors.white : Colors.white70,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${string.frequency.toStringAsFixed(1)}Hz',
-                      style: TextStyle(
-                        color: isActive ? Colors.white70 : Colors.white54,
-                        fontSize: 10,
+                      Text(
+                        '${string.frequency.toStringAsFixed(1)}Hz',
+                        style: TextStyle(
+                          color: isActive ? Colors.white70 : Colors.white54,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -176,6 +176,7 @@ class _ActionTestModalState extends State<ActionTestModal> {
       icon: Icons.touch_app,
       label: 'Action',
       control: StandardModalTemplate.buildDropdown<AppControlActionType>(
+        context: context,
         value: _selectedAction,
         items: availableAppControlActions
             .map((action) => DropdownMenuItem(
