@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/services/database_change_service.dart';
 import 'dart:convert';
 import 'dart:math';
+import 'package:nextchord/main.dart' as main;
 import 'tables/tables.dart';
 import 'migrations/migrations.dart';
 import '../../services/sync/library_sync_service.dart';
@@ -296,18 +297,32 @@ class AppDatabase extends _$AppDatabase {
     await update(setlists).replace(setlistWithTimestamp);
   }
 
-  /// Permanently delete a setlist and track for sync
+  /// Soft delete a setlist and track for sync (for JSON sync compatibility)
   Future<void> deleteSetlist(String id) async {
     try {
+      main.myDebug('[DATABASE] deleteSetlist() called with ID: \\${id}');
       // Get device ID for tracking
       final deviceId = await _getDeviceId();
+      main.myDebug(
+          '[DATABASE] Using deviceId: \\${deviceId} for deletion tracking');
 
       // Insert deletion tracking record first
       await _insertDeletionTracking('setlist', id, deviceId);
 
-      // Hard delete the setlist
-      await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();
+      // Soft delete the setlist (isDeleted = true) and bump updatedAt
+      final nowMillis = DateTime.now().millisecondsSinceEpoch;
+      main.myDebug(
+          '[DATABASE] Performing soft delete for setlist ID: \\${id} at \\${nowMillis}');
+      await (update(setlists)..where((tbl) => tbl.id.equals(id))).write(
+        SetlistsCompanion(
+          isDeleted: const Value(true),
+          updatedAt: Value(nowMillis),
+        ),
+      );
+      main.myDebug(
+          '[DATABASE] Soft delete completed successfully for ID: \\${id}');
     } catch (e) {
+      main.myDebug('[DATABASE] ERROR in deleteSetlist(): \\${e}');
       rethrow;
     }
   }
@@ -323,6 +338,8 @@ class AppDatabase extends _$AppDatabase {
       // Fallback: generate a new device ID
       return _generateDeviceId();
     } catch (e) {
+      main.myDebug(
+          '[DATABASE] ERROR getting deviceId, generating fallback: \\${e}');
       return _generateDeviceId();
     }
   }
@@ -339,7 +356,53 @@ class AppDatabase extends _$AppDatabase {
         deviceId: Value(deviceId),
       );
       await into(deletionTracking).insert(trackingRecord);
+      main.myDebug(
+          '[DATABASE] Deletion tracking inserted: \\${entityType}/\\${entityId}');
     } catch (e) {
+      main.myDebug('[DATABASE] ERROR inserting deletion tracking: \\${e}');
+      rethrow;
+    }
+  }
+
+  /// Permanently purge setlists that have been soft-deleted longer than [threshold]
+  Future<void> purgeDeletedSetlistsOlderThan(Duration threshold) async {
+    try {
+      final cutoffMillis =
+          DateTime.now().subtract(threshold).millisecondsSinceEpoch;
+      main.myDebug(
+          '[DATABASE] purgeDeletedSetlistsOlderThan() called with thresholdMinutes: \\${threshold.inMinutes}, cutoffMillis: \\${cutoffMillis}');
+
+      // Find soft-deleted setlists older than the cutoff
+      final staleSetlists = await (select(setlists)
+            ..where((tbl) =>
+                tbl.isDeleted.equals(true) &
+                tbl.updatedAt.isSmallerThanValue(cutoffMillis)))
+          .get();
+
+      if (staleSetlists.isEmpty) {
+        main.myDebug(
+            '[DATABASE] No soft-deleted setlists eligible for purge at this time');
+        return;
+      }
+
+      final ids = staleSetlists.map((s) => s.id).toList();
+      main.myDebug(
+          '[DATABASE] Purging \\${ids.length} soft-deleted setlists: \\${ids.join(', ')}');
+
+      // Hard delete the stale setlists
+      await (delete(setlists)..where((tbl) => tbl.id.isIn(ids))).go();
+
+      // Clean up associated deletion tracking records for these setlists
+      await (delete(deletionTracking)
+            ..where((tbl) =>
+                tbl.entityType.equals('setlist') & tbl.entityId.isIn(ids)))
+          .go();
+
+      main.myDebug(
+          '[DATABASE] Purge of soft-deleted setlists completed successfully');
+    } catch (e) {
+      main.myDebug(
+          '[DATABASE] ERROR in purgeDeletedSetlistsOlderThan(): \\${e}');
       rethrow;
     }
   }

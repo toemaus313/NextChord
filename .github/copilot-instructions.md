@@ -1,146 +1,61 @@
-# NextChord AI Development Instructions
+# NextChord – AI Coding Instructions
 
-## Project Overview
+- **Architecture:** Strict 3-layer cake:
+  - `lib/presentation/` – Flutter UI, widgets, `ChangeNotifier` providers only
+  - `lib/domain/` – Pure Dart entities and business rules (no Flutter/DB imports)
+  - `lib/data/` – Drift DB, repositories, external APIs
+  - `lib/services/` – Integrations (sync, MIDI, audio, import, metadata)
+  - **Never** let presentation talk directly to Drift/Google Drive; always go through services/repositories/providers.
 
-**NextChord** is a cross-platform Flutter music app (iOS, Android, macOS, Windows, Linux) that manages song libraries, creates setlists, and controls MIDI gear. It uses **Clean Architecture** with Drift/SQLite for local storage and bidirectional cloud sync (Google Drive + iCloud).
+- **Repositories & DB:**
+  - Repositories live in `lib/data/repositories/` (see `song_repository.dart`, `setlist_repository.dart`).
+  - Drift setup in `lib/data/database/app_database.dart` and `.../tables/tables.dart`.
+  - User entities usually have `id`, `updatedAt`, `isDeleted` for sync.
+  - After schema changes: run `flutter pub run build_runner build`.
 
-## Architecture: The Three Layers
+- **State management (Provider):**
+  - Use `ChangeNotifier` + `notifyListeners()` (see `lib/presentation/providers/*`).
+  - Providers depend on repositories/services via constructor injection.
+  - UI reads state via `Consumer`/`Selector` widgets, not static singletons.
 
-All code follows a strict **3-layer cake** pattern:
+- **ChordPro & Songs:**
+  - Domain models in `lib/domain/entities/song.dart`.
+  - ChordPro parsing/transposition via `lib/core/utils/chordpro_parser.dart`.
+  - Treat `Song.body` as immutable source; for transposition use helpers, e.g. `ChordProParser.transposeChordProText` when rendering.
 
-1. **Presentation** (`lib/presentation/`) — UI screens, widgets, and Provider-based state management
-2. **Domain** (`lib/domain/`) — Pure business logic, entities; no Flutter/database imports
-3. **Data** (`lib/data/`) — Drift database, repositories, external APIs
+- **Sync model (high level):**
+  - Drift DB is the runtime source of truth.
+  - Sync services under `lib/services/sync/` talk to Google Drive / iCloud.
+  - Cloud uses a single logical snapshot file (`library.json`) plus DB backups; don’t invent new sync file formats.
 
-**Critical rule:** Layers only reference layers below them. Presentation never directly queries the database.
+- **Debugging rules (critical):**
+  - All logging must go through `main.myDebug("...")`; **never** introduce raw `print`, `debugPrint`, or other loggers.
+  - Global toggle lives in `lib/main.dart` (`isDebug` + `myDebug`).
+  - Any temporary debug added must be recorded in `debugs_active.md` with file + purpose.
+  - When asked to remove debugs, delete only `main.myDebug(...)` lines and run the `flutter analyze` loop until clean (see `docs/debugging_cleanup_enforcement_rule.md`).
 
-## Data Layer: Core Patterns
+- **Commands & workflow:**
+  - Safe to run automatically: `flutter analyze`, `flutter test`, `flutter pub get`, `flutter pub run build_runner ...`.
+  - **Do not** auto-run `flutter run` – the user starts the app manually.
 
-### Repository Pattern
-Repositories (`lib/data/repositories/*.dart`) provide CRUD operations and abstract storage details:
-- `SongRepository` — Song CRUD, transposition, metadata
-- `SetlistRepository` — Setlist CRUD
-- Always pass repositories to providers, never raw database access
+- **UI conventions:**
+  - Keep widgets small and focused; extract sections into helpers or child widgets.
+  - Maintain distinct mobile vs desktop/tablet layouts; don’t cram mobile into sidebar-style UIs.
+  - Widgets must not reach into Drift/Drive directly; let them talk to controllers/providers.
+  - **AppearanceProvider:** new UI that needs app theming or gradients should consume `AppearanceProvider` (see `global_sidebar.dart`, `appearance_settings_modal.dart`, modal templates) rather than hard-coding colors. Use `context.watch<AppearanceProvider>()` or pass it into helpers like `StandardModalTemplate.buildModalContainer` / `ConciseModalTemplate.showConciseModal` and dropdowns.
 
-### Drift Database Schema
-- **File:** `lib/data/database/app_database.dart` (main class) and `lib/data/database/tables/tables.dart` (schema)
-- **Tables:** Songs, Setlists, MidiMappings, MidiProfiles, PedalMappings, SyncState, DeletionTracking
-- **Key pattern:** All user-created entities include `updatedAt` (int, epoch ms), `isDeleted` (soft-delete flag), and `id` (UUID)
-- **Auto-generation:** Run `flutter pub run build_runner build` after schema changes
-- **Migrations:** Add version bumps in `onUpgrade()` within `lib/data/database/migrations/migrations.dart`
+- **Project organization:**
+  - New feature code goes under `lib/features/<feature_name>/` when appropriate, following the same layering.
+  - Avoid new root-level “misc/utils” files; prefer placing utilities under `lib/core/` or the relevant feature.
 
-### Sync Architecture
-- **Local DB is always the source of truth** at runtime
-- **Sync metadata:** `SyncState` table tracks `deviceId`, `lastRemoteVersion`, `lastSyncAt`
-- **Cloud storage:** Single `library.json` (full logical snapshot) on Google Drive and iCloud; content hash determines if upload needed
-- **Metadata polling:** 10-second loop compares remote metadata; only downloads if changed
-- **Services:** `GoogleDriveSyncService`, `ICloudSyncService`, `LibrarySyncService` in `lib/services/sync/`
+- **Cross‑platform safety:**
+  - Don’t delete or regenerate `ios/`, `macos/`, `android/`, `windows/`, `linux/` without explicit instruction.
+  - If you must touch platform configs, keep edits minimal and explain them clearly.
 
-## Provider State Management
+- **Key references for deeper context:**
+  - `ARCHITECTURE.md` – overall design and rationale.
+  - `.windsurf/rules/best-practices.md` – workspace-wide rules.
+  - `docs/debugging_cleanup_enforcement_rule.md` – detailed debug cleanup + logging constraints.
+  - `debugs_active.md` – current active debugs that must be cleaned up later.
 
-Use `Provider` package (not GetX or Riverpod). Pattern:
-
-```dart
-class SongProvider extends ChangeNotifier {
-  final SongRepository _repository;
-  List<Song> _songs = [];
-  
-  List<Song> get songs => _songs;
-  
-  Future<void> loadSongs() async {
-    _songs = await _repository.getAllSongs();
-    notifyListeners();
-  }
-}
-```
-
-- Always use `ChangeNotifier` + `notifyListeners()` for state changes
-- Never store async futures directly; load data in methods called from UI
-- Use `Consumer<ProviderType>` in build methods, not direct access
-
-## Domain Layer: Entities & Business Logic
-
-**File:** `lib/domain/entities/song.dart` contains core models:
-- `Song` — ChordPro body is the "source of truth"; never modify in-place
-- `Setlist` — Ordered collection of songs
-- `MidiMapping` — MIDI program changes + control changes
-- All inherit `Equatable` for value comparison
-
-**ChordPro handling:** Always create a new transposed version; never mutate the stored body:
-```dart
-String displayed = ChordProParser.transposeChordProText(song.body, semitones);
-```
-
-## Development Workflow
-
-### Adding a Feature (Example: Favorites)
-
-1. **Domain:** Add `isFavorite` field to `Song` in `lib/domain/entities/song.dart`
-2. **Data:** Add column to songs table in `lib/data/database/tables/tables.dart`, bump schema version
-3. **Repository:** Add `toggleFavorite()` method to `SongRepository`
-4. **Presentation:** Add toggle method to `SongProvider`, call from UI widget
-5. **Build:** Run `flutter analyze`, then `flutter pub run build_runner build`
-
-### Commands
-- `flutter analyze` — Must pass before committing (run automatically after changes)
-- `flutter pub get` — Update dependencies (safe to run automatically)
-- `flutter pub run build_runner build` — Regenerate Drift models (run after schema edits)
-- `flutter run` — **User must initiate manually** (see `.windsurf/rules/flutter-run.md`)
-
-## Debug & Logging
-
-- **Single debug system:** Use `main.myDebug("message")` exclusively; never `print()` or `debugPrint()`
-- **Global toggle:** `bool isDebug = true;` at top of `main.dart`
-- **Tracking:** All temporary debug code must be recorded in `debugs_active.md` with file path, method, and purpose
-- **Cleanup:** When removing debug code, also remove the `debugs_active.md` entry and re-run `flutter analyze`
-
-## Cross-Platform & Platform-Specific
-
-- Do not delete or wholesale regenerate platform folders (`ios/`, `macos/`, `android/`, `windows/`, `linux/`)
-- Preserve existing customizations when updating CocoaPods, Gradle, or Xcode project settings
-- Document platform-specific changes clearly in commit messages
-
-## Conventions & Organization
-
-- **Features:** Place new features in `lib/features/` with folder structure (e.g., `features/setlists/`, `features/tuner/`)
-- **Widget size:** Prefer many small, focused widgets; extract helpers or child widgets when `build()` grows large
-- **Mobile vs desktop:** Maintain clear separation; don't regress mobile to cramped sidebar layouts
-- **Experimental code:** Mark with `// EXPERIMENTAL` or `// SPIKE` comment; either promote to production or remove completely
-
-## Const & Null Safety
-
-- Use `const` for compile-time constants and immutable widget constructors
-- Use `final` for fields that don't change after initialization
-- Always enable null-safety; use `?` and `!` intentionally, never suppress without explanation
-
-## Testing & Validation
-
-- Domain entities have no dependencies; unit-test them in isolation
-- Mock repositories for provider testing
-- After modifying Dart/Flutter code, always run `flutter analyze` to catch errors before committing
-
-## Key Files to Reference
-
-| File | Purpose |
-|------|---------|
-| `ARCHITECTURE.md` | Deep dive into patterns, design decisions, workflow |
-| `lib/data/database/app_database.dart` | Drift database definition & migrations |
-| `lib/data/repositories/song_repository.dart` | Example repository pattern |
-| `lib/presentation/providers/song_provider.dart` | Example Provider state management |
-| `lib/core/utils/chordpro_parser.dart` | ChordPro parsing & transposition logic |
-| `docs/db_operations.md` | Detailed sync architecture & cloud flow |
-| `.windsurf/rules/best-practices.md` | Cross-platform, sync safety, performance rules |
-| `debugs_active.md` | Inventory of active debug code |
-
-## Quick References
-
-- **Schema version:** Currently v13 in `app_database.dart`
-- **Provider package version:** `^6.0.0`
-- **Drift version:** `^2.16.0`
-- **Flutter SDK:** `>=3.0.0 <4.0.0`
-- **Main entry:** `lib/main.dart` initializes DB, providers, and error handlers
-
----
-
-**Last Updated:** November 28, 2025  
-For questions about specific patterns or architecture decisions, refer to `ARCHITECTURE.md` and the detailed guides in `docs/`.
+Last updated: 2025‑11‑28.

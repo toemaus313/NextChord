@@ -269,10 +269,15 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> autoSync() async {
-    if (!_isSyncEnabled || _isSyncing || _syncBackend == SyncBackend.local)
+    if (!_isSyncEnabled || _isSyncing || _syncBackend == SyncBackend.local) {
+      main.myDebug(
+          '[SYNC_PROVIDER] autoSync() skipped: enabled=\\${_isSyncEnabled}, isSyncing=\\${_isSyncing}, backend=\\${_syncBackend.shortName}');
       return;
+    }
 
     try {
+      main.myDebug(
+          '[SYNC_PROVIDER] autoSync() starting for backend=\\${_syncBackend.shortName}');
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
@@ -282,18 +287,27 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
       // Verify we're signed in before attempting sync
       _isSignedIn = await _currentSyncService.isSignedIn();
-      if (!_isSignedIn) return;
+      main.myDebug(
+          '[SYNC_PROVIDER] autoSync() sign-in status for backend=\\${_syncBackend.shortName}: isSignedIn=\\${_isSignedIn}');
+      if (!_isSignedIn) {
+        main.myDebug(
+            '[SYNC_PROVIDER] autoSync() aborting: backend not signed in');
+        return;
+      }
 
       await _currentSyncService.sync();
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
 
       // Trigger UI refresh after successful auto-sync
+      main.myDebug(
+          '[SYNC_PROVIDER] autoSync() completed successfully for backend=\\${_syncBackend.shortName}');
       if (_onSyncCompleted != null) {
         _onSyncCompleted!();
       }
     } catch (e) {
       _lastError = e.toString();
+      main.myDebug('[SYNC_PROVIDER] autoSync() ERROR: \\${e}');
 
       // If it's an authentication error, update sign-in status
       if (e.toString().toLowerCase().contains('sign') ||
@@ -305,6 +319,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _isSyncing = false;
       // Mark sync as completed to allow change notifications again
       DatabaseChangeService().setSyncInProgress(false);
+      main.myDebug(
+          '[SYNC_PROVIDER] autoSync() finished; isSyncing=\\${_isSyncing}, lastError=\\${_lastError}');
       notifyListeners();
     }
   }

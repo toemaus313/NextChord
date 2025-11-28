@@ -24,7 +24,7 @@ import 'services/import/share_import_service.dart';
 import 'services/midi/midi_service.dart';
 
 // Global debug configuration
-bool isDebug = true;
+bool isDebug = false;
 
 void myDebug(String message) {
   if (isDebug) {

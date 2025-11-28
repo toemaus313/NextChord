@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
+import '../../main.dart' as main;
 import 'library_sync_service.dart';
 
 class GoogleDriveSyncService {
@@ -524,15 +525,17 @@ class GoogleDriveSyncService {
       if (shouldUpload) {
         await _uploadLibraryJson(driveApi, folderId, mergedJson);
 
-        // Store the hash of uploaded content and update metadata
+        // Store the hash of uploaded content
         await _librarySyncService.storeUploadedLibraryHash(mergedJson);
 
-        // Update sync state with remote metadata (after successful upload)
-        if (remoteMetadata != null) {
+        // Re-fetch remote metadata after upload so future polls compare
+        // against the latest state of library.json
+        final updatedMetadata = await getLibraryJsonMetadata();
+        if (updatedMetadata != null) {
           await _librarySyncService.database.updateSyncState(
             lastRemoteVersion: syncState?.lastRemoteVersion ?? 0,
             lastSyncAt: DateTime.now(),
-            remoteMetadata: remoteMetadata,
+            remoteMetadata: updatedMetadata,
           );
         }
       } else {
@@ -546,6 +549,10 @@ class GoogleDriveSyncService {
           );
         }
       }
+
+      // After a successful JSON sync, purge old soft-deleted setlists
+      await _librarySyncService.database
+          .purgeDeletedSetlistsOlderThan(const Duration(minutes: 1));
     } catch (e) {
       rethrow;
     }
@@ -645,6 +652,7 @@ class GoogleDriveSyncService {
     }
 
     _isPollingActive = true;
+    main.myDebug('[GDRIVE_SYNC] startMetadataPolling() activated');
 
     _metadataPollingTimer = Timer.periodic(_pollingInterval, (timer) async {
       if (!_isPollingActive) {
@@ -653,23 +661,33 @@ class GoogleDriveSyncService {
       }
 
       try {
+        main.myDebug('[GDRIVE_SYNC] Poll tick - checking remote metadata');
         // Get remote metadata without downloading content
         final remoteMetadata = await getLibraryJsonMetadata();
 
         if (remoteMetadata != null) {
+          main.myDebug(
+              '[GDRIVE_SYNC] Remote metadata found: fileId=\\${remoteMetadata.fileId}');
           // Check if remote file has changed since last sync
           final hasRemoteChanges =
               await _librarySyncService.hasRemoteChanges(remoteMetadata);
 
           if (hasRemoteChanges) {
+            main.myDebug(
+                '[GDRIVE_SYNC] Remote changes detected, triggering autoSync');
             // Trigger full sync through the sync provider
             await SyncServiceLocator.triggerAutoSync();
           } else {
             // No remote changes - continue polling
+            main.myDebug('[GDRIVE_SYNC] No remote changes detected');
           }
+        } else {
+          main.myDebug(
+              '[GDRIVE_SYNC] No remote library.json metadata found during poll');
         }
       } catch (e) {
         // Error during metadata polling - will retry on next interval
+        main.myDebug('[GDRIVE_SYNC] Polling ERROR: \\${e}');
       }
     });
   }

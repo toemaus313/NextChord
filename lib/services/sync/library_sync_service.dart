@@ -4,6 +4,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import '../../main.dart' as main;
 
 /// Model for Google Drive file metadata
 class DriveLibraryMetadata {
@@ -735,6 +736,7 @@ class LibrarySyncService {
   /// Import and merge library from JSON string
   Future<void> importAndMergeLibraryFromJson(String jsonString) async {
     try {
+      main.myDebug('[LIBRARY_SYNC] importAndMergeLibraryFromJson() started');
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
       final remoteLibrary = LibraryJson.fromJson(jsonData);
 
@@ -857,7 +859,8 @@ class LibrarySyncService {
       );
 
       // Log detailed merge summary
-
+      main.myDebug(
+          '[LIBRARY_SYNC] Merge completed in-memory: songs=\\${mergedSongs.length}, setlists=\\${mergedSetlists.length}, midiMappings=\\${mergedMidiMappings.length}, midiProfiles=\\${mergedMidiProfiles.length}');
       // Apply merged data to database in a transaction
       await _database.transaction(() async {
         // Clear and insert songs
@@ -899,7 +902,12 @@ class LibrarySyncService {
               table: 'songs', operation: 'update', recordId: songId);
         }
       } else {}
+
+      main.myDebug(
+          '[LIBRARY_SYNC] importAndMergeLibraryFromJson() completed successfully');
     } catch (e) {
+      main.myDebug(
+          '[LIBRARY_SYNC] importAndMergeLibraryFromJson() ERROR: \\${e}');
       rethrow;
     }
   }

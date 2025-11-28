@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../providers/song_provider.dart';
 import '../../providers/setlist_provider.dart';
 import '../sidebar_components/sidebar_menu_item.dart';
@@ -588,6 +589,9 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
   Future<void> _deleteSetlist(BuildContext context, dynamic setlist) async {
     final setlistProvider = context.read<SetlistProvider>();
 
+    main.myDebug(
+        '[SETLIST_DELETE] Starting deletion for setlist: "${setlist.name}" (ID: ${setlist.id})');
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -609,8 +613,12 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     );
 
     if (confirmed == true) {
+      main.myDebug(
+          '[SETLIST_DELETE] User confirmed deletion, calling provider.deleteSetlist()');
       try {
         await setlistProvider.deleteSetlist(setlist.id);
+        main.myDebug(
+            '[SETLIST_DELETE] Provider.deleteSetlist() completed successfully');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -620,6 +628,7 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
           );
         }
       } catch (e) {
+        main.myDebug('[SETLIST_DELETE] ERROR: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -629,7 +638,9 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
           );
         }
       }
-    } else {}
+    } else {
+      main.myDebug('[SETLIST_DELETE] User cancelled deletion');
+    }
   }
 
   void _navigateToSpecificSetlist(String setlistId) {
