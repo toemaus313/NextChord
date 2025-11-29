@@ -27,6 +27,8 @@ class _MobileSongsLayoutState extends State<MobileSongsLayout> {
 
   @override
   void dispose() {
+    // Ensure selection mode is cleared when leaving any mobile songs view
+    context.read<SongProvider>().resetSelectionMode();
     _searchController.dispose();
     super.dispose();
   }
