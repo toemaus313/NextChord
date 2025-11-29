@@ -23,7 +23,7 @@ platform :android do
     upload_to_play_store(
       aab: aab_path,
       track: options[:track] || "internal",  # "internal", "beta", "alpha", "production"
-      release_status: options[:status] || "draft"
+      release_status: options[:status] || "completed"
     )
   end
 end
