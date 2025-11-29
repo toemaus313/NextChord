@@ -31,7 +31,9 @@ import '../../core/widgets/responsive_config.dart';
 
 /// Helper method to detect if we're actually on a phone (not just small screen)
 bool _isActualPhone(BuildContext context) {
-  final isPhoneSized = MediaQuery.of(context).size.width < 600;
+  final size = MediaQuery.of(context).size;
+  final shortestSide = size.shortestSide;
+  final isPhoneSized = shortestSide < 600;
   final isMobilePlatform = Platform.isIOS || Platform.isAndroid;
   return isPhoneSized && isMobilePlatform;
 }

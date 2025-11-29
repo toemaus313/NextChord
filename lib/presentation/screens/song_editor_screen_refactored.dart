@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../domain/entities/midi_profile.dart';
@@ -87,6 +88,11 @@ class _SongEditorScreenRefactoredState
     super.initState();
     // Initialize controller - use provided one or create new one
     _controller = widget.controller ?? SongEditorController(song: widget.song);
+
+    final mode = widget.song == null ? 'create' : 'edit';
+    final hasSetlistContext = widget.setlistContext != null;
+    main.myDebug(
+        '[SongEditorScreenRefactored] initState: mode=$mode, hasSetlistContext=$hasSetlistContext');
 
     _initializeFields();
     _loadMidiProfiles();
@@ -1077,73 +1083,77 @@ class _SongEditorScreenRefactoredState
                         ],
                       ),
                     ),
-                  // Scrollable metadata section
+                  // Metadata section: allow it to shrink and scroll so it
+                  // doesn't push the editor body off the bottom of the screen.
                   if (!hideMetadata)
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                          16.0,
-                          widget.setlistContext != null ? 16.0 : 60.0,
-                          16.0,
-                          16.0),
-                      child: Column(
-                        children: [
-                          // Metadata form
-                          Column(
-                            children: [
-                              // Debug API test button
-                              ElevatedButton(
-                                onPressed: _testSongMetadataAPI,
-                                child: const Text('Retrieve Song Info'),
-                              ),
-                              const SizedBox(height: 8),
-                              // Actual metadata form
-                              SongMetadataForm(
-                                titleController: _titleController,
-                                artistController: _artistController,
-                                bpmController: _bpmController,
-                                durationController: _durationController,
-                                selectedKey: _selectedKey,
-                                selectedCapo: _selectedCapo,
-                                selectedTimeSignature: _selectedTimeSignature,
-                                textColor: textColor,
-                                isDarkMode: isDarkMode,
-                                hasSetlistContext:
-                                    widget.setlistContext != null,
-                                onKeyChanged: _handleKeySelection,
-                                onCapoChanged: _handleCapoSelection,
-                                onTimeSignatureChanged:
-                                    _handleTimeSignatureChanged,
-                                onAutoTransposeChanged:
-                                    _handleAutoTransposeChanged,
-                                isAutoTransposeEnabled: _isAutoTransposeEnabled,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.fromLTRB(
+                            16.0,
+                            widget.setlistContext != null ? 16.0 : 60.0,
+                            16.0,
+                            16.0),
+                        child: Column(
+                          children: [
+                            // Metadata form
+                            Column(
+                              children: [
+                                // Debug API test button
+                                ElevatedButton(
+                                  onPressed: _testSongMetadataAPI,
+                                  child: const Text('Retrieve Song Info'),
+                                ),
+                                const SizedBox(height: 8),
+                                // Actual metadata form
+                                SongMetadataForm(
+                                  titleController: _titleController,
+                                  artistController: _artistController,
+                                  bpmController: _bpmController,
+                                  durationController: _durationController,
+                                  selectedKey: _selectedKey,
+                                  selectedCapo: _selectedCapo,
+                                  selectedTimeSignature: _selectedTimeSignature,
+                                  textColor: textColor,
+                                  isDarkMode: isDarkMode,
+                                  hasSetlistContext:
+                                      widget.setlistContext != null,
+                                  onKeyChanged: _handleKeySelection,
+                                  onCapoChanged: _handleCapoSelection,
+                                  onTimeSignatureChanged:
+                                      _handleTimeSignatureChanged,
+                                  onAutoTransposeChanged:
+                                      _handleAutoTransposeChanged,
+                                  isAutoTransposeEnabled:
+                                      _isAutoTransposeEnabled,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
 
-                          // MIDI Sends section
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: isDarkMode
-                                    ? Colors.grey.shade700
-                                    : Colors.grey.shade400,
-                                width: 1.0,
+                            // MIDI Sends section
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: isDarkMode
+                                      ? Colors.grey.shade700
+                                      : Colors.grey.shade400,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              borderRadius: BorderRadius.circular(4),
+                              child: MidiProfileSelector(
+                                selectedProfile: _selectedMidiProfile,
+                                onProfileChanged: _handleMidiProfileChanged,
+                                profiles: _midiProfiles,
+                                isLoading: _isLoadingProfiles,
+                                onProfilesReloaded: _loadMidiProfiles,
+                              ),
                             ),
-                            child: MidiProfileSelector(
-                              selectedProfile: _selectedMidiProfile,
-                              onProfileChanged: _handleMidiProfileChanged,
-                              profiles: _midiProfiles,
-                              isLoading: _isLoadingProfiles,
-                              onProfilesReloaded: _loadMidiProfiles,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                     ),
                   // Body (ChordPro text) field - borderless editing area

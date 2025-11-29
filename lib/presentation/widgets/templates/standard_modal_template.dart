@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../providers/appearance_provider.dart';
 
 /// **Standard Modal Template** - Based on MIDI Profiles Modal Design
@@ -18,6 +19,8 @@ class StandardModalTemplate {
     required Widget child,
     bool barrierDismissible = false,
   }) {
+    main.myDebug(
+        '[StandardModalTemplate] show: child=${child.runtimeType}, barrierDismissible=$barrierDismissible');
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,

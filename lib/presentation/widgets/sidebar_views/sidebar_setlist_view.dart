@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../providers/global_sidebar_provider.dart';
 import '../../providers/setlist_provider.dart';
 import '../../providers/song_provider.dart';
@@ -37,6 +38,8 @@ class SidebarSetlistView extends StatefulWidget {
 class _SidebarSetlistViewState extends State<SidebarSetlistView> {
   @override
   Widget build(BuildContext context) {
+    main.myDebug(
+        '[SidebarSetlistView] build: setlistId=${widget.setlistId}, showHeader=${widget.showHeader}');
     return Consumer<SetlistProvider>(
       builder: (context, setlistProvider, child) {
         final currentSetlist = setlistProvider.setlists
@@ -74,120 +77,134 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                 icon: Icons.playlist_play,
                 onClose: widget.onBack,
               ),
-            const SizedBox(height: 8),
-            // Logo area (200x200 placeholder)
-            Container(
-              height: 200,
-              width: 200,
-              margin: const EdgeInsets.symmetric(vertical: 16),
-              child: currentSetlist.imagePath != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.file(
-                        File(currentSetlist.imagePath!),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildLogoPlaceholder(),
-                      ),
-                    )
-                  : _buildLogoPlaceholder(),
-            ),
-            // Setlist title area (moved below logo)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                currentSetlist.name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Edit Setlist button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await SetlistEditorDialog.show(
-                    context,
-                    setlist: currentSetlist,
-                  );
-                  if (result == true && context.mounted) {
-                    await setlistProvider.loadSetlists();
-                  }
-                },
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Edit Setlist'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withAlpha(20),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 36),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Setlist items
+            // Make the entire content scrollable so we don't overflow on
+            // short screens or in compact sidebar layouts.
             Expanded(
-              child: Consumer<SongProvider>(
-                builder: (context, songProvider, child) {
-                  final songsMap = {
-                    for (final song in songProvider.songs) song.id: song,
-                  };
-
-                  if (currentSetlist.items.isEmpty) {
-                    return const Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    // Logo area (200x200 placeholder)
+                    Container(
+                      height: 200,
+                      width: 200,
+                      margin: const EdgeInsets.symmetric(vertical: 16),
+                      child: currentSetlist.imagePath != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.file(
+                                File(currentSetlist.imagePath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildLogoPlaceholder(),
+                              ),
+                            )
+                          : _buildLogoPlaceholder(),
+                    ),
+                    // Setlist title area (moved below logo)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'No songs in this setlist',
-                        style: TextStyle(color: Colors.white70),
+                        currentSetlist.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    );
-                  }
+                    ),
+                    const SizedBox(height: 8),
+                    // Edit Setlist button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await SetlistEditorDialog.show(
+                            context,
+                            setlist: currentSetlist,
+                          );
+                          if (result == true && context.mounted) {
+                            await setlistProvider.loadSetlists();
+                          }
+                        },
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit Setlist'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withAlpha(20),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 36),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Setlist items (non-expanding, shrink-wrapped list)
+                    Consumer<SongProvider>(
+                      builder: (context, songProvider, child) {
+                        final songsMap = {
+                          for (final song in songProvider.songs) song.id: song,
+                        };
 
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: ReorderableListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: currentSetlist.items.length,
-                          onReorder: (oldIndex, newIndex) =>
-                              _reorderSetlistItems(oldIndex, newIndex,
-                                  currentSetlist, setlistProvider),
-                          buildDefaultDragHandles: false,
-                          itemBuilder: (context, index) {
-                            final item = currentSetlist.items[index];
-                            if (item is SetlistSongItem) {
-                              final song = songsMap[item.songId];
-                              return _buildSetlistSongItem(item, song, index);
-                            } else if (item is SetlistDividerItem) {
-                              return _buildSetlistDividerItem(item, index);
-                            }
-                            return const SizedBox.shrink();
-                          },
-                          // Custom drag highlight color
-                          proxyDecorator: (child, index, animation) {
-                            return AnimatedBuilder(
-                              animation: animation,
-                              builder: (BuildContext context, Widget? child) {
-                                return Material(
-                                  color:
-                                      const Color(0xFF0468cc).withOpacity(0.3),
-                                  borderRadius: BorderRadius.circular(8),
-                                  elevation: 4,
+                        if (currentSetlist.items.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: Text(
+                                'No songs in this setlist',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            ReorderableListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: currentSetlist.items.length,
+                              onReorder: (oldIndex, newIndex) =>
+                                  _reorderSetlistItems(oldIndex, newIndex,
+                                      currentSetlist, setlistProvider),
+                              buildDefaultDragHandles: false,
+                              itemBuilder: (context, index) {
+                                final item = currentSetlist.items[index];
+                                if (item is SetlistSongItem) {
+                                  final song = songsMap[item.songId];
+                                  return _buildSetlistSongItem(
+                                      item, song, index);
+                                } else if (item is SetlistDividerItem) {
+                                  return _buildSetlistDividerItem(item, index);
+                                }
+                                return const SizedBox.shrink();
+                              },
+                              // Custom drag highlight color
+                              proxyDecorator: (child, index, animation) {
+                                return AnimatedBuilder(
+                                  animation: animation,
+                                  builder:
+                                      (BuildContext context, Widget? child) {
+                                    return Material(
+                                      color: const Color(0xFF0468cc)
+                                          .withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(8),
+                                      elevation: 4,
+                                      child: child,
+                                    );
+                                  },
                                   child: child,
                                 );
                               },
-                              child: child,
-                            );
-                          },
-                        ),
-                      ),
-                      _buildAddButton(context, currentSetlist),
-                    ],
-                  );
-                },
+                            ),
+                            _buildAddButton(context, currentSetlist),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -504,56 +521,58 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
       context: context,
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.visibility),
-                title: const Text('View'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  context
-                      .read<GlobalSidebarProvider>()
-                      .navigateToSongInSetlist(song, index, item);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Edit'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          SongEditorScreenRefactored(song: song),
-                    ),
-                  );
-                  // Refresh the list if the song was updated
-                  if (result == true && context.mounted) {
-                    context.read<SongProvider>().loadSongs();
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.tag),
-                title: const Text('Edit Tags...'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text(
-                  'Delete from Setlist',
-                  style: TextStyle(color: Colors.red),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.visibility),
+                  title: const Text('View'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    context
+                        .read<GlobalSidebarProvider>()
+                        .navigateToSongInSetlist(song, index, item);
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteSongFromSetlist(context, item, index);
-                },
-              ),
-            ],
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edit'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SongEditorScreenRefactored(song: song),
+                      ),
+                    );
+                    // Refresh the list if the song was updated
+                    if (result == true && context.mounted) {
+                      context.read<SongProvider>().loadSongs();
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tag),
+                  title: const Text('Edit Tags...'),
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text(
+                    'Delete from Setlist',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteSongFromSetlist(context, item, index);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },

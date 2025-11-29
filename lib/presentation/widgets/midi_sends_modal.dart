@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
@@ -32,6 +33,9 @@ class MidiSendsModal extends StatefulWidget {
     MidiMapping? initialMapping,
     required Function(MidiMapping) onMappingUpdated,
   }) {
+    final hasInitial = initialMapping != null;
+    main.myDebug(
+        '[MidiSendsModal] show: songId=${song.id}, title=${song.title}, hasInitialMapping=$hasInitial');
     return showDialog<void>(
       context: context,
       barrierDismissible: false,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/song_repository.dart';
@@ -72,6 +73,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
     // Initialize PageView controller for smooth transitions
     _pageController = PageController();
+
+    final hasSetlistContext = widget.setlistContext != null;
+    main.myDebug(
+        '[SongViewerScreen] initState: songId=${widget.song.id}, title=${widget.song.title}, hasSetlistContext=$hasSetlistContext');
 
     // Initialize providers and services
     final songRepository = context.read<SongRepository>();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../providers/song_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -53,6 +54,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    main.myDebug(
+        '[LibraryScreen] build: inSidebar=${widget.inSidebar}, skipInitialLoad=${widget.skipInitialLoad}');
 
     // Sidebar mode: no Scaffold wrapper
     if (widget.inSidebar) {
@@ -537,70 +540,72 @@ class _LibraryScreenState extends State<LibraryScreen> {
       context: context,
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.visibility),
-                title: const Text('View'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SongViewerScreen(song: song),
-                    ),
-                  );
-                  // Refresh the list if the song was updated
-                  if (result == true && context.mounted) {
-                    context.read<SongProvider>().loadSongs();
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Edit'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          SongEditorScreenRefactored(song: song),
-                    ),
-                  );
-                  // Refresh the list if the song was updated
-                  if (result == true && context.mounted) {
-                    context.read<SongProvider>().loadSongs();
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.tag),
-                title: const Text('Edit Tags...'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await showEditTagsDialogForSong(song);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.playlist_add),
-                title: const Text('Add to Setlist'),
-                onTap: () {
-                  Navigator.pop(context);
-                  AddSongsToSetlistModal.show(context, song);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title:
-                    const Text('Delete', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDelete(context, song);
-                },
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.visibility),
+                  title: const Text('View'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SongViewerScreen(song: song),
+                      ),
+                    );
+                    // Refresh the list if the song was updated
+                    if (result == true && context.mounted) {
+                      context.read<SongProvider>().loadSongs();
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edit'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SongEditorScreenRefactored(song: song),
+                      ),
+                    );
+                    // Refresh the list if the song was updated
+                    if (result == true && context.mounted) {
+                      context.read<SongProvider>().loadSongs();
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tag),
+                  title: const Text('Edit Tags...'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await showEditTagsDialogForSong(song);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.playlist_add),
+                  title: const Text('Add to Setlist'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    AddSongsToSetlistModal.show(context, song);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title:
+                      const Text('Delete', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDelete(context, song);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },

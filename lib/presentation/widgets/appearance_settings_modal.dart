@@ -252,6 +252,7 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
     final selectedColor = await showDialog<Color>(
       context: context,
       builder: (dialogContext) {
+        final screenHeight = MediaQuery.of(dialogContext).size.height;
         return AlertDialog(
           backgroundColor: const Color(0xFF111111),
           shape: RoundedRectangleBorder(
@@ -261,16 +262,25 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
             'Custom Color',
             style: TextStyle(color: Colors.white),
           ),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: tempColor,
-              onColorChanged: (color) {
-                tempColor = color;
-              },
-              enableAlpha: false,
-              labelTypes: const [],
-              pickerAreaBorderRadius:
-                  const BorderRadius.all(Radius.circular(12)),
+          // Constrain the picker height and make it scrollable so the bottom
+          // never gets clipped, even on very short/landscape layouts.
+          content: SizedBox(
+            height: screenHeight * 0.8,
+            child: SingleChildScrollView(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topCenter,
+                child: ColorPicker(
+                  pickerColor: tempColor,
+                  onColorChanged: (color) {
+                    tempColor = color;
+                  },
+                  enableAlpha: false,
+                  labelTypes: const [],
+                  pickerAreaBorderRadius:
+                      const BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
             ),
           ),
           actions: [

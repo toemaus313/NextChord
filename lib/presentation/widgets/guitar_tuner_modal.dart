@@ -85,12 +85,19 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildHeader(context, tunerService),
-              buildConciseContent(
-                children: addConciseSpacing([
-                  _buildTunerDisplay(tunerService),
-                  _buildStringSelector(tunerService),
-                  _buildControlButtons(tunerService),
-                ]),
+              // Make the body scrollable without forcing tight expansion,
+              // to avoid RenderFlex layout assertions in constrained dialogs.
+              Flexible(
+                fit: FlexFit.loose,
+                child: SingleChildScrollView(
+                  child: buildConciseContent(
+                    children: addConciseSpacing([
+                      _buildTunerDisplay(tunerService),
+                      _buildStringSelector(tunerService),
+                      _buildControlButtons(tunerService),
+                    ]),
+                  ),
+                ),
               ),
             ],
           );
@@ -160,7 +167,7 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
           SemicircleTunerDisplay(
             tuningResult: tunerService.currentResult,
             width: displayWidth,
-            height: 120,
+            height: 110,
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/setlist.dart';
 
 /// Dialog for creating and editing setlist dividers with color selection
@@ -11,6 +12,8 @@ class DividerDialog extends StatefulWidget {
 
   static Future<SetlistDividerItem?> show(BuildContext context,
       {SetlistDividerItem? existingDivider}) {
+    final mode = existingDivider == null ? 'create' : 'edit';
+    main.myDebug('[DividerDialog] show: mode=$mode');
     return showDialog<SetlistDividerItem>(
       context: context,
       barrierDismissible: false, // Prevent accidental dismissal

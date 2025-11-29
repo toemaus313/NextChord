@@ -195,9 +195,47 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     final bool centerMenusOnPhone =
         widget.isPhoneMode && _shouldCenterMenusOnPhone;
 
+    // On phones, make the entire menu (including branding and button) scrollable
+    // to avoid overflow in landscape. Desktop/tablet keep the existing layout.
+    if (widget.isPhoneMode) {
+      return Column(
+        children: [
+          if (widget.showHeader)
+            const SidebarHeader(
+              title: 'Library',
+              icon: Icons.library_music,
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSongsSection(context, centerMenusOnPhone),
+                  _buildSetlistsSection(context, centerMenusOnPhone),
+                  _buildToolsSection(context, centerMenusOnPhone),
+                  _buildSettingsSection(context, centerMenusOnPhone),
+                  if (_expandedSection == null) _buildMobileBranding(context),
+                  const SizedBox(height: 50),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: StandardWideButton(
+                      label: 'Add Song',
+                      icon: Icons.add,
+                      onPressed: widget.onAddSong,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Desktop/tablet layout unchanged: header + scrollable sections, with
+    // branding and Add Song button pinned toward the bottom.
     return Column(
       children: [
-        // Only show header if not on mobile (mobile has its own header)
         if (widget.showHeader)
           const SidebarHeader(
             title: 'Library',
@@ -216,10 +254,6 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
             ),
           ),
         ),
-
-        // Mobile-only branding
-        if (widget.isPhoneMode && _expandedSection == null)
-          _buildMobileBranding(context),
         const SizedBox(height: 50),
         Padding(
           padding: const EdgeInsets.all(16),

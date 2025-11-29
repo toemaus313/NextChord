@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../../services/song_metadata_service.dart';
 
 /// Dialog for confirming title-only metadata lookup results
@@ -298,6 +299,11 @@ class TitleOnlyConfirmationDialog extends StatelessWidget {
     required SongMetadataLookupResult result,
   }) async {
     final completer = Completer<bool>();
+
+    final title = result.correctedTitle ?? 'Unknown';
+    final artist = result.correctedArtist ?? 'Unknown';
+    main.myDebug(
+        '[TitleOnlyConfirmationDialog] show: title="$title", artist="$artist"');
 
     showDialog(
       context: context,

@@ -10,7 +10,9 @@ class DeviceBreakpoints {
 
   /// Check if current context is phone-sized
   static bool isPhone(BuildContext context) {
-    return MediaQuery.of(context).size.width < phoneMaxWidth;
+    final size = MediaQuery.of(context).size;
+    final shortestSide = size.shortestSide;
+    return shortestSide < phoneMaxWidth;
   }
 
   /// Check if current context is tablet-sized
