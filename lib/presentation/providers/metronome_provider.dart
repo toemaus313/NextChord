@@ -465,6 +465,7 @@ class MetronomeProvider extends ChangeNotifier {
     if (_countInBeatsRemaining <= 0) {
       // Count-in finished, transition to normal operation
       _isCountingIn = false;
+      _tickCounter = 0; // Reset tick counter to ensure proper accent placement
 
       // If "Count In Only" mode, stop here
       if (_settingsProvider?.tickAction == 'Count In Only') {
