@@ -10,6 +10,7 @@ import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
 import 'library_sync_service.dart';
 import 'windows_icloud_utils.dart';
+import 'package:nextchord/main.dart' as main;
 
 /// Platform channel for iCloud Drive operations
 class ICloudDriveChannel {
@@ -443,7 +444,10 @@ class ICloudSyncService {
       // Clean up temporary file
       try {
         await tempFile.delete();
-      } catch (e) {}
+      } catch (e) {
+        main.myDebug(
+            '[ICloudSyncService] Failed to delete temp library.json file: $e');
+      }
 
       if (!success) {
         throw Exception('Failed to upload library.json to iCloud Drive');
@@ -461,7 +465,9 @@ class ICloudSyncService {
       if (!isAuthenticated) {
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[ICloudSyncService] handleInitialSync failed: $e');
+    }
   }
 
   /// Start metadata polling for automatic sync when app is active
@@ -498,7 +504,9 @@ class ICloudSyncService {
             await SyncServiceLocator.triggerAutoSync();
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        main.myDebug('[ICloudSyncService] Metadata polling failed: $e');
+      }
     });
   }
 

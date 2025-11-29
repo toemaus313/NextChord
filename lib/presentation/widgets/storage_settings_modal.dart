@@ -387,15 +387,11 @@ class _StorageSettingsModalState extends State<StorageSettingsModal> {
   }
 
   Future<void> _handleSignIn(SyncProvider syncProvider) async {
-    try {
-      await syncProvider.signIn();
-    } catch (e) {}
+    await syncProvider.signIn();
   }
 
   Future<void> _handleSignOut(SyncProvider syncProvider) async {
-    try {
-      await syncProvider.signOut();
-    } catch (e) {}
+    await syncProvider.signOut();
   }
 
   Future<void> _handleResyncFromCloud(

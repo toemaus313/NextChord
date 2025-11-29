@@ -135,17 +135,26 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       Future.delayed(const Duration(seconds: 5), () async {
         try {
           await autoSync();
-        } catch (e) {}
+        } catch (e) {
+          main.myDebug(
+              '[SyncProvider] autoSync after preference load failed: $e');
+        }
 
         // Maintain cloud backup after initial sync
         try {
           await _maintainCloudBackup();
-        } catch (e) {}
+        } catch (e) {
+          main.myDebug(
+              '[SyncProvider] _maintainCloudBackup after preference load failed: $e');
+        }
 
         // Start metadata polling after initial sync
         try {
           _currentSyncService.startMetadataPolling();
-        } catch (e) {}
+        } catch (e) {
+          main.myDebug(
+              '[SyncProvider] startMetadataPolling after preference load failed: $e');
+        }
       });
     }
   }
@@ -192,7 +201,9 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
           ),
         );
       });
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SyncProvider] _checkSyncRecencyAndWarnIfStale failed: $e');
+    }
   }
 
   /// Create backup service based on current backend
@@ -222,7 +233,9 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       if (!_isSyncEnabled) return;
 
       await _backupService.maintainCloudBackup();
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SyncProvider] _maintainCloudBackup failed: $e');
+    }
   }
 
   Future<void> _saveSyncPreference() async {

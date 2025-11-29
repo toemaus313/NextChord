@@ -16,29 +16,27 @@ class MidiIntegrationService {
   /// Send MIDI mapping when song is opened in viewer
   Future<void> sendMidiMappingOnOpen(
       String songId, String songTitle, int bpm) async {
-    try {
-      // Check if MidiService is still valid (not disposed)
+    // Check if MidiService is still valid (not disposed)
+    if (_midiService.isDisposed) {
+      return;
+    }
+
+    // Load MIDI profile from database
+    final midiProfile = await _songRepository.getSongMidiProfile(songId);
+
+    if (midiProfile == null) {
+    } else {
+      // Check again before sending profile (async operation might have completed after disposal)
       if (_midiService.isDisposed) {
         return;
       }
+      await _sendMidiProfile(midiProfile, songTitle);
+    }
 
-      // Load MIDI profile from database
-      final midiProfile = await _songRepository.getSongMidiProfile(songId);
-
-      if (midiProfile == null) {
-      } else {
-        // Check again before sending profile (async operation might have completed after disposal)
-        if (_midiService.isDisposed) {
-          return;
-        }
-        await _sendMidiProfile(midiProfile, songTitle);
-      }
-
-      // Send MIDI clock stream if enabled
-      if (!_midiService.isDisposed) {
-        await _sendMidiClockStreamIfNeeded(bpm);
-      }
-    } catch (e, stackTrace) {}
+    // Send MIDI clock stream if enabled
+    if (!_midiService.isDisposed) {
+      await _sendMidiClockStreamIfNeeded(bpm);
+    }
   }
 
   /// Send MIDI profile data
@@ -67,12 +65,10 @@ class MidiIntegrationService {
   /// Send MIDI clock stream if conditions are met
   Future<void> _sendMidiClockStreamIfNeeded(int bpm) async {
     if (_midiService.isConnected && _midiService.sendMidiClockEnabled) {
-      try {
-        await _midiService.sendMidiClockStream(
-          durationSeconds: SongViewerConstants.midiClockStreamDuration,
-          bpm: bpm,
-        );
-      } catch (e) {}
+      await _midiService.sendMidiClockStream(
+        durationSeconds: SongViewerConstants.midiClockStreamDuration,
+        bpm: bpm,
+      );
     }
   }
 }

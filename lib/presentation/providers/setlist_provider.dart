@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'dart:async';
+import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/setlist_repository.dart';
 import '../../core/services/database_change_service.dart';
@@ -89,6 +90,7 @@ class SetlistProvider extends ChangeNotifier {
         await _refreshActiveSetlist();
       }
     } catch (e) {
+      main.myDebug('[SetlistProvider] _refreshFromDatabaseChange failed: $e');
     } finally {
       _isUpdatingFromDatabase = false;
     }
@@ -100,7 +102,9 @@ class SetlistProvider extends ChangeNotifier {
       final newSetlists = await _repository.getAllSetlists();
       _setlists = newSetlists;
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SetlistProvider] _refreshSetlistsList failed: $e');
+    }
   }
 
   /// Refresh active setlist if it exists
@@ -118,7 +122,9 @@ class SetlistProvider extends ChangeNotifier {
         _currentSongIndex = -1;
       }
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SetlistProvider] _refreshActiveSetlist failed: $e');
+    }
   }
 
   /// Get a single setlist by ID

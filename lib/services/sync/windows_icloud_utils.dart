@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:path_provider/path_provider.dart';
+import 'package:nextchord/main.dart' as main;
 
 /// Utility class for Windows iCloud Drive operations
 class WindowsICloudUtils {
@@ -183,7 +184,10 @@ class WindowsICloudUtils {
                   await newFile.length() == await entity.length()) {
                 await entity.delete();
               } else {}
-            } catch (e) {}
+            } catch (e) {
+              main.myDebug(
+                  '[WindowsICloudUtils] Failed to migrate file \'${entity.path}\': $e');
+            }
           } else {}
         }
       }
@@ -193,8 +197,14 @@ class WindowsICloudUtils {
         if (await oldDir.list().isEmpty) {
           await oldDir.delete();
         }
-      } catch (e) {}
-    } catch (e) {}
+      } catch (e) {
+        main.myDebug(
+            '[WindowsICloudUtils] Failed to delete old NextChord directory: $e');
+      }
+    } catch (e) {
+      main.myDebug(
+          '[WindowsICloudUtils] _migrateFilesFromDirectory encountered error: $e');
+    }
   }
 
   /// Get the NextChord folder path in iCloud Drive

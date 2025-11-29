@@ -77,14 +77,12 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   }
 
   Future<void> _loadProfiles() async {
-    try {
-      final profiles = await _profileService.loadProfiles();
-      if (mounted) {
-        setState(() {
-          _profiles = profiles;
-        });
-      }
-    } catch (e) {}
+    final profiles = await _profileService.loadProfiles();
+    if (mounted) {
+      setState(() {
+        _profiles = profiles;
+      });
+    }
   }
 
   void _selectProfile(MidiProfile? profile) {

@@ -190,30 +190,24 @@ class SongProvider extends ChangeNotifier {
 
   /// Refresh songs list without changing loading state
   Future<void> _refreshSongsList() async {
-    try {
-      final newSongs = await _repository.getAllSongs();
-      _songs = newSongs;
-      _applySearch(); // Reapply current search/filter
-      notifyListeners();
-    } catch (e) {}
+    final newSongs = await _repository.getAllSongs();
+    _songs = newSongs;
+    _applySearch(); // Reapply current search/filter
+    notifyListeners();
   }
 
   /// Refresh deleted songs list without changing loading state
   Future<void> _refreshDeletedSongsList() async {
-    try {
-      final newDeletedSongs = await _repository.getDeletedSongs();
-      _deletedSongs = newDeletedSongs;
-      notifyListeners();
-    } catch (e) {}
+    final newDeletedSongs = await _repository.getDeletedSongs();
+    _deletedSongs = newDeletedSongs;
+    notifyListeners();
   }
 
   /// Refresh filtered songs list without changing loading state
   Future<void> _refreshFilteredSongsList() async {
-    try {
-      // Reapply current search/filter to get updated filtered songs
-      _applySearch();
-      notifyListeners();
-    } catch (e) {}
+    // Reapply current search/filter to get updated filtered songs
+    _applySearch();
+    notifyListeners();
   }
 
   /// Search songs by title or artist with debouncing

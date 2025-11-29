@@ -390,13 +390,11 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Update song tags in database
   Future<void> _updateSongTags(Set<String> updatedTags) async {
-    try {
-      final repository = context.read<SongRepository>();
-      final updatedSong =
-          _songViewerProvider.currentSong.copyWith(tags: updatedTags.toList());
-      await repository.updateSong(updatedSong);
-      await _reloadSong();
-    } catch (e) {}
+    final repository = context.read<SongRepository>();
+    final updatedSong =
+        _songViewerProvider.currentSong.copyWith(tags: updatedTags.toList());
+    await repository.updateSong(updatedSong);
+    await _reloadSong();
   }
 
   /// Reorder song tags in database
@@ -415,16 +413,14 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Reload the song from the database to get fresh data
   Future<bool> _reloadSong() async {
-    try {
-      final repository = context.read<SongRepository>();
-      final updatedSong =
-          await repository.getSongById(_songViewerProvider.currentSong.id);
-      if (updatedSong != null && mounted) {
-        _songViewerProvider.updateSong(updatedSong);
-        _syncMetronomeSettings();
-        return true;
-      }
-    } catch (e) {}
+    final repository = context.read<SongRepository>();
+    final updatedSong =
+        await repository.getSongById(_songViewerProvider.currentSong.id);
+    if (updatedSong != null && mounted) {
+      _songViewerProvider.updateSong(updatedSong);
+      _syncMetronomeSettings();
+      return true;
+    }
     return false;
   }
 

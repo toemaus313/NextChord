@@ -6,6 +6,7 @@ import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import 'package:nextchord/main.dart' as main;
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -295,7 +296,9 @@ class SongRepository {
               ),
             );
       }
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SongRepository] saveMidiMapping failed: $e');
+    }
   }
 
   /// Get MIDI mapping for a song
@@ -328,7 +331,9 @@ class SongRepository {
       await (_db.delete(_db.midiMappings)
             ..where((tbl) => tbl.songId.equals(songId)))
           .go();
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SongRepository] deleteMidiMapping failed: $e');
+    }
   }
 
   /// Helper method to encode MidiCC list to JSON
@@ -458,7 +463,9 @@ class SongRepository {
       await (_db.delete(_db.midiProfiles)
             ..where((tbl) => tbl.id.equals(profileId)))
           .go();
-    } catch (e) {}
+    } catch (e) {
+      main.myDebug('[SongRepository] deleteMidiProfile failed: $e');
+    }
   }
 
   /// Assign a MIDI profile to a song

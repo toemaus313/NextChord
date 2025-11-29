@@ -76,49 +76,43 @@ class GoogleDriveSyncService {
   static Future<void> _saveUniversalTokens(
       String accessToken, String? refreshToken,
       {int? expiresIn}) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_accessTokenKey, accessToken);
-      if (refreshToken != null) {
-        await prefs.setString(_refreshTokenKey, refreshToken);
-      }
-
-      // Calculate and save token expiry time (default 1 hour if not provided)
-      final expirySeconds = expiresIn ?? 3600;
-      _tokenExpiryTime = DateTime.now().add(Duration(seconds: expirySeconds));
-      await prefs.setInt(
-          _tokenExpiryKey, _tokenExpiryTime!.millisecondsSinceEpoch);
-
-      _universalAccessToken = accessToken;
-      _universalRefreshToken = refreshToken;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessTokenKey, accessToken);
+    if (refreshToken != null) {
+      await prefs.setString(_refreshTokenKey, refreshToken);
     }
+
+    // Calculate and save token expiry time (default 1 hour if not provided)
+    final expirySeconds = expiresIn ?? 3600;
+    _tokenExpiryTime = DateTime.now().add(Duration(seconds: expirySeconds));
+    await prefs.setInt(
+        _tokenExpiryKey, _tokenExpiryTime!.millisecondsSinceEpoch);
+
+    _universalAccessToken = accessToken;
+    _universalRefreshToken = refreshToken;
   }
 
   /// Load universal tokens from SharedPreferences on app startup
   static Future<void> _loadUniversalTokens() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _universalAccessToken = prefs.getString(_accessTokenKey);
-      _universalRefreshToken = prefs.getString(_refreshTokenKey);
+    final prefs = await SharedPreferences.getInstance();
+    _universalAccessToken = prefs.getString(_accessTokenKey);
+    _universalRefreshToken = prefs.getString(_refreshTokenKey);
 
-      final expiryMillis = prefs.getInt(_tokenExpiryKey);
-      if (expiryMillis != null) {
-        _tokenExpiryTime = DateTime.fromMillisecondsSinceEpoch(expiryMillis);
-      }
-    } catch (e) {}
+    final expiryMillis = prefs.getInt(_tokenExpiryKey);
+    if (expiryMillis != null) {
+      _tokenExpiryTime = DateTime.fromMillisecondsSinceEpoch(expiryMillis);
+    }
   }
 
   /// Clear universal tokens from SharedPreferences
   static Future<void> _clearUniversalTokens() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_accessTokenKey);
-      await prefs.remove(_refreshTokenKey);
-      await prefs.remove(_tokenExpiryKey);
-      _universalAccessToken = null;
-      _universalRefreshToken = null;
-      _tokenExpiryTime = null;
-    } catch (e) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
+    await prefs.remove(_tokenExpiryKey);
+    _universalAccessToken = null;
+    _universalRefreshToken = null;
+    _tokenExpiryTime = null;
   }
 
   /// Check if the access token is expired or about to expire (within 5 minutes)
@@ -325,15 +319,13 @@ class GoogleDriveSyncService {
   }
 
   Future<void> signOut() async {
-    try {
-      if (_isMobilePlatform()) {
-        // Use GoogleSignIn for mobile platforms
-        await _googleSignInInstance.signOut();
-      } else {
-        // Use universal web OAuth for desktop platforms
-        await _clearUniversalTokens();
-      }
-    } catch (e) {}
+    if (_isMobilePlatform()) {
+      // Use GoogleSignIn for mobile platforms
+      await _googleSignInInstance.signOut();
+    } else {
+      // Use universal web OAuth for desktop platforms
+      await _clearUniversalTokens();
+    }
   }
 
   Future<drive.DriveApi> createDriveApi() async {
@@ -639,13 +631,11 @@ class GoogleDriveSyncService {
   }
 
   Future<void> handleInitialSync() async {
-    try {
-      // Check authentication status
-      final isAuthenticated = await isSignedIn();
-      if (!isAuthenticated) {
-        return;
-      }
-    } catch (e) {}
+    // Check authentication status
+    final isAuthenticated = await isSignedIn();
+    if (!isAuthenticated) {
+      return;
+    }
   }
 
   /// Start metadata polling for automatic sync when app is active
