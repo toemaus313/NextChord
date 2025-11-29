@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../core/utils/chordpro_parser.dart';
+import '../../core/constants/song_viewer_constants.dart';
 import 'metronome_provider.dart';
 import 'metronome_settings_provider.dart';
 
@@ -32,11 +33,18 @@ class AutoscrollProvider extends ChangeNotifier {
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  // Initialize with a song's duration from metadata
-  void initialize(String chordProBody) {
-    final metadata = ChordProParser.extractMetadata(chordProBody);
-    _durationSeconds = metadata.durationInSeconds ?? _defaultDurationSeconds;
-    _originalDurationSeconds = _durationSeconds;
+  // Initialize with a song's duration. Prefer an explicit override (from
+  // Song.duration) and fall back to ChordPro metadata, then default.
+  void initialize(String chordProBody, {int? durationSecondsOverride}) {
+    if (durationSecondsOverride != null) {
+      _durationSeconds = durationSecondsOverride;
+      _originalDurationSeconds = _durationSeconds;
+    } else {
+      final metadata = ChordProParser.extractMetadata(chordProBody);
+      _durationSeconds = metadata.durationInSeconds ??
+          SongViewerConstants.defaultAutoscrollDuration;
+      _originalDurationSeconds = _durationSeconds;
+    }
 
     // Reset count-in state when loading a new song
     _hasRunAutoscrollCountIn = false;

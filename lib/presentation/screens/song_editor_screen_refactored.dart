@@ -392,27 +392,9 @@ class _SongEditorScreenRefactoredState
   }
 
   void _handleKeyboardToggle() {
-    final isKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
-
-    if (isKeyboardVisible) {
-      // iOS behavior: if keyboard is visible, dismiss it (metadata will auto-show)
-      _bodyFocusNode.unfocus();
-      setState(() {
-        _isMetadataHidden =
-            false; // Ensure metadata shows when keyboard is dismissed
-      });
-    } else {
-      // iOS behavior: if keyboard is not visible but body has focus, show keyboard
-      if (_bodyFocusNode.hasFocus) {
-        // Toggle metadata visibility when body has focus but no keyboard
-        setState(() {
-          _isMetadataHidden = !_isMetadataHidden;
-        });
-      } else {
-        // Request focus to show keyboard
-        _bodyFocusNode.requestFocus();
-      }
-    }
+    setState(() {
+      _isMetadataHidden = !_isMetadataHidden;
+    });
   }
 
   void _onBodyTextChanged() {
@@ -1030,6 +1012,16 @@ class _SongEditorScreenRefactoredState
         isDarkMode ? const Color(0xFF00D9FF) : const Color(0xFF0468cc);
     final hideMetadata = _isMetadataHidden;
 
+    // Layout tuning: on narrow/mobile screens, give metadata and body
+    // approximately equal vertical space so metadata fields are easier
+    // to work with. On wider screens, keep a taller body layout but
+    // slightly increase the metadata height so the scrollable frame
+    // is noticeably taller.
+    final mediaQuery = MediaQuery.of(context);
+    final isMobileWidth = mediaQuery.size.width < 700;
+    final metadataFlex = isMobileWidth ? 1 : 8;
+    final bodyFlex = isMobileWidth ? 1 : 15;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -1085,8 +1077,11 @@ class _SongEditorScreenRefactoredState
                     ),
                   // Metadata section: allow it to shrink and scroll so it
                   // doesn't push the editor body off the bottom of the screen.
+                  // On mobile, we give it explicit flex so it uses about
+                  // half the height alongside the body.
                   if (!hideMetadata)
-                    Flexible(
+                    Expanded(
+                      flex: metadataFlex,
                       child: SingleChildScrollView(
                         padding: EdgeInsets.fromLTRB(
                             16.0,
@@ -1158,7 +1153,7 @@ class _SongEditorScreenRefactoredState
                     ),
                   // Body (ChordPro text) field - borderless editing area
                   Expanded(
-                    flex: 3,
+                    flex: bodyFlex,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Listener(

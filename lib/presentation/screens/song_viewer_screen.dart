@@ -176,16 +176,51 @@ class _SongViewerScreenState extends State<SongViewerScreen>
   void _initializeAutoscroll() {
     final autoscroll = context.read<AutoscrollProvider>();
     final metronomeSettings = context.read<MetronomeSettingsProvider>();
+    final song = _songViewerProvider.currentSong;
 
     // Stop any existing autoscroll when loading a new song
     autoscroll.stop();
 
-    autoscroll.initialize(_songViewerProvider.currentSong.body);
+    // Prefer Song.duration from the database when available (MM:SS). If it
+    // cannot be parsed, fall back to metadata/default inside the provider.
+    int? durationSecondsOverride;
+    final durationStr = song.duration?.trim();
+    if (durationStr != null && durationStr.isNotEmpty) {
+      final parts = durationStr.split(':');
+      if (parts.length == 2) {
+        final minutes = int.tryParse(parts[0]);
+        final seconds = int.tryParse(parts[1]);
+        if (minutes != null && seconds != null) {
+          durationSecondsOverride = minutes * 60 + seconds;
+        }
+      }
+    }
+
+    autoscroll.initialize(
+      song.body,
+      durationSecondsOverride: durationSecondsOverride,
+    );
     autoscroll.setScrollController(scrollController);
     autoscroll.setMetronomeProviders(_metronome, metronomeSettings);
 
     // Set up callback for metronome to check if autoscroll is active
     _metronome.setAutoscrollActiveCallback(() => autoscroll.isActive);
+  }
+
+  Future<void> _saveAutoscrollDuration(int durationSeconds) async {
+    final minutes = durationSeconds ~/ 60;
+    final seconds = durationSeconds % 60;
+    final formatted =
+        '${minutes.toString()}:${seconds.toString().padLeft(2, '0')}';
+
+    final repository = context.read<SongRepository>();
+    final current = _songViewerProvider.currentSong;
+    final updated = current.copyWith(
+      duration: formatted,
+      updatedAt: DateTime.now(),
+    );
+    await repository.updateSong(updated);
+    await _reloadSong();
   }
 
   @override
@@ -773,6 +808,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
               AutoscrollButton(
                 autoscrollProvider: context.read<AutoscrollProvider>(),
                 viewerProvider: _songViewerProvider,
+                onDurationChanged: _saveAutoscrollDuration,
               ),
               const SizedBox(height: SongViewerConstants.buttonSpacing),
               MetronomeButton(),

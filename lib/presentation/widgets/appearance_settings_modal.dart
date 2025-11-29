@@ -252,9 +252,16 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
     final selectedColor = await showDialog<Color>(
       context: context,
       builder: (dialogContext) {
-        final screenHeight = MediaQuery.of(dialogContext).size.height;
+        final mediaQuery = MediaQuery.of(dialogContext);
+        final screenSize = mediaQuery.size;
+        final screenHeight = screenSize.height;
+        final isWide = screenSize.width >= 800;
+
         return AlertDialog(
           backgroundColor: const Color(0xFF111111),
+          insetPadding: isWide
+              ? const EdgeInsets.symmetric(horizontal: 160, vertical: 220)
+              : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -262,24 +269,44 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
             'Custom Color',
             style: TextStyle(color: Colors.white),
           ),
-          // Constrain the picker height and make it scrollable so the bottom
-          // never gets clipped, even on very short/landscape layouts.
-          content: SizedBox(
-            height: screenHeight * 0.8,
-            child: SingleChildScrollView(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.topCenter,
-                child: ColorPicker(
-                  pickerColor: tempColor,
-                  onColorChanged: (color) {
-                    tempColor = color;
-                  },
-                  enableAlpha: false,
-                  labelTypes: const [],
-                  pickerAreaBorderRadius:
-                      const BorderRadius.all(Radius.circular(12)),
-                ),
+          // Constrain the picker differently for mobile vs desktop:
+          // - On mobile/narrow layouts, keep it tall, scrollable, and allow
+          //   FittedBox scaling to avoid overflow.
+          // - On wide/desktop layouts, center the picker in a reasonably sized
+          //   box without excessive blank space and without scaling.
+          content: Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: isWide ? 820 : double.infinity,
+                maxHeight: isWide ? screenHeight * 0.4 : screenHeight * 0.7,
+              ),
+              child: SingleChildScrollView(
+                child: isWide
+                    ? ColorPicker(
+                        pickerColor: tempColor,
+                        onColorChanged: (color) {
+                          tempColor = color;
+                        },
+                        enableAlpha: false,
+                        labelTypes: const [],
+                        pickerAreaBorderRadius:
+                            const BorderRadius.all(Radius.circular(12)),
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.topCenter,
+                        child: ColorPicker(
+                          pickerColor: tempColor,
+                          onColorChanged: (color) {
+                            tempColor = color;
+                          },
+                          enableAlpha: false,
+                          labelTypes: const [],
+                          pickerAreaBorderRadius:
+                              const BorderRadius.all(Radius.circular(12)),
+                        ),
+                      ),
               ),
             ),
           ),

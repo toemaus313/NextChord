@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../../providers/song_provider.dart';
 import '../../providers/setlist_provider.dart';
 import '../sidebar_components/sidebar_menu_item.dart';
@@ -535,6 +536,15 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
     // Calculate song count by filtering for song items (not dividers)
     final songCount = setlist.items?.whereType<SetlistSongItem>().length ?? 0;
 
+    // Determine if this setlist has a cover image we can show as a thumbnail
+    String? imagePath;
+    if (setlist is Setlist) {
+      imagePath = setlist.imagePath;
+    }
+
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+    final String imageFilePath = imagePath ?? '';
+
     return GestureDetector(
       onTap: () {
         // Need to navigate with the specific setlist ID
@@ -545,12 +555,40 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
       onLongPress: () => _showSetlistContextMenu(context, setlist),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.only(left: 44, right: 16, top: 8, bottom: 8),
+        height: 60,
+        padding: const EdgeInsets.only(left: 44, right: 16),
         decoration: const BoxDecoration(
           color: Colors.transparent,
         ),
         child: Row(
           children: [
+            if (hasImage) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.file(
+                  File(imageFilePath),
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        size: 14,
+                        color: Colors.white54,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             Expanded(
               child: Text(
                 setlist.name,

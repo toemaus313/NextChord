@@ -9,11 +9,13 @@ import 'adjustment_flyout.dart';
 class AutoscrollButton extends StatelessWidget {
   final AutoscrollProvider autoscrollProvider;
   final SongViewerProvider viewerProvider;
+  final void Function(int durationSeconds)? onDurationChanged;
 
   const AutoscrollButton({
     Key? key,
     required this.autoscrollProvider,
     required this.viewerProvider,
+    this.onDurationChanged,
   }) : super(key: key);
 
   @override
@@ -37,10 +39,16 @@ class AutoscrollButton extends StatelessWidget {
           ),
           displayValue: autoscroll.durationDisplay,
           semanticsLabel: 'Autoscroll duration ${autoscroll.durationDisplay}',
-          onIncrement: () => autoscroll
-              .adjustDuration(SongViewerConstants.autoscrollAdjustmentStep),
-          onDecrement: () => autoscroll
-              .adjustDuration(-SongViewerConstants.autoscrollAdjustmentStep),
+          onIncrement: () {
+            autoscroll
+                .adjustDuration(SongViewerConstants.autoscrollAdjustmentStep);
+            onDurationChanged?.call(autoscroll.durationSeconds);
+          },
+          onDecrement: () {
+            autoscroll
+                .adjustDuration(-SongViewerConstants.autoscrollAdjustmentStep);
+            onDurationChanged?.call(autoscroll.durationSeconds);
+          },
           canIncrement: autoscroll.durationSeconds <
               SongViewerConstants.maxAutoscrollDuration,
           canDecrement: autoscroll.durationSeconds >
