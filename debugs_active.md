@@ -27,4 +27,4 @@
 21. lib/services/sync/icloud_sync_service.dart (13, 444-450, 468-470, 497-509)
 22. lib/services/sync/library_sync_service.dart (7, 636-648)
 23. lib/services/sync/windows_icloud_utils.dart (5, 177-207)
-22. lib/services/sync/windows_icloud_utils.dart (5, 177-207)
+24. lib/services/sync/google_drive_sync_service.dart (11, 86-117, 133-153, 155-232, 242-247, 251-273, 275-407, 409-497, 499-549, 551-705, 745-825, 792-863)

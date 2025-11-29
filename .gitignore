@@ -4,7 +4,7 @@
 /android/app/release/
 android/upload-keystore.jks
 android/key.properties
-
+android/app/build.gradle.kts
 
 # Build
 .pub-cache/
@@ -80,3 +80,4 @@ lib/env_local_*.dart
 SCRATCHPAD.md
 .vscode/launch.json
 .vscode/launch.json
+

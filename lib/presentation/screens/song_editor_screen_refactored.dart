@@ -1013,14 +1013,39 @@ class _SongEditorScreenRefactoredState
     final hideMetadata = _isMetadataHidden;
 
     // Layout tuning: on narrow/mobile screens, give metadata and body
-    // approximately equal vertical space so metadata fields are easier
-    // to work with. On wider screens, keep a taller body layout but
-    // slightly increase the metadata height so the scrollable frame
-    // is noticeably taller.
+    // approximately equal vertical space by default, but when the
+    // on-screen keyboard is visible, bias more height toward the body
+    // so text remains readable while still keeping metadata accessible.
+    // On wider screens, keep a taller body layout but slightly increase
+    // the metadata height so the scrollable frame is noticeably taller.
     final mediaQuery = MediaQuery.of(context);
     final isMobileWidth = mediaQuery.size.width < 700;
-    final metadataFlex = isMobileWidth ? 1 : 8;
-    final bodyFlex = isMobileWidth ? 1 : 15;
+    final isKeyboardVisible = mediaQuery.viewInsets.bottom > 0;
+
+    // These values are intentionally simple integers so you can
+    // fine-tune them easily:
+    // - On mobile with keyboard hidden: metadata/body roughly 50/50
+    // - On mobile with keyboard visible: give the body more space
+    // - On larger screens: keep existing proportions
+    final int metadataFlex;
+    final int bodyFlex;
+
+    if (isMobileWidth) {
+      if (isKeyboardVisible) {
+        // Keyboard up on mobile: shrink metadata so the editor body
+        // has more vertical space.
+        metadataFlex = 2;
+        bodyFlex = 1;
+      } else {
+        // Keyboard hidden on mobile: keep metadata and body balanced.
+        metadataFlex = 1;
+        bodyFlex = 1;
+      }
+    } else {
+      // Desktop / tablet proportions remain as before.
+      metadataFlex = 8;
+      bodyFlex = 15;
+    }
 
     return Scaffold(
       backgroundColor: backgroundColor,

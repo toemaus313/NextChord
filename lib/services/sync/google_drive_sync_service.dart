@@ -8,6 +8,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nextchord/main.dart' as main;
 import '../../core/config/google_oauth_config.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
@@ -90,6 +91,12 @@ class GoogleDriveSyncService {
 
     _universalAccessToken = accessToken;
     _universalRefreshToken = refreshToken;
+
+    main.myDebug('[GoogleDriveSyncService] _saveUniversalTokens: '
+        'accessTokenSet=${accessToken.isNotEmpty}, '
+        'hasRefreshToken=${refreshToken != null}, '
+        'expiresInSeconds=$expirySeconds, '
+        'expiryTime=$_tokenExpiryTime');
   }
 
   /// Load universal tokens from SharedPreferences on app startup
@@ -102,6 +109,11 @@ class GoogleDriveSyncService {
     if (expiryMillis != null) {
       _tokenExpiryTime = DateTime.fromMillisecondsSinceEpoch(expiryMillis);
     }
+
+    main.myDebug('[GoogleDriveSyncService] _loadUniversalTokens: '
+        'hasAccessToken=${_universalAccessToken != null}, '
+        'hasRefreshToken=${_universalRefreshToken != null}, '
+        'expiryTime=$_tokenExpiryTime');
   }
 
   /// Clear universal tokens from SharedPreferences
@@ -113,25 +125,44 @@ class GoogleDriveSyncService {
     _universalAccessToken = null;
     _universalRefreshToken = null;
     _tokenExpiryTime = null;
+
+    main.myDebug('[GoogleDriveSyncService] _clearUniversalTokens: '
+        'All stored tokens and expiry cleared');
   }
 
   /// Check if the access token is expired or about to expire (within 5 minutes)
   static bool _isTokenExpired() {
     if (_tokenExpiryTime == null) {
+      main.myDebug('[GoogleDriveSyncService] _isTokenExpired: '
+          'no expiry stored, treating as expired');
       return true; // Assume expired if we don't have expiry info
     }
 
     // Consider token expired if it expires within 5 minutes
-    final bufferTime = DateTime.now().add(Duration(minutes: 5));
-    return _tokenExpiryTime!.isBefore(bufferTime);
+    final now = DateTime.now();
+    final bufferTime = now.add(Duration(minutes: 5));
+    final isExpired = _tokenExpiryTime!.isBefore(bufferTime);
+
+    main.myDebug('[GoogleDriveSyncService] _isTokenExpired: '
+        'now=$now, '
+        'expiry=$_tokenExpiryTime, '
+        'bufferTime=$bufferTime, '
+        'isExpired=$isExpired');
+
+    return isExpired;
   }
 
   /// Refresh universal access token using stored refresh token
   static Future<bool> _refreshUniversalToken() async {
     try {
       if (_universalRefreshToken == null) {
+        main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+            'no refresh token available, cannot refresh');
         return false;
       }
+
+      main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+          'attempting token refresh with stored refresh token');
 
       final response = await http.post(
         Uri.https('oauth2.googleapis.com', 'token'),
@@ -153,8 +184,15 @@ class GoogleDriveSyncService {
             _universalAccessToken!, _universalRefreshToken,
             expiresIn: expiresIn);
 
+        main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+            'success statusCode=${response.statusCode}, '
+            'hasAccessToken=${_universalAccessToken != null}, '
+            'expiresInSeconds=$expiresIn');
+
         return true;
       } else {
+        main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+            'failed statusCode=${response.statusCode}, body=${response.body}');
         // Check if refresh token is expired/invalid
         if (response.statusCode == 400 || response.statusCode == 401) {
           final errorBody = jsonDecode(response.body);
@@ -165,6 +203,8 @@ class GoogleDriveSyncService {
                       .toLowerCase()
                       .contains('expired') ==
                   true) {
+            main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+                'refresh token invalid/expired, clearing stored tokens');
             await _clearUniversalTokens();
             return false;
           }
@@ -173,11 +213,17 @@ class GoogleDriveSyncService {
         return false;
       }
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+          'exception=$e');
       if (e.toString().toLowerCase().contains('connection') ||
           e.toString().toLowerCase().contains('network') ||
           e.toString().toLowerCase().contains('timeout')) {
         // Network error - preserve tokens
+        main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+            'network-related error, preserving tokens');
       } else {
+        main.myDebug('[GoogleDriveSyncService] _refreshUniversalToken: '
+            'non-network error, clearing tokens');
         await _clearUniversalTokens();
       }
 
@@ -195,6 +241,8 @@ class GoogleDriveSyncService {
 
   /// Explicit async initialization for universal token loading
   static Future<void> initialize() async {
+    main.myDebug('[GoogleDriveSyncService] initialize: '
+        'loading stored universal tokens on startup');
     await _loadUniversalTokens();
   }
 
@@ -205,14 +253,21 @@ class GoogleDriveSyncService {
       if (_isMobilePlatform()) {
         // Use GoogleSignIn for mobile platforms
         final bool isSignedIn = await _googleSignInInstance.isSignedIn();
+        main.myDebug('[GoogleDriveSyncService] isSignedIn (mobile): '
+            'isSignedIn=$isSignedIn');
         return isSignedIn;
       } else {
         // Use universal web OAuth for desktop platforms
         await _loadUniversalTokens(); // Ensure tokens are loaded from storage
         final bool hasToken = _universalAccessToken != null;
+        main.myDebug('[GoogleDriveSyncService] isSignedIn (desktop): '
+            'hasAccessToken=$hasToken, '
+            'hasRefreshToken=${_universalRefreshToken != null}, '
+            'expiryTime=$_tokenExpiryTime');
         return hasToken;
       }
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] isSignedIn: exception=$e');
       return false;
     }
   }
@@ -223,18 +278,32 @@ class GoogleDriveSyncService {
         // Use GoogleSignIn for mobile platforms
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signIn();
-        return account != null;
+        final result = account != null;
+        main.myDebug('[GoogleDriveSyncService] signIn (mobile): '
+            'result=$result, accountEmail=${account?.email}');
+        return result;
       } else {
         // Use universal web OAuth for desktop platforms
-        return await _signInWeb();
+        main.myDebug('[GoogleDriveSyncService] signIn (desktop): '
+            'delegating to _signInWeb');
+        final result = await _signInWeb();
+        main.myDebug('[GoogleDriveSyncService] signIn (desktop): '
+            'result=$result, '
+            'hasAccessToken=${_universalAccessToken != null}, '
+            'hasRefreshToken=${_universalRefreshToken != null}, '
+            'expiryTime=$_tokenExpiryTime');
+        return result;
       }
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] signIn: exception=$e');
       return false;
     }
   }
 
   Future<bool> _signInWeb() async {
     try {
+      main.myDebug('[GoogleDriveSyncService] _signInWeb: starting OAuth '
+          'flow on localhost:8000');
       // Create local server for OAuth callback on fixed port 8000 (Google OAuth compliance)
       _authServer = await HttpServer.bind('localhost', 8000);
 
@@ -253,7 +322,11 @@ class GoogleDriveSyncService {
       // Launch browser for authentication
       if (await canLaunchUrl(authUrl)) {
         await launchUrl(authUrl, mode: LaunchMode.externalApplication);
+        main.myDebug('[GoogleDriveSyncService] _signInWeb: launched '
+            'external browser for OAuth, waiting for callback');
       } else {
+        main.myDebug('[GoogleDriveSyncService] _signInWeb: could not '
+            'launch authentication URL');
         throw Exception('Could not launch authentication URL');
       }
 
@@ -262,6 +335,8 @@ class GoogleDriveSyncService {
           in _authServer!.timeout(Duration(minutes: 5))) {
         final code = request.uri.queryParameters['code'];
         if (code != null) {
+          main.myDebug('[GoogleDriveSyncService] _signInWeb: received '
+              'authorization code, exchanging for tokens');
           // Exchange code for access token
           final response = await http.post(
             Uri.https('oauth2.googleapis.com', 'token'),
@@ -285,6 +360,12 @@ class GoogleDriveSyncService {
                 _universalAccessToken!, _universalRefreshToken,
                 expiresIn: expiresIn);
 
+            main.myDebug('[GoogleDriveSyncService] _signInWeb: token '
+                'exchange success statusCode=${response.statusCode}, '
+                'hasAccessToken=${_universalAccessToken != null}, '
+                'hasRefreshToken=${_universalRefreshToken != null}, '
+                'expiresInSeconds=$expiresIn');
+
             // Close server and send success response
             await _authServer!.close();
             request.response
@@ -294,6 +375,9 @@ class GoogleDriveSyncService {
 
             return true;
           } else {
+            main.myDebug('[GoogleDriveSyncService] _signInWeb: token '
+                'exchange failed statusCode=${response.statusCode}, '
+                'body=${response.body}');
             throw Exception(
                 'OAuth authorization failed: no authorization code received');
           }
@@ -305,9 +389,12 @@ class GoogleDriveSyncService {
           ..write('Authorization failed: no code received');
         await request.response.close();
         await _authServer!.close();
+        main.myDebug('[GoogleDriveSyncService] _signInWeb: callback '
+            'received without authorization code');
         return false;
       }
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] _signInWeb: exception=$e');
       if (_authServer != null) {
         await _authServer!.close();
       }
@@ -321,9 +408,13 @@ class GoogleDriveSyncService {
   Future<void> signOut() async {
     if (_isMobilePlatform()) {
       // Use GoogleSignIn for mobile platforms
+      main.myDebug('[GoogleDriveSyncService] signOut (mobile): '
+          'signing out via GoogleSignIn');
       await _googleSignInInstance.signOut();
     } else {
       // Use universal web OAuth for desktop platforms
+      main.myDebug('[GoogleDriveSyncService] signOut (desktop): '
+          'clearing stored universal tokens');
       await _clearUniversalTokens();
     }
   }
@@ -335,6 +426,8 @@ class GoogleDriveSyncService {
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signInSilently();
         if (account == null) {
+          main.myDebug('[GoogleDriveSyncService] createDriveApi '
+              '(mobile): signInSilently returned null account');
           throw Exception('User not signed in');
         }
 
@@ -342,23 +435,35 @@ class GoogleDriveSyncService {
         final accessToken = auth.accessToken;
 
         if (accessToken == null) {
+          main.myDebug('[GoogleDriveSyncService] createDriveApi '
+              '(mobile): authentication returned null accessToken');
           throw Exception('Failed to get access token');
         }
 
         final httpClient = GoogleHttpClient();
         await httpClient.authenticateWithAccessToken(accessToken);
+        main.myDebug('[GoogleDriveSyncService] createDriveApi (mobile): '
+            'created DriveApi with GoogleSignIn access token');
         return drive.DriveApi(httpClient);
       } else {
         // Use universal web OAuth for desktop platforms
+        main.myDebug('[GoogleDriveSyncService] createDriveApi (desktop): '
+            'loading stored tokens and preparing Drive client');
         await _loadUniversalTokens(); // Ensure tokens are loaded from storage
 
         if (_universalAccessToken == null) {
+          main.myDebug('[GoogleDriveSyncService] createDriveApi (desktop): '
+              'no access token found, treating as unauthenticated');
           throw Exception('User not authenticated');
         }
 
         // Proactively refresh token if it's expired or about to expire
         if (_isTokenExpired()) {
+          main.myDebug('[GoogleDriveSyncService] createDriveApi (desktop): '
+              'token considered expired/expiring, attempting refresh');
           if (!await _refreshUniversalToken()) {
+            main.myDebug('[GoogleDriveSyncService] createDriveApi (desktop): '
+                'proactive refresh failed, forcing sign-in');
             throw Exception('Token refresh failed - please sign in again');
           }
         }
@@ -366,17 +471,27 @@ class GoogleDriveSyncService {
         final httpClient = GoogleHttpClient(
           onUnauthorized: () async {
             // Handle 401 errors by refreshing the token
+            main.myDebug('[GoogleDriveSyncService] GoogleHttpClient '
+                'onUnauthorized: received 401, attempting refresh');
             if (await _refreshUniversalToken()) {
+              main.myDebug('[GoogleDriveSyncService] GoogleHttpClient '
+                  'onUnauthorized: refresh succeeded, returning new token');
               return _universalAccessToken;
             }
+            main.myDebug('[GoogleDriveSyncService] GoogleHttpClient '
+                'onUnauthorized: refresh failed, returning null');
             return null;
           },
         );
         await httpClient.authenticateWithAccessToken(_universalAccessToken!);
 
+        main.myDebug('[GoogleDriveSyncService] createDriveApi (desktop): '
+            'created DriveApi with current access token');
+
         return drive.DriveApi(httpClient);
       }
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] createDriveApi: exception=$e');
       rethrow;
     }
   }
@@ -388,6 +503,8 @@ class GoogleDriveSyncService {
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
+        main.myDebug('[GoogleDriveSyncService] getLibraryJsonMetadata: '
+            'not signed in, aborting metadata fetch');
         throw Exception('Not signed in to Google');
       }
 
@@ -397,6 +514,8 @@ class GoogleDriveSyncService {
       // Find or create backup folder
       final folderId = await findOrCreateFolder(driveApi);
       if (folderId == null) {
+        main.myDebug('[GoogleDriveSyncService] sync: failed to find/create '
+            'backup folder');
         throw Exception('Failed to create/find backup folder');
       }
 
@@ -415,8 +534,16 @@ class GoogleDriveSyncService {
       ) as drive.File;
 
       final metadata = DriveLibraryMetadata.fromDriveFile(response);
+      main.myDebug('[GoogleDriveSyncService] getLibraryJsonMetadata: '
+          'fetched metadata for library.json, '
+          'fileId=${metadata.fileId}, '
+          'modifiedTime=${metadata.modifiedTime}, '
+          'md5=${metadata.md5Checksum}, '
+          'headRevision=${metadata.headRevisionId}');
       return metadata;
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] getLibraryJsonMetadata: '
+          'exception=$e');
       return null;
     }
   }
@@ -426,6 +553,8 @@ class GoogleDriveSyncService {
       // Check authentication status
       final isAuthenticated = await isSignedIn();
       if (!isAuthenticated) {
+        main.myDebug('[GoogleDriveSyncService] sync: not signed in, '
+            'throwing authentication error');
         throw Exception('Not signed in to Google');
       }
 
@@ -440,7 +569,10 @@ class GoogleDriveSyncService {
 
       // Perform JSON-based sync
       await _performJsonSync(driveApi, folderId);
+      main.myDebug('[GoogleDriveSyncService] sync: JSON sync completed '
+          'successfully');
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] sync: exception=$e');
       rethrow;
     }
   }
@@ -478,9 +610,14 @@ class GoogleDriveSyncService {
           // Treat corrupted remote file as if it doesn't exist
           remoteJson = null;
           remoteMetadata = null;
+          main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+              'error reading existing library.json; treating as missing. '
+              'exception=$e');
         }
       } else {
         // No remote file found
+        main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+            'no existing library.json found in backup folder');
       }
 
       // Get current sync state to compare versions
@@ -488,9 +625,13 @@ class GoogleDriveSyncService {
 
       // Merge remote library into local database (if remote exists and is valid)
       if (remoteJson != null && remoteJson.isNotEmpty) {
+        main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+            'merging remote library into local database');
         await _librarySyncService.importAndMergeLibraryFromJson(remoteJson);
       } else {
         // No merge needed - no remote changes to apply
+        main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+            'no remote library content to merge');
       }
 
       // Export the merged library (now includes remote changes)
@@ -501,14 +642,20 @@ class GoogleDriveSyncService {
       if (remoteJson == null || remoteJson.isEmpty) {
         // No remote file exists, always upload
         shouldUpload = true;
+        main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+            'no remote file present, will upload merged library');
       } else {
         // Check if merged library differs from remote
         shouldUpload =
             _librarySyncService.hasMergedLibraryChanged(mergedJson, remoteJson);
         if (shouldUpload) {
           // Library has changes - will upload
+          main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+              'merged library differs from remote, will upload');
         } else {
           // Library unchanged - no upload needed
+          main.myDebug('[GoogleDriveSyncService] _performJsonSync: '
+              'merged library matches remote, skipping upload');
         }
       }
 
@@ -548,7 +695,11 @@ class GoogleDriveSyncService {
       // Also purge permanently deleted songs after a 10-day retention window
       await _librarySyncService.database
           .purgeDeletedSongsOlderThan(const Duration(days: 10));
+      main.myDebug('[GoogleDriveSyncService] _performJsonSync: completed '
+          'merge, conditional upload (shouldUpload=$shouldUpload), and '
+          'cleanup of deleted entities');
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] _performJsonSync: exception=$e');
       rethrow;
     }
   }
@@ -601,6 +752,8 @@ class GoogleDriveSyncService {
       }
       return null;
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] findExistingFile: '
+          'exception=$e');
       return null;
     }
   }
@@ -615,6 +768,8 @@ class GoogleDriveSyncService {
 
       if (response.files != null && response.files!.isNotEmpty) {
         final existingFolder = response.files!.first;
+        main.myDebug('[GoogleDriveSyncService] findOrCreateFolder: '
+            'found existing NextChord folder with id=${existingFolder.id}');
         return existingFolder.id;
       }
 
@@ -624,8 +779,12 @@ class GoogleDriveSyncService {
         ..mimeType = 'application/vnd.google-apps.folder';
 
       final createdFolder = await driveApi.files.create(folderMetadata);
+      main.myDebug('[GoogleDriveSyncService] findOrCreateFolder: '
+          'created new NextChord folder with id=${createdFolder.id}');
       return createdFolder.id;
     } catch (e) {
+      main.myDebug('[GoogleDriveSyncService] findOrCreateFolder: '
+          'exception=$e');
       return null;
     }
   }
@@ -634,17 +793,26 @@ class GoogleDriveSyncService {
     // Check authentication status
     final isAuthenticated = await isSignedIn();
     if (!isAuthenticated) {
+      main.myDebug('[GoogleDriveSyncService] handleInitialSync: '
+          'not signed in, skipping initial sync');
       return;
     }
+    main.myDebug('[GoogleDriveSyncService] handleInitialSync: '
+        'signed in, initial sync will be driven by SyncProvider');
   }
 
   /// Start metadata polling for automatic sync when app is active
   void startMetadataPolling() {
     if (_isPollingActive) {
+      main.myDebug('[GoogleDriveSyncService] startMetadataPolling: '
+          'already active, ignoring');
       return;
     }
 
     _isPollingActive = true;
+    main.myDebug('[GoogleDriveSyncService] startMetadataPolling: '
+        'starting periodic metadata polling every '
+        '$_pollingInterval');
 
     _metadataPollingTimer = Timer.periodic(_pollingInterval, (timer) async {
       if (!_isPollingActive) {
@@ -663,11 +831,15 @@ class GoogleDriveSyncService {
 
           if (hasRemoteChanges) {
             // Trigger full sync through the sync provider
+            main.myDebug('[GoogleDriveSyncService] startMetadataPolling: '
+                'detected remote changes, triggering auto sync');
             await SyncServiceLocator.triggerAutoSync();
           }
         }
       } catch (e) {
         // Error during metadata polling - will retry on next interval
+        main.myDebug('[GoogleDriveSyncService] startMetadataPolling: '
+            'metadata polling exception=$e');
       }
     });
   }
@@ -675,12 +847,16 @@ class GoogleDriveSyncService {
   /// Stop metadata polling when app is paused/backgrounded
   void stopMetadataPolling() {
     if (!_isPollingActive) {
+      main.myDebug('[GoogleDriveSyncService] stopMetadataPolling: '
+          'not active, ignoring');
       return;
     }
 
     _isPollingActive = false;
     _metadataPollingTimer?.cancel();
     _metadataPollingTimer = null;
+    main.myDebug('[GoogleDriveSyncService] stopMetadataPolling: '
+        'stopped periodic metadata polling');
   }
 
   /// Check if metadata polling is currently active

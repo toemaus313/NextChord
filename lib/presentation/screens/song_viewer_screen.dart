@@ -560,8 +560,14 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     _focusNode.dispose();
     _pageController.dispose();
 
-    // Reset to portrait only when leaving
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // Restore the same allowed orientations used in initState so
+    // the rest of the app (including sidebar screens) can still
+    // rotate between portrait and landscape.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
