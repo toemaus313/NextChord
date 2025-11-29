@@ -1,8 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:math';
 import '../app_database.dart';
-import 'package:nextchord/main.dart' as main;
 
 /// Database migration strategies
 class DatabaseMigrations {
@@ -18,20 +16,14 @@ class DatabaseMigrations {
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.songs, db.songs.isDeleted);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add isDeleted to songs: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 2 && to >= 3) {
             // Add imagePath column to setlists table
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.setlists, db.setlists.imagePath);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add imagePath to setlists: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 3 && to >= 4) {
             // Add setlistSpecificEditsEnabled column with default true
@@ -39,68 +31,44 @@ class DatabaseMigrations {
             try {
               await m.addColumn(
                   db.setlists, db.setlists.setlistSpecificEditsEnabled);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add setlistSpecificEditsEnabled: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 4 && to >= 5) {
             // Create midi_mappings table
             final db = m.database as AppDatabase;
             try {
               await m.createTable(db.midiMappings);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to create midi_mappings: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 5 && to >= 6) {
             // Create midi_profiles table and add profile_id to songs
             final db = m.database as AppDatabase;
             try {
               await m.createTable(db.midiProfiles);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to create midi_profiles: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.songs, db.songs.profileId);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add profileId to songs: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 6 && to >= 7) {
             // Add isDeleted column to setlists table
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.setlists, db.setlists.isDeleted);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add isDeleted to setlists: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 7 && to >= 8) {
             // Add isDeleted columns to midi_mappings and midi_profiles tables
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.midiMappings, db.midiMappings.isDeleted);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add isDeleted to midi_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.midiProfiles, db.midiProfiles.isDeleted);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add isDeleted to midi_profiles: $e');
-            }
+            } catch (e) {}
             try {
               await m.createTable(db.syncState);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to create syncState table: $e');
-            }
+            } catch (e) {}
 
             // Initialize sync state with generated device ID
             try {
@@ -113,118 +81,73 @@ class DatabaseMigrations {
                       lastSyncAt: const Value(null),
                     ),
                   );
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to initialize syncState: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 8 && to >= 9) {
             // Add Google Drive metadata columns to sync_state table
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.syncState, db.syncState.lastRemoteFileId);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add lastRemoteFileId: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(
                   db.syncState, db.syncState.lastRemoteModifiedTime);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add lastRemoteModifiedTime: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(
                   db.syncState, db.syncState.lastRemoteMd5Checksum);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add lastRemoteMd5Checksum: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(
                   db.syncState, db.syncState.lastRemoteHeadRevisionId);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add lastRemoteHeadRevisionId: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(
                   db.syncState, db.syncState.lastUploadedLibraryHash);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add lastUploadedLibraryHash: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 9 && to >= 10) {
             // Create pedal_mappings table
             final db = m.database as AppDatabase;
             try {
               await m.createTable(db.pedalMappings);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to create pedal_mappings: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 10 && to >= 11) {
             // Add MIDI-specific fields to pedal_mappings table
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.deviceId);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add deviceId to pedal_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.messageType);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add messageType to pedal_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.channel);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add channel to pedal_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.number);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add number to pedal_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.valueMin);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add valueMin to pedal_mappings: $e');
-            }
+            } catch (e) {}
             try {
               await m.addColumn(db.pedalMappings, db.pedalMappings.valueMax);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add valueMax to pedal_mappings: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 11 && to >= 12) {
             // Add duration column to songs table
             final db = m.database as AppDatabase;
             try {
               await m.addColumn(db.songs, db.songs.duration);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to add duration to songs: $e');
-            }
+            } catch (e) {}
           }
           if (from <= 12 && to >= 13) {
             // Create deletion_tracking table for permanent deletion sync
             final db = m.database as AppDatabase;
             try {
               await m.createTable(db.deletionTracking);
-            } catch (e) {
-              main.myDebug(
-                  '[DatabaseMigrations] Failed to create deletion_tracking: $e');
-            }
+            } catch (e) {}
           }
         },
       );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../providers/song_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -54,8 +53,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    main.myDebug(
-        '[LibraryScreen] build: inSidebar=${widget.inSidebar}, skipInitialLoad=${widget.skipInitialLoad}');
 
     // Sidebar mode: no Scaffold wrapper
     if (widget.inSidebar) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../providers/global_sidebar_provider.dart';
 import '../../providers/setlist_provider.dart';
 import '../../providers/song_provider.dart';
@@ -38,8 +37,6 @@ class SidebarSetlistView extends StatefulWidget {
 class _SidebarSetlistViewState extends State<SidebarSetlistView> {
   @override
   Widget build(BuildContext context) {
-    main.myDebug(
-        '[SidebarSetlistView] build: setlistId=${widget.setlistId}, showHeader=${widget.showHeader}');
     return Consumer<SetlistProvider>(
       builder: (context, setlistProvider, child) {
         final currentSetlist = setlistProvider.setlists

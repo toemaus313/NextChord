@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/setlist.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/setlist_repository.dart';
@@ -138,9 +137,7 @@ class SetlistService {
       if (await imageFile.exists()) {
         await imageFile.delete();
       }
-    } catch (e) {
-      main.myDebug('[SetlistService] Failed to delete image file: $e');
-    }
+    } catch (e) {}
   }
 
   /// Load image file as bytes for display

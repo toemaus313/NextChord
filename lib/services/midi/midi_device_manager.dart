@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/midi_message.dart';
 
 /// Manages multiple MIDI device connections and inbound/outbound message routing
@@ -285,10 +283,7 @@ class MidiDeviceManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final ids = _connectedDevices.keys.toList();
       await prefs.setStringList('preferred_midi_device_ids', ids);
-    } catch (e) {
-      main.myDebug(
-          '[MidiDeviceManager] Failed to save preferred MIDI device IDs: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get device reference by ID

@@ -1,16 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'dart:async';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/setlist_repository.dart';
-import '../../core/services/database_change_service.dart';
 
 /// Provider for managing setlist state and operations
 /// Now includes reactive database change monitoring for automatic UI updates
 class SetlistProvider extends ChangeNotifier {
   final SetlistRepository _repository;
-  final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
   SetlistProvider(this._repository) {
     // TEMPORARILY DISABLED: Defer stream subscription to avoid build-phase issues
@@ -28,7 +25,6 @@ class SetlistProvider extends ChangeNotifier {
   int _currentSongIndex = -1;
 
   // Database change monitoring
-  StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
   bool _isUpdatingFromDatabase = false;
 
   // Getters
@@ -58,72 +54,6 @@ class SetlistProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  /// Handle database change events for automatic updates
-  void _handleDatabaseChange(DbChangeEvent event) {
-    if (_isUpdatingFromDatabase) {
-      // Skip events that we triggered ourselves
-      return;
-    }
-
-    // Only refresh if we're currently showing setlists or active setlist is affected
-    if (event.table == 'setlists' || event.table == 'setlists_count') {
-      // Defer refresh to avoid calling notifyListeners() during build phase
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _refreshFromDatabaseChange();
-      });
-    }
-  }
-
-  /// Refresh data from database change event without disrupting UI state
-  Future<void> _refreshFromDatabaseChange() async {
-    if (_isLoading) return; // Don't refresh if already loading
-
-    try {
-      _isUpdatingFromDatabase = true;
-      await _refreshSetlistsList();
-
-      // Also refresh active setlist if one is set
-      if (_activeSetlist != null) {
-        await _refreshActiveSetlist();
-      }
-    } catch (e) {
-      main.myDebug('[SetlistProvider] _refreshFromDatabaseChange failed: $e');
-    } finally {
-      _isUpdatingFromDatabase = false;
-    }
-  }
-
-  /// Refresh setlists list without changing loading state
-  Future<void> _refreshSetlistsList() async {
-    try {
-      final newSetlists = await _repository.getAllSetlists();
-      _setlists = newSetlists;
-      notifyListeners();
-    } catch (e) {
-      main.myDebug('[SetlistProvider] _refreshSetlistsList failed: $e');
-    }
-  }
-
-  /// Refresh active setlist if it exists
-  Future<void> _refreshActiveSetlist() async {
-    if (_activeSetlist == null) return;
-
-    try {
-      final updatedSetlist =
-          await _repository.getSetlistById(_activeSetlist!.id);
-      if (updatedSetlist != null) {
-        _activeSetlist = updatedSetlist;
-      } else {
-        // Setlist was deleted, clear active state
-        _activeSetlist = null;
-        _currentSongIndex = -1;
-      }
-      notifyListeners();
-    } catch (e) {
-      main.myDebug('[SetlistProvider] _refreshActiveSetlist failed: $e');
     }
   }
 
@@ -340,7 +270,6 @@ class SetlistProvider extends ChangeNotifier {
   /// Dispose of the provider and clean up resources
   @override
   void dispose() {
-    _dbChangeSubscription?.cancel();
     super.dispose();
   }
 }

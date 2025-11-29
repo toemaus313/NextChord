@@ -4,14 +4,14 @@ You are working in my Flutter/Dart app repo (NextChord). We have a global debugg
 We already have a file called `debugs_active.md` in the repo that tracks where debugs are currently active, but the format is not ideal. I want you to normalize and update that file so it becomes a super-simple “quick undo” list that an LLM or script can use later to remove debugs quickly and safely.
 
 In addition, I want you to support **two styles** of debug tracking:
-1. Simple line-based tracking for normal `myDebug()` calls.
+1. Simple line-based tracking for normal `main.myDebug()` calls.
 2. Block-based tracking for **debug-only blocks** (like try/catch blocks whose only purpose is debugging), clearly marked in the code.
 
 ---
 
 ## High-Level Goal
 
-1. **Scan the repo** for all active debugs that use `myDebug()` (including any thin wrapper functions around it).
+1. **Scan the repo** for all active debugs that use `main.myDebug()` (including any thin wrapper functions around it).
 2. **Normalize and rebuild `debugs_active.md` from scratch** using a simple, rigid format.
 3. **Introduce and use debug-only block markers** for blocks that exist purely to support debug logging, and track those as full ranges.
 4. Ensure the tracking is simple enough that a later pass (by AI or script) can:

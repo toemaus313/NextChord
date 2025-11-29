@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../../domain/entities/setlist.dart';
 import '../../providers/song_provider.dart';
 
@@ -21,8 +20,6 @@ class SetlistSongSelectorDialog extends StatefulWidget {
     BuildContext context, {
     required List<SetlistSongItem> currentItems,
   }) async {
-    main.myDebug(
-        '[SetlistSongSelectorDialog] show: currentItems=${currentItems.length}');
     return await showDialog<List<String>>(
       context: context,
       builder: (context) => SetlistSongSelectorDialog(

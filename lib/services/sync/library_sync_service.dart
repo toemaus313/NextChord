@@ -4,7 +4,6 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
-import 'package:nextchord/main.dart' as main;
 
 /// Model for Google Drive file metadata
 class DriveLibraryMetadata {
@@ -643,9 +642,7 @@ class LibrarySyncService {
           lastUploadedLibraryHash: hash,
         );
       }
-    } catch (e) {
-      main.myDebug('[LibrarySyncService] storeUploadedLibraryHash failed: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get last seen remote metadata from sync state

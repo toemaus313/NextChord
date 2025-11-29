@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../domain/entities/midi_profile.dart';
@@ -91,8 +90,6 @@ class _SongEditorScreenRefactoredState
 
     final mode = widget.song == null ? 'create' : 'edit';
     final hasSetlistContext = widget.setlistContext != null;
-    main.myDebug(
-        '[SongEditorScreenRefactored] initState: mode=$mode, hasSetlistContext=$hasSetlistContext');
 
     _initializeFields();
     _loadMidiProfiles();

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:path/path.dart' as p;
 import '../../controllers/setlist_editor/setlist_editor_controller.dart';
 
 /// Setlist form widget containing name, image, and settings

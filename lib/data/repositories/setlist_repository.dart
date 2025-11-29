@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
-import 'package:nextchord/main.dart' as main;
 
 /// Repository for managing Setlists
 class SetlistRepository {
@@ -179,11 +178,7 @@ class SetlistRepository {
 
   /// Delete a setlist by ID
   Future<void> deleteSetlist(String id) async {
-    try {
-      await _db.deleteSetlist(id);
-    } catch (e) {
-      main.myDebug('[SetlistRepository] deleteSetlist failed: $e');
-    }
+    await _db.deleteSetlist(id);
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'setlists', operation: 'update');
   }

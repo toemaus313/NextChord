@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'sync_service_locator.dart';
 
 /// Types of database change events

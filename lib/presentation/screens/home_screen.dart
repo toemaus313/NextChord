@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../providers/song_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/global_sidebar_provider.dart';
@@ -49,8 +48,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
     final sidebarProvider = context.watch<GlobalSidebarProvider>();
-    main.myDebug(
-        '[HomeScreen] build: hasCurrentSong=${sidebarProvider.currentSong != null}');
 
     return Scaffold(
       body: sidebarProvider.currentSong != null

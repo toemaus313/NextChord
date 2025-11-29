@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'icloud_sync_service.dart';
 import '../../data/database/app_database.dart';
-import 'package:nextchord/main.dart' as main;
 
 /// Service for managing iCloud Drive database backups
 class ICloudDbBackupService {
@@ -107,10 +106,7 @@ class ICloudDbBackupService {
       // Clean up temporary file
       try {
         await File(tempBackupPath).delete();
-      } catch (e) {
-        main.myDebug(
-            '[ICloudDbBackupService] Failed to delete temp backup file: $e');
-      }
+      } catch (e) {}
 
       return true;
     } catch (e) {
@@ -208,10 +204,7 @@ class ICloudDbBackupService {
       // Clean up the safety backup after successful replacement
       try {
         await File(backupCurrentPath).delete();
-      } catch (e) {
-        main.myDebug(
-            '[ICloudDbBackupService] Failed to delete safety backup file: $e');
-      }
+      } catch (e) {}
     } catch (e) {
       rethrow;
     }

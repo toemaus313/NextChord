@@ -48,11 +48,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       // Initialize both services
       _googleDriveService = GoogleDriveSyncService(
         database: database,
-        onDatabaseReplaced: () {
-          if (_onSyncCompleted != null) {
-            _onSyncCompleted!();
-          }
-        },
       );
 
       _icloudService = ICloudSyncService(
@@ -133,28 +128,13 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
       // Small delay to ensure app is fully initialized
       Future.delayed(const Duration(seconds: 5), () async {
-        try {
-          await autoSync();
-        } catch (e) {
-          main.myDebug(
-              '[SyncProvider] autoSync after preference load failed: $e');
-        }
+        await autoSync();
 
         // Maintain cloud backup after initial sync
-        try {
-          await _maintainCloudBackup();
-        } catch (e) {
-          main.myDebug(
-              '[SyncProvider] _maintainCloudBackup after preference load failed: $e');
-        }
+        await _maintainCloudBackup();
 
         // Start metadata polling after initial sync
-        try {
-          _currentSyncService.startMetadataPolling();
-        } catch (e) {
-          main.myDebug(
-              '[SyncProvider] startMetadataPolling after preference load failed: $e');
-        }
+        _currentSyncService.startMetadataPolling();
       });
     }
   }
@@ -202,7 +182,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         );
       });
     } catch (e) {
-      main.myDebug('[SyncProvider] _checkSyncRecencyAndWarnIfStale failed: $e');
+      // Handle the error
     }
   }
 
@@ -229,13 +209,9 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   /// Maintain cloud backup (called on app startup)
   Future<void> _maintainCloudBackup() async {
-    try {
-      if (!_isSyncEnabled) return;
+    if (!_isSyncEnabled) return;
 
-      await _backupService.maintainCloudBackup();
-    } catch (e) {
-      main.myDebug('[SyncProvider] _maintainCloudBackup failed: $e');
-    }
+    await _backupService.maintainCloudBackup();
   }
 
   Future<void> _saveSyncPreference() async {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/song_repository.dart';
@@ -75,8 +74,6 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     _pageController = PageController();
 
     final hasSetlistContext = widget.setlistContext != null;
-    main.myDebug(
-        '[SongViewerScreen] initState: songId=${widget.song.id}, title=${widget.song.title}, hasSetlistContext=$hasSetlistContext');
 
     // Initialize providers and services
     final songRepository = context.read<SongRepository>();
@@ -133,15 +130,11 @@ class _SongViewerScreenState extends State<SongViewerScreen>
 
   /// Update MidiActionDispatcher with current song state callbacks
   void _updateMidiDispatcherCallbacks() {
-    try {
-      MidiActionDispatcher().updateCurrentStateCallbacks(
-        getCurrentSongContent: () => _songViewerProvider.currentSong.body,
-        getCurrentScrollController: () => scrollController,
-        songViewerProvider: _songViewerProvider,
-      );
-    } catch (e) {
-      // Handle MIDI dispatcher callback update errors silently
-    }
+    MidiActionDispatcher().updateCurrentStateCallbacks(
+      getCurrentSongContent: () => _songViewerProvider.currentSong.body,
+      getCurrentScrollController: () => scrollController,
+      songViewerProvider: _songViewerProvider,
+    );
   }
 
   /// Initialize PageView index to match current setlist position

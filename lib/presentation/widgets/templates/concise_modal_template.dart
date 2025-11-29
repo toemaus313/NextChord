@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../../core/widgets/responsive_config.dart';
 import '../../providers/appearance_provider.dart';
 
@@ -58,8 +57,6 @@ abstract class ConciseModalTemplate extends StatefulWidget {
     bool barrierDismissible = false,
     AppearanceProvider? appearanceProvider,
   }) {
-    main.myDebug(
-        '[ConciseModalTemplate] showConciseModal: child=${child.runtimeType}, barrierDismissible=$barrierDismissible');
     final isPhone = ResponsiveConfig.isPhone(context);
 
     // Get gradient colors from appearance provider or use defaults

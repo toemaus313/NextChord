@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:nextchord/main.dart' as main;
 
 /// MIDI Service singleton for managing MIDI device connections and message sending
 
@@ -137,9 +136,7 @@ class MidiService with ChangeNotifier {
       _sendMidiClockEnabled = prefs.getBool('new_send_midi_clock') ?? false;
       final preferredIds = prefs.getStringList('preferred_midi_device_ids');
       _preferredDeviceIds = preferredIds ?? [];
-    } catch (e) {
-      main.myDebug('[MidiService] Failed to load MIDI settings: $e');
-    }
+    } catch (e) {}
   }
 
   /// Save settings to SharedPreferences
@@ -150,9 +147,7 @@ class MidiService with ChangeNotifier {
       await prefs.setBool('new_send_midi_clock', _sendMidiClockEnabled);
       await prefs.setStringList(
           'preferred_midi_device_ids', _preferredDeviceIds);
-    } catch (e) {
-      main.myDebug('[MidiService] Failed to save MIDI settings: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _savePreferredDeviceIds() async {
@@ -160,10 +155,7 @@ class MidiService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
           'preferred_midi_device_ids', _preferredDeviceIds);
-    } catch (e) {
-      main.myDebug(
-          '[MidiService] Failed to save preferred MIDI device IDs: $e');
-    }
+    } catch (e) {}
   }
 
   /// Get the display MIDI channel (1-16)
@@ -177,9 +169,7 @@ class MidiService with ChangeNotifier {
 
       // Start scanning for devices
       await scanForDevices();
-    } catch (e) {
-      main.myDebug('[MidiService] Initialization failed: $e');
-    }
+    } catch (e) {}
   }
 
   /// Scan and list available MIDI devices (inputs and outputs)
