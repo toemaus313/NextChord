@@ -1,0 +1,21 @@
+platform :android do
+  desc "Build and upload a beta version to Google Play internal testing"
+  lane :beta do
+    # Make sure dependencies are up to date
+    sh "cd .. && flutter pub get"
+
+    # Build the Android App Bundle
+    sh "cd .. && flutter build appbundle --release"
+
+    # Path to the AAB that Flutter produces
+    aab_path = "../build/app/outputs/bundle/release/app-release.aab"
+
+    # Upload to Google Play using supply
+    supply(
+      aab: aab_path,
+      track: "internal",          # or "closed", "beta", "production"
+      json_key_file: "../AuthKeys/nextchord-2de4ce82c35a.json",
+      package_name: "us.antonovich.nextchord"  # your appId/applicationId
+    )
+  end
+end

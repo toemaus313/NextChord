@@ -465,19 +465,21 @@ class MetronomeProvider extends ChangeNotifier {
     if (_countInBeatsRemaining <= 0) {
       // Count-in finished, transition to normal operation
       _isCountingIn = false;
-      _currentCountInBeat = 0;
 
       // If "Count In Only" mode, stop here
       if (_settingsProvider?.tickAction == 'Count In Only') {
         stop();
-      } else {
-        _handleNormalTick();
       }
     }
   }
 
   /// Handle normal tick based on user's tick action preference
   void _handleNormalTick() {
+    // Clear any leftover count-in beat display when normal ticking begins
+    if (_currentCountInBeat != 0) {
+      _currentCountInBeat = 0;
+    }
+
     if (_settingsProvider == null) {
       // Default behavior (flash + tick)
       _triggerFlash();

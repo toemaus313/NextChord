@@ -38,8 +38,8 @@ class MetronomeFlashOverlay extends StatelessWidget {
                   ),
                 ),
               ),
-              // Beat number display (shows only during count-in)
-              if (isCountingIn && currentBeat > 0)
+              // Beat number display (shows whenever we have a positive beat value)
+              if (currentBeat > 0)
                 Positioned.fill(
                   child: Center(
                     child: AnimatedOpacity(
