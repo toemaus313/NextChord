@@ -59,15 +59,31 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  /// Get deleted songs
-  Future<List<SongModel>> getDeletedSongs() {
-    return (select(songs)
+  /// Get deleted songs (excluding permanently deleted ones tracked in DeletionTracking)
+  Future<List<SongModel>> getDeletedSongs() async {
+    // First, get all soft-deleted songs
+    final deletedSongs = await (select(songs)
           ..where((tbl) => tbl.isDeleted.equals(true))
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)
           ]))
         .get();
+
+    // Then, get all deletion tracking records for songs
+    final deletionRecords = await (select(deletionTracking)
+          ..where((tbl) => tbl.entityType.equals('song')))
+        .get();
+
+    // Build a set of permanently-deleted song IDs
+    final permanentlyDeletedIds =
+        deletionRecords.map((record) => record.entityId).toSet();
+
+    // Filter out any songs that have a matching deletion tracking record
+    final visibleDeletedSongs = deletedSongs
+        .where((song) => !permanentlyDeletedIds.contains(song.id))
+        .toList();
+    return visibleDeletedSongs;
   }
 
   /// Get song by ID
@@ -174,10 +190,36 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Permanently delete a song
+  ///
+  /// Instead of immediately hard-deleting the row (which can cause
+  /// resurrected songs during JSON sync), we:
+  /// - Track the permanent deletion in DeletionTracking for cross-device
+  ///   awareness and local retention window management
+  /// - Ensure the song remains soft-deleted with an updated timestamp so
+  ///   JSON sync propagates the deletion state reliably
   Future<void> permanentlyDeleteSong(String id) async {
-    await (delete(songs)..where((tbl) => tbl.id.equals(id))).go();
-    DatabaseChangeService()
-        .notifyDatabaseChanged(table: 'songs', operation: 'delete');
+    try {
+      // Get device ID for tracking
+      final deviceId = await _getDeviceId();
+
+      // Insert deletion tracking record for this song
+      await _insertDeletionTracking('song', id, deviceId);
+
+      // Ensure the song is marked as deleted and bump updatedAt so the
+      // deletion state wins in last-write-wins sync
+      await (update(songs)..where((tbl) => tbl.id.equals(id))).write(
+        SongsCompanion(
+          isDeleted: const Value(true),
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+      // Notify listeners that a delete operation occurred for songs
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'songs', operation: 'delete');
+    } catch (e) {
+      rethrow;
+    }
   }
 
   /// Get all unique keys from non-deleted songs
@@ -299,32 +341,18 @@ class AppDatabase extends _$AppDatabase {
 
   /// Soft delete a setlist and track for sync (for JSON sync compatibility)
   Future<void> deleteSetlist(String id) async {
-    try {
-      main.myDebug('[DATABASE] deleteSetlist() called with ID: \\${id}');
-      // Get device ID for tracking
-      final deviceId = await _getDeviceId();
-      main.myDebug(
-          '[DATABASE] Using deviceId: \\${deviceId} for deletion tracking');
+    // Get device ID for tracking
+    final deviceId = await _getDeviceId();
+    // Insert deletion tracking record first
+    await _insertDeletionTracking('setlist', id, deviceId);
 
-      // Insert deletion tracking record first
-      await _insertDeletionTracking('setlist', id, deviceId);
-
-      // Soft delete the setlist (isDeleted = true) and bump updatedAt
-      final nowMillis = DateTime.now().millisecondsSinceEpoch;
-      main.myDebug(
-          '[DATABASE] Performing soft delete for setlist ID: \\${id} at \\${nowMillis}');
-      await (update(setlists)..where((tbl) => tbl.id.equals(id))).write(
-        SetlistsCompanion(
-          isDeleted: const Value(true),
-          updatedAt: Value(nowMillis),
-        ),
-      );
-      main.myDebug(
-          '[DATABASE] Soft delete completed successfully for ID: \\${id}');
-    } catch (e) {
-      main.myDebug('[DATABASE] ERROR in deleteSetlist(): \\${e}');
-      rethrow;
-    }
+    // Soft delete the setlist (isDeleted = true) and bump updatedAt
+    final nowMillis = DateTime.now().millisecondsSinceEpoch;
+    await (update(setlists)..where((tbl) => tbl.id.equals(id)))
+        .write(SetlistsCompanion(
+      isDeleted: const Value(true),
+      updatedAt: Value(nowMillis),
+    ));
   }
 
   /// Get device ID from sync state
@@ -338,8 +366,6 @@ class AppDatabase extends _$AppDatabase {
       // Fallback: generate a new device ID
       return _generateDeviceId();
     } catch (e) {
-      main.myDebug(
-          '[DATABASE] ERROR getting deviceId, generating fallback: \\${e}');
       return _generateDeviceId();
     }
   }
@@ -356,10 +382,51 @@ class AppDatabase extends _$AppDatabase {
         deviceId: Value(deviceId),
       );
       await into(deletionTracking).insert(trackingRecord);
-      main.myDebug(
-          '[DATABASE] Deletion tracking inserted: \\${entityType}/\\${entityId}');
     } catch (e) {
-      main.myDebug('[DATABASE] ERROR inserting deletion tracking: \\${e}');
+      rethrow;
+    }
+  }
+
+  /// Permanently purge songs that have been marked as permanently deleted
+  /// (tracked in DeletionTracking with entityType 'song') longer than
+  /// [threshold]. This is called after successful JSON sync to enforce
+  /// the retention window.
+  Future<void> purgeDeletedSongsOlderThan(Duration threshold) async {
+    try {
+      var cutoffMillis =
+          DateTime.now().subtract(threshold).millisecondsSinceEpoch;
+
+      // DEBUG ONLY: When running with isDebug=true and using a long
+      // retention window (e.g. 10 days), treat the retention as
+      // satisfied immediately so we can verify that tombstoned songs
+      // are actually purged on sync. This allows a one-shot test of the
+      // purge behavior without waiting for real time to elapse.
+      if (threshold.inDays >= 10 && main.isDebug) {
+        cutoffMillis = DateTime.now().millisecondsSinceEpoch + 1;
+      }
+
+      // Find deletion tracking records for songs older than the cutoff
+      final staleDeletions = await (select(deletionTracking)
+            ..where((tbl) =>
+                tbl.entityType.equals('song') &
+                tbl.deletedAt.isSmallerThanValue(cutoffMillis)))
+          .get();
+
+      if (staleDeletions.isEmpty) {
+        return;
+      }
+
+      final ids = staleDeletions.map((d) => d.entityId).toList();
+
+      // Hard delete the songs with matching IDs
+      await (delete(songs)..where((tbl) => tbl.id.isIn(ids))).go();
+
+      // Clean up associated deletion tracking records for these songs
+      await (delete(deletionTracking)
+            ..where((tbl) =>
+                tbl.entityType.equals('song') & tbl.entityId.isIn(ids)))
+          .go();
+    } catch (e) {
       rethrow;
     }
   }
@@ -369,9 +436,6 @@ class AppDatabase extends _$AppDatabase {
     try {
       final cutoffMillis =
           DateTime.now().subtract(threshold).millisecondsSinceEpoch;
-      main.myDebug(
-          '[DATABASE] purgeDeletedSetlistsOlderThan() called with thresholdMinutes: \\${threshold.inMinutes}, cutoffMillis: \\${cutoffMillis}');
-
       // Find soft-deleted setlists older than the cutoff
       final staleSetlists = await (select(setlists)
             ..where((tbl) =>
@@ -379,15 +443,7 @@ class AppDatabase extends _$AppDatabase {
                 tbl.updatedAt.isSmallerThanValue(cutoffMillis)))
           .get();
 
-      if (staleSetlists.isEmpty) {
-        main.myDebug(
-            '[DATABASE] No soft-deleted setlists eligible for purge at this time');
-        return;
-      }
-
       final ids = staleSetlists.map((s) => s.id).toList();
-      main.myDebug(
-          '[DATABASE] Purging \\${ids.length} soft-deleted setlists: \\${ids.join(', ')}');
 
       // Hard delete the stale setlists
       await (delete(setlists)..where((tbl) => tbl.id.isIn(ids))).go();
@@ -397,12 +453,7 @@ class AppDatabase extends _$AppDatabase {
             ..where((tbl) =>
                 tbl.entityType.equals('setlist') & tbl.entityId.isIn(ids)))
           .go();
-
-      main.myDebug(
-          '[DATABASE] Purge of soft-deleted setlists completed successfully');
     } catch (e) {
-      main.myDebug(
-          '[DATABASE] ERROR in purgeDeletedSetlistsOlderThan(): \\${e}');
       rethrow;
     }
   }

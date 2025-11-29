@@ -124,6 +124,11 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
     }
     notifyListeners();
 
+    // After loading preferences, check how long it has been since the
+    // last successful sync. If it has been more than 10 days, prompt the
+    // user to perform a manual cloud sync.
+    _checkSyncRecencyAndWarnIfStale();
+
     // Trigger initial sync after preferences are loaded
     if (_isSyncEnabled && _syncBackend != SyncBackend.local) {
       // Small delay to ensure app is fully initialized
@@ -143,6 +148,51 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
         } catch (e) {}
       });
     }
+  }
+
+  /// Check last sync time from SyncState and, if older than 10 days,
+  /// show a one-time warning prompting the user to resync from the cloud.
+  Future<void> _checkSyncRecencyAndWarnIfStale() async {
+    try {
+      if (!_isSyncEnabled || _syncBackend == SyncBackend.local) {
+        return;
+      }
+
+      final syncState = await _database.getSyncState();
+      final lastSyncAt = syncState?.lastSyncAt;
+      if (lastSyncAt == null) {
+        return;
+      }
+
+      final threshold = DateTime.now().subtract(const Duration(days: 10));
+      if (!lastSyncAt.isBefore(threshold)) {
+        return;
+      }
+
+      // Use the global navigatorKey to obtain a BuildContext for
+      // showing a SnackBar. Defer to next frame to avoid lifecycle
+      // issues during startup.
+      final context = main.navigatorKey.currentContext;
+      if (context == null) {
+        return;
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        if (messenger == null) {
+          return;
+        }
+
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your library has not synced for over 10 days. Please run a cloud sync to keep your devices in sync.',
+            ),
+            duration: Duration(seconds: 6),
+          ),
+        );
+      });
+    } catch (e) {}
   }
 
   /// Create backup service based on current backend
@@ -270,14 +320,10 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<void> autoSync() async {
     if (!_isSyncEnabled || _isSyncing || _syncBackend == SyncBackend.local) {
-      main.myDebug(
-          '[SYNC_PROVIDER] autoSync() skipped: enabled=\\${_isSyncEnabled}, isSyncing=\\${_isSyncing}, backend=\\${_syncBackend.shortName}');
       return;
     }
 
     try {
-      main.myDebug(
-          '[SYNC_PROVIDER] autoSync() starting for backend=\\${_syncBackend.shortName}');
       _isSyncing = true;
       _lastError = null;
       notifyListeners();
@@ -287,11 +333,7 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
 
       // Verify we're signed in before attempting sync
       _isSignedIn = await _currentSyncService.isSignedIn();
-      main.myDebug(
-          '[SYNC_PROVIDER] autoSync() sign-in status for backend=\\${_syncBackend.shortName}: isSignedIn=\\${_isSignedIn}');
       if (!_isSignedIn) {
-        main.myDebug(
-            '[SYNC_PROVIDER] autoSync() aborting: backend not signed in');
         return;
       }
 
@@ -299,15 +341,11 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _lastSyncTime = DateTime.now();
       await _saveSyncPreference();
 
-      // Trigger UI refresh after successful auto-sync
-      main.myDebug(
-          '[SYNC_PROVIDER] autoSync() completed successfully for backend=\\${_syncBackend.shortName}');
       if (_onSyncCompleted != null) {
         _onSyncCompleted!();
       }
     } catch (e) {
       _lastError = e.toString();
-      main.myDebug('[SYNC_PROVIDER] autoSync() ERROR: \\${e}');
 
       // If it's an authentication error, update sign-in status
       if (e.toString().toLowerCase().contains('sign') ||
@@ -319,8 +357,6 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _isSyncing = false;
       // Mark sync as completed to allow change notifications again
       DatabaseChangeService().setSyncInProgress(false);
-      main.myDebug(
-          '[SYNC_PROVIDER] autoSync() finished; isSyncing=\\${_isSyncing}, lastError=\\${_lastError}');
       notifyListeners();
     }
   }

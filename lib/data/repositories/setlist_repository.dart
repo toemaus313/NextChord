@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
-import 'package:nextchord/main.dart' as main;
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
@@ -180,15 +179,8 @@ class SetlistRepository {
   /// Delete a setlist by ID
   Future<void> deleteSetlist(String id) async {
     try {
-      main.myDebug('[SETLIST_REPO] deleteSetlist() called with ID: \\${id}');
-      main.myDebug('[SETLIST_REPO] Calling database.deleteSetlist()');
       await _db.deleteSetlist(id);
-      main.myDebug(
-          '[SETLIST_REPO] Database.deleteSetlist() completed successfully');
-    } catch (e) {
-      main.myDebug('[SETLIST_REPO] ERROR in deleteSetlist(): \\${e}');
-    }
-    main.myDebug('[SETLIST_REPO] Notifying database change service');
+    } catch (e) {}
     DatabaseChangeService()
         .notifyDatabaseChanged(table: 'setlists', operation: 'update');
   }

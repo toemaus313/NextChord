@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
-import '../../main.dart' as main;
 import 'library_sync_service.dart';
 import 'windows_icloud_utils.dart';
 
@@ -419,6 +418,10 @@ class ICloudSyncService {
       // After a successful JSON sync, purge old soft-deleted setlists
       await _librarySyncService.database
           .purgeDeletedSetlistsOlderThan(const Duration(minutes: 5));
+
+      // Also purge permanently deleted songs after a 10-day retention window
+      await _librarySyncService.database
+          .purgeDeletedSongsOlderThan(const Duration(days: 10));
     } catch (e) {
       rethrow;
     }
@@ -468,7 +471,6 @@ class ICloudSyncService {
     }
 
     _isPollingActive = true;
-    main.myDebug('[ICLOUD_SYNC] startMetadataPolling() activated');
 
     _metadataPollingTimer = Timer.periodic(_pollingInterval, (timer) async {
       if (!_isPollingActive) {
@@ -477,13 +479,10 @@ class ICloudSyncService {
       }
 
       try {
-        main.myDebug('[ICLOUD_SYNC] Poll tick - checking remote metadata');
         // Get remote metadata without downloading content
         final remoteMetadata = await getLibraryJsonMetadata();
 
         if (remoteMetadata != null) {
-          main.myDebug(
-              '[ICLOUD_SYNC] Remote metadata found: fileId=${remoteMetadata.fileId}');
           // Check if remote file has changed since last sync
           final hasRemoteChanges = await _librarySyncService.hasRemoteChanges(
             DriveLibraryMetadata(
@@ -494,22 +493,12 @@ class ICloudSyncService {
             ),
           );
 
-          main.myDebug(
-              '[ICLOUD_SYNC] Remote metadata found: fileId=\\${remoteMetadata.fileId}, hasRemoteChanges=\\${hasRemoteChanges}');
-
           if (hasRemoteChanges) {
             // Trigger full sync through the sync provider
             await SyncServiceLocator.triggerAutoSync();
-            main.myDebug(
-                '[ICLOUD_SYNC] Remote changes detected, autoSync triggered');
           }
-        } else {
-          main.myDebug(
-              '[ICLOUD_SYNC] No remote library.json metadata found during poll');
         }
-      } catch (e) {
-        main.myDebug('[ICLOUD_SYNC] Polling ERROR: \\${e}');
-      }
+      } catch (e) {}
     });
   }
 

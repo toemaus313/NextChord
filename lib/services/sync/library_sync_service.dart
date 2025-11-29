@@ -4,7 +4,6 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
-import '../../main.dart' as main;
 
 /// Model for Google Drive file metadata
 class DriveLibraryMetadata {
@@ -54,6 +53,34 @@ class DriveLibraryMetadata {
       );
 }
 
+class DeletionJson {
+  final String id;
+  final String entityType;
+  final String entityId;
+  final int deletedAt;
+
+  DeletionJson({
+    required this.id,
+    required this.entityType,
+    required this.entityId,
+    required this.deletedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'entityType': entityType,
+        'entityId': entityId,
+        'deletedAt': deletedAt,
+      };
+
+  factory DeletionJson.fromJson(Map<String, dynamic> json) => DeletionJson(
+        id: json['id'] as String,
+        entityType: json['entityType'] as String,
+        entityId: json['entityId'] as String,
+        deletedAt: json['deletedAt'] as int,
+      );
+}
+
 /// JSON model for library export/import
 class LibraryJson {
   final int schemaVersion;
@@ -64,6 +91,7 @@ class LibraryJson {
   final List<SetlistJson> setlists;
   final List<MidiMappingJson> midiMappings;
   final List<MidiProfileJson> midiProfiles;
+  final List<DeletionJson> deletions;
 
   LibraryJson({
     required this.schemaVersion,
@@ -74,6 +102,7 @@ class LibraryJson {
     required this.setlists,
     required this.midiMappings,
     required this.midiProfiles,
+    required this.deletions,
   });
 
   Map<String, dynamic> toJson() => {
@@ -85,6 +114,7 @@ class LibraryJson {
         'setlists': setlists.map((s) => s.toJson()).toList(),
         'midiMappings': midiMappings.map((m) => m.toJson()).toList(),
         'midiProfiles': midiProfiles.map((m) => m.toJson()).toList(),
+        'deletions': deletions.map((d) => d.toJson()).toList(),
       };
 
   factory LibraryJson.fromJson(Map<String, dynamic> json) => LibraryJson(
@@ -106,6 +136,10 @@ class LibraryJson {
         midiProfiles: (json['midiProfiles'] as List)
             .map((m) => MidiProfileJson.fromJson(m as Map<String, dynamic>))
             .toList(),
+        deletions: (json['deletions'] as List?)
+                ?.map((d) => DeletionJson.fromJson(d as Map<String, dynamic>))
+                .toList() ??
+            const <DeletionJson>[],
       );
 }
 
@@ -528,6 +562,7 @@ class LibrarySyncService {
         'setlists': json['setlists'],
         'midiMappings': json['midiMappings'],
         'midiProfiles': json['midiProfiles'],
+        'deletions': json['deletions'] ?? [],
         // Exclude: exportedAt, devices, libraryVersion (these change on every export)
       };
 
@@ -645,6 +680,8 @@ class LibrarySyncService {
       final setlists = await _database.getAllSetlistsIncludingDeleted();
       final midiMappings = await _database.select(_database.midiMappings).get();
       final midiProfiles = await _database.select(_database.midiProfiles).get();
+      final deletions =
+          await _database.select(_database.deletionTracking).get();
       final syncState = await _database.getSyncState();
 
       // Convert to JSON models
@@ -665,6 +702,18 @@ class LibrarySyncService {
                 createdAt: s.createdAt,
                 updatedAt: s.updatedAt,
                 deleted: s.isDeleted,
+              ))
+          .toList();
+
+      // Convert deletion tracking rows to JSON models (for cross-device
+      // permanent delete propagation). We sync all entity types so that
+      // both songs and setlists can share the same mechanism.
+      final deletionJsons = deletions
+          .map((d) => DeletionJson(
+                id: d.id,
+                entityType: d.entityType,
+                entityId: d.entityId,
+                deletedAt: d.deletedAt,
               ))
           .toList();
 
@@ -725,6 +774,7 @@ class LibrarySyncService {
         setlists: setlistJsons,
         midiMappings: midiMappingJsons,
         midiProfiles: midiProfileJsons,
+        deletions: deletionJsons,
       );
 
       return jsonEncode(libraryJson.toJson());
@@ -736,7 +786,6 @@ class LibrarySyncService {
   /// Import and merge library from JSON string
   Future<void> importAndMergeLibraryFromJson(String jsonString) async {
     try {
-      main.myDebug('[LIBRARY_SYNC] importAndMergeLibraryFromJson() started');
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
       final remoteLibrary = LibraryJson.fromJson(jsonData);
 
@@ -749,6 +798,7 @@ class LibrarySyncService {
 
       // Get current local data (including deleted for sync)
       final localSongs = await _database.getAllSongsIncludingDeleted();
+
       final localSetlists = await _database.getAllSetlistsIncludingDeleted();
       final localMidiMappings =
           await _database.select(_database.midiMappings).get();
@@ -858,9 +908,6 @@ class LibrarySyncService {
         isDeleted: (model) => model.isDeleted,
       );
 
-      // Log detailed merge summary
-      main.myDebug(
-          '[LIBRARY_SYNC] Merge completed in-memory: songs=\\${mergedSongs.length}, setlists=\\${mergedSetlists.length}, midiMappings=\\${mergedMidiMappings.length}, midiProfiles=\\${mergedMidiProfiles.length}');
       // Apply merged data to database in a transaction
       await _database.transaction(() async {
         // Clear and insert songs
@@ -887,6 +934,32 @@ class LibrarySyncService {
           await _database.into(_database.midiProfiles).insert(profile);
         }
 
+        // Upsert deletion tracking records from remote into the local
+        // DeletionTracking table so that permanent deletes (for songs,
+        // setlists, etc.) are recognized on all devices.
+        final syncStateInsideTx = await _database.getSyncState();
+        final localDeviceId = syncStateInsideTx?.deviceId ?? 'unknown-device';
+
+        for (final deletion in remoteLibrary.deletions) {
+          // Remove any existing record with the same primary ID to avoid
+          // conflicts, then insert the remote record. We keep the
+          // deletedAt timestamp from the remote entry but stamp the
+          // deviceId to this device.
+          await (_database.delete(_database.deletionTracking)
+                ..where((tbl) => tbl.id.equals(deletion.id)))
+              .go();
+
+          await _database.into(_database.deletionTracking).insert(
+                DeletionTrackingCompanion.insert(
+                  id: deletion.id,
+                  entityType: deletion.entityType,
+                  entityId: deletion.entityId,
+                  deletedAt: deletion.deletedAt,
+                  deviceId: localDeviceId,
+                ),
+              );
+        }
+
         // Update sync state
         await _database.updateSyncState(
           lastRemoteVersion: remoteLibrary.libraryVersion,
@@ -901,13 +974,8 @@ class LibrarySyncService {
           dbChangeService.notifyDatabaseChanged(
               table: 'songs', operation: 'update', recordId: songId);
         }
-      } else {}
-
-      main.myDebug(
-          '[LIBRARY_SYNC] importAndMergeLibraryFromJson() completed successfully');
+      }
     } catch (e) {
-      main.myDebug(
-          '[LIBRARY_SYNC] importAndMergeLibraryFromJson() ERROR: \\${e}');
       rethrow;
     }
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:nextchord/main.dart' as main;
 import 'dart:async';
 import '../../domain/entities/setlist.dart';
 import '../../data/repositories/setlist_repository.dart';
@@ -44,20 +43,12 @@ class SetlistProvider extends ChangeNotifier {
 
   /// Load all setlists from the repository
   Future<void> loadSetlists() async {
-    main.myDebug('[SETLIST_PROVIDER] loadSetlists() called');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final setlists = await _repository.getAllSetlists();
-      main.myDebug(
-          '[SETLIST_PROVIDER] getAllSetlists() returned \\${setlists.length} setlists');
-      for (final setlist in setlists) {
-        main.myDebug(
-            '[SETLIST_PROVIDER] - Setlist: "\\${setlist.name}" (ID: \\${setlist.id}, deleted: \\${setlist.isDeleted})');
-      }
-
       _setlists = setlists;
       _errorMessage = null;
     } catch (e) {
@@ -176,16 +167,10 @@ class SetlistProvider extends ChangeNotifier {
   /// Delete a setlist
   Future<void> deleteSetlist(String id) async {
     try {
-      main.myDebug(
-          '[SETLIST_PROVIDER] deleteSetlist() called with ID: \\${id}');
       _isUpdatingFromDatabase = true; // Prevent feedback loop
-      main.myDebug('[SETLIST_PROVIDER] Calling repository.deleteSetlist()');
       await _repository.deleteSetlist(id);
-      main.myDebug(
-          '[SETLIST_PROVIDER] Repository.deleteSetlist() completed, calling loadSetlists()');
       await loadSetlists(); // Refresh the list
     } catch (e) {
-      main.myDebug('[SETLIST_PROVIDER] ERROR in deleteSetlist(): \\${e}');
       _errorMessage = 'Failed to delete setlist: $e';
       notifyListeners();
       rethrow;
