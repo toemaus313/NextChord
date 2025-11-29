@@ -8,11 +8,14 @@ class MetronomeSettingsProvider extends ChangeNotifier {
   static const String _countInMeasuresKey = 'metronome_count_in_measures';
   static const String _tickActionKey = 'metronome_tick_action';
   static const String _midiSendOnTickKey = 'metronome_midi_send_on_tick';
+  static const String _metronomeOnAutoscrollKey =
+      'metronome_on_autoscroll_enabled';
 
   bool _countInOnly = false;
   int _countInMeasures = 1; // Default to 1 measure
   String _tickAction = 'Flash'; // Default to Flash
   String _midiSendOnTick = ''; // Default empty
+  bool _metronomeOnAutoscroll = false; // Default off
   SharedPreferences? _prefs;
 
   // Getters
@@ -20,6 +23,7 @@ class MetronomeSettingsProvider extends ChangeNotifier {
   int get countInMeasures => _countInMeasures;
   String get tickAction => _tickAction;
   String get midiSendOnTick => _midiSendOnTick;
+  bool get metronomeOnAutoscroll => _metronomeOnAutoscroll;
 
   MetronomeSettingsProvider() {
     _loadSettings();
@@ -33,6 +37,8 @@ class MetronomeSettingsProvider extends ChangeNotifier {
       _countInMeasures = _prefs?.getInt(_countInMeasuresKey) ?? 1;
       _tickAction = _prefs?.getString(_tickActionKey) ?? 'Flash';
       _midiSendOnTick = _prefs?.getString(_midiSendOnTickKey) ?? '';
+      _metronomeOnAutoscroll =
+          _prefs?.getBool(_metronomeOnAutoscrollKey) ?? false;
       notifyListeners();
     } catch (e) {
       // Use defaults if loading fails
@@ -40,6 +46,7 @@ class MetronomeSettingsProvider extends ChangeNotifier {
       _countInMeasures = 1;
       _tickAction = 'Flash';
       _midiSendOnTick = '';
+      _metronomeOnAutoscroll = false;
     }
   }
 
@@ -79,6 +86,15 @@ class MetronomeSettingsProvider extends ChangeNotifier {
     }
   }
 
+  /// Update Metronome on Autoscroll setting
+  Future<void> setMetronomeOnAutoscroll(bool value) async {
+    if (_metronomeOnAutoscroll != value) {
+      _metronomeOnAutoscroll = value;
+      await _prefs?.setBool(_metronomeOnAutoscrollKey, _metronomeOnAutoscroll);
+      notifyListeners();
+    }
+  }
+
   /// Get available tick actions
   static List<String> get availableTickActions => [
         'Flash',
@@ -93,11 +109,13 @@ class MetronomeSettingsProvider extends ChangeNotifier {
     _countInMeasures = 1;
     _tickAction = 'Flash';
     _midiSendOnTick = '';
+    _metronomeOnAutoscroll = false;
 
     await _prefs?.setBool(_countInOnlyKey, _countInOnly);
     await _prefs?.setInt(_countInMeasuresKey, _countInMeasures);
     await _prefs?.setString(_tickActionKey, _tickAction);
     await _prefs?.setString(_midiSendOnTickKey, _midiSendOnTick);
+    await _prefs?.setBool(_metronomeOnAutoscrollKey, _metronomeOnAutoscroll);
 
     notifyListeners();
   }

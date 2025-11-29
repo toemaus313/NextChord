@@ -459,6 +459,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     if (updatedSong != null && mounted) {
       _songViewerProvider.updateSong(updatedSong);
       _syncMetronomeSettings();
+      _initializeAutoscroll();
       return true;
     }
     return false;

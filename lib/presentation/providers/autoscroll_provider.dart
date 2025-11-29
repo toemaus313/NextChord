@@ -104,7 +104,9 @@ class AutoscrollProvider extends ChangeNotifier {
     _isCountingIn = false;
     _scrollTimer?.cancel();
     _resumeTimer?.cancel();
-    _metronomeProvider?.stop();
+    if (_settingsProvider?.metronomeOnAutoscroll == true) {
+      _metronomeProvider?.stop();
+    }
     notifyListeners();
   }
 
@@ -135,6 +137,11 @@ class AutoscrollProvider extends ChangeNotifier {
   // Check if count-in should be performed for MIDI toggle (first time only)
   bool _shouldDoCountInForMidi() {
     if (_metronomeProvider == null || _settingsProvider == null) {
+      return false;
+    }
+
+    // Only perform metronome-driven count-in when explicitly enabled
+    if (!_settingsProvider!.metronomeOnAutoscroll) {
       return false;
     }
 
@@ -231,6 +238,11 @@ class AutoscrollProvider extends ChangeNotifier {
       return false;
     }
 
+    // Only perform metronome-driven count-in when explicitly enabled
+    if (!_settingsProvider!.metronomeOnAutoscroll) {
+      return false;
+    }
+
     // If autoscroll is already running, bypass count-in and just start metronome
     if (_isActive) {
       return false;
@@ -264,27 +276,27 @@ class AutoscrollProvider extends ChangeNotifier {
     // Start metronome count-in
     _metronomeProvider!.start();
 
-    // Listen for metronome count-in completion
-    _listenForCountInCompletion();
+    // Listen for metronome count-in start to begin scrolling
+    _listenForCountInStart();
   }
 
-  // Listen for count-in completion
-  void _listenForCountInCompletion() {
+  // Listen for count-in start (first beat of count-in)
+  void _listenForCountInStart() {
     if (_metronomeProvider == null) return;
 
-    // Check periodically if count-in has finished
+    // Check periodically until metronome enters count-in phase
     Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_metronomeProvider == null || !_isCountingIn) {
         timer.cancel();
         return;
       }
 
-      // Count-in is finished when metronome is no longer counting in
-      if (!_metronomeProvider!.isCountingIn) {
+      // Count-in has started when metronome reports it is counting in
+      if (_metronomeProvider!.isCountingIn) {
         timer.cancel();
         _isCountingIn = false;
 
-        // Start scrolling after count-in completes (metronome should be stopped)
+        // Start scrolling aligned with the beginning of the count-in
         _startScrolling();
       }
     });

@@ -2,6 +2,9 @@
 /android/app/debug/
 /android/app/profile/
 /android/app/release/
+android/upload-keystore.jks
+android/key.properties
+
 
 # Build
 .pub-cache/

@@ -31,6 +31,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
   late int _originalCountInMeasures;
   late String _originalTickAction;
   late String _originalMidiSendOnTick;
+  late bool _originalMetronomeOnAutoscroll;
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
       _originalCountInMeasures = settingsProvider.countInMeasures;
       _originalTickAction = settingsProvider.tickAction;
       _originalMidiSendOnTick = initialValue;
+      _originalMetronomeOnAutoscroll = settingsProvider.metronomeOnAutoscroll;
 
       // Add listener to trigger rebuilds when text changes
       _midiSendController.addListener(() {
@@ -82,6 +84,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
                 return StandardModalTemplate.buildModalContainer(
                   context: context,
                   appearanceProvider: appearanceProvider,
+                  maxHeight: 700,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -100,6 +103,8 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
                           _buildCountInSetting(settingsProvider),
                           const SizedBox(height: 8),
                           _buildTickActionSetting(settingsProvider),
+                          const SizedBox(height: 8),
+                          _buildMetronomeOnAutoscrollSetting(settingsProvider),
                           const SizedBox(height: 8),
                           _buildMidiSendSetting(settingsProvider, midiService),
                           const SizedBox(height: 8),
@@ -146,6 +151,24 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
             settingsProvider.setCountInMeasures(newMeasures);
           }
         },
+      ),
+    );
+  }
+
+  Widget _buildMetronomeOnAutoscrollSetting(
+      MetronomeSettingsProvider settingsProvider) {
+    return StandardModalTemplate.buildSettingRow(
+      icon: Icons.play_arrow,
+      label: 'Metronome on Autoscroll',
+      control: Switch(
+        value: settingsProvider.metronomeOnAutoscroll,
+        onChanged: (value) {
+          settingsProvider.setMetronomeOnAutoscroll(value);
+        },
+        activeColor: Colors.white,
+        activeTrackColor: Colors.white70,
+        inactiveThumbColor: Colors.white54,
+        inactiveTrackColor: Colors.white24,
       ),
     );
   }
@@ -271,6 +294,7 @@ class _MetronomeSettingsModalState extends State<MetronomeSettingsModal> {
     settingsProvider.setCountInMeasures(_originalCountInMeasures);
     settingsProvider.setTickAction(_originalTickAction);
     settingsProvider.setMidiSendOnTick(_originalMidiSendOnTick);
+    settingsProvider.setMetronomeOnAutoscroll(_originalMetronomeOnAutoscroll);
     _midiSendController.text = _originalMidiSendOnTick;
     setState(() {
       _midiSendError = _validateMidiSendCommand(_originalMidiSendOnTick);
