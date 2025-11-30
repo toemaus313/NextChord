@@ -45,6 +45,8 @@ class GuitarTunerService extends ChangeNotifier {
 
   // Standard guitar tuning frequencies (Hz)
   static const List<GuitarString> standardTuning = [
+    GuitarString(
+        name: 'D', frequency: 73.42, stringNumber: 7), // Low D (Drop-D tuning)
     GuitarString(name: 'E', frequency: 82.41, stringNumber: 6), // Low E
     GuitarString(name: 'A', frequency: 110.00, stringNumber: 5),
     GuitarString(name: 'D', frequency: 146.83, stringNumber: 4),
@@ -77,7 +79,7 @@ class GuitarTunerService extends ChangeNotifier {
   // Smoothing for stable readings
   final List<double> _frequencyHistory = [];
   final List<double> _centsHistory = [];
-  static const int _smoothingWindowSize = 5;
+  static const int _smoothingWindowSize = 8; // Increased for better smoothing
 
   // Getters
   bool get isListening => _isListening;
@@ -274,6 +276,12 @@ class GuitarTunerService extends ChangeNotifier {
 
   /// Find the closest guitar string to a given frequency
   GuitarString _findClosestString(double frequency) {
+    // Reject frequencies that are too low (below low-E fundamental)
+    if (frequency < 70.0) {
+      return standardTuning
+          .first; // Default to E but indicate no valid detection
+    }
+
     GuitarString closest = standardTuning.first;
     double minDifference = double.infinity;
 
@@ -283,6 +291,14 @@ class GuitarTunerService extends ChangeNotifier {
         minDifference = difference;
         closest = string;
       }
+    }
+
+    // Calculate cents off for validation
+    final centsOff = _calculateCents(frequency, closest.frequency);
+
+    // If we're more than 300 cents away, this is likely a bad detection
+    if (centsOff.abs() > 300) {
+      return standardTuning.first; // Default to E as fallback
     }
 
     return closest;
@@ -297,6 +313,18 @@ class GuitarTunerService extends ChangeNotifier {
   /// Apply smoothing to reduce jumpiness in tuner readings
   TuningResult? _applySmoothingToResult(double frequency, double centsOff,
       GuitarString closestString, double confidence) {
+    // Outlier rejection: skip readings that jump too much from recent average
+    if (_centsHistory.isNotEmpty) {
+      final recentAvg =
+          _centsHistory.reduce((a, b) => a + b) / _centsHistory.length;
+      final jumpSize = (centsOff - recentAvg).abs();
+
+      // Reject if jump is more than 25 cents from recent average
+      if (jumpSize > 25.0) {
+        return null; // Skip this reading
+      }
+    }
+
     // Add new readings to history
     _frequencyHistory.add(frequency);
     _centsHistory.add(centsOff);
@@ -309,18 +337,19 @@ class GuitarTunerService extends ChangeNotifier {
       _centsHistory.removeAt(0);
     }
 
-    // Need at least 3 readings for smoothing
+    // Require minimum readings for stability
     if (_frequencyHistory.length < 3) {
       return null;
     }
 
-    // Calculate smoothed values using weighted average (recent readings have more weight)
-    double smoothedFrequency = 0;
-    double smoothedCents = 0;
-    double totalWeight = 0;
+    // Weighted averaging with recent readings weighted higher
+    double smoothedFrequency = 0.0;
+    double smoothedCents = 0.0;
+    double totalWeight = 0.0;
 
     for (int i = 0; i < _frequencyHistory.length; i++) {
-      final weight = (i + 1).toDouble(); // More recent = higher weight
+      final weight =
+          (i + 1) / _frequencyHistory.length; // Recent readings weighted higher
       smoothedFrequency += _frequencyHistory[i] * weight;
       smoothedCents += _centsHistory[i] * weight;
       totalWeight += weight;

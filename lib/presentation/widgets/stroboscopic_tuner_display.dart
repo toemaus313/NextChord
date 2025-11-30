@@ -11,12 +11,14 @@ class StroboscopicTunerDisplay extends StatefulWidget {
   final TuningResult? tuningResult;
   final double width;
   final double height;
+  final double deadZoneCents; // Cents within which pattern freezes
 
   const StroboscopicTunerDisplay({
     Key? key,
     required this.tuningResult,
     this.width = 300,
     this.height = 120,
+    this.deadZoneCents = 5.0,
   }) : super(key: key);
 
   @override
@@ -52,99 +54,109 @@ class _StroboscopicTunerDisplayState extends State<StroboscopicTunerDisplay>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white24,
-          width: 1,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(11),
-        child: Stack(
-          children: [
-            // Background strobe pattern
-            AnimatedBuilder(
-              animation: _animation,
-              builder: (context, child) {
-                return CustomPaint(
-                  size: Size(widget.width, widget.height),
-                  painter: StroboscopicPatternPainter(
-                    animationValue: _animation.value,
-                    tuningResult: widget.tuningResult,
-                  ),
-                );
-              },
+    return Column(
+      children: [
+        Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFF050814), // Very dark blue-black
+                const Color(0xFF0A0F1A), // Slightly lighter dark
+              ],
             ),
-            // Overlay information
-            _buildOverlayInfo(),
-          ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white24,
+              width: 1,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Stack(
+              children: [
+                // Background strobe pattern
+                AnimatedBuilder(
+                  animation: _animation,
+                  builder: (context, child) {
+                    return CustomPaint(
+                      size: Size(widget.width, widget.height),
+                      painter: StroboscopicPatternPainter(
+                        animationValue: _animation.value,
+                        tuningResult: widget.tuningResult,
+                        deadZoneCents: widget.deadZoneCents,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        // Overlay information moved below the animation
+        _buildOverlayInfo(),
+      ],
     );
   }
 
   Widget _buildOverlayInfo() {
     final result = widget.tuningResult;
 
-    return Positioned.fill(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Top row: String name and frequency
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  result?.closestString?.name ?? '--',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        children: [
+          // Top row: String name and frequency
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                result?.closestString?.name ?? '--',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  result != null
-                      ? '${result.detectedFrequency.toStringAsFixed(1)} Hz'
-                      : '-- Hz',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+              ),
+              Text(
+                result != null
+                    ? '${result.detectedFrequency.toStringAsFixed(1)} Hz'
+                    : '-- Hz',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
                 ),
-              ],
-            ),
-            // Bottom row: Tuning status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Bottom row: Tuning status
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _getTuningStatusText(result),
+                style: TextStyle(
+                  color: _getTuningStatusColor(result),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (result != null)
                 Text(
-                  _getTuningStatusText(result),
+                  '${result.centsOff > 0 ? '+' : ''}${result.centsOff.toStringAsFixed(0)}¢',
                   style: TextStyle(
-                    color: _getTuningStatusColor(result),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    color: _getCentsColor(result.centsOff),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (result != null)
-                  Text(
-                    '${result.centsOff > 0 ? '+' : ''}${result.centsOff.toStringAsFixed(0)}¢',
-                    style: TextStyle(
-                      color: _getCentsColor(result.centsOff),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -174,83 +186,105 @@ class _StroboscopicTunerDisplayState extends State<StroboscopicTunerDisplay>
 class StroboscopicPatternPainter extends CustomPainter {
   final double animationValue;
   final TuningResult? tuningResult;
+  final double deadZoneCents;
 
   StroboscopicPatternPainter({
     required this.animationValue,
     this.tuningResult,
+    this.deadZoneCents = 5.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
 
-    // Calculate pattern movement based on tuning
-    double patternOffset = 0.0;
-    double patternSpeed = 1.0;
+    // Calculate pattern movement based on cents offset
+    double patternSpeed = 0.0;
+    bool isInTune = false;
 
     if (tuningResult != null) {
-      // Convert cents to pattern movement
-      // When in tune, pattern appears stationary
-      // When flat, pattern moves left; when sharp, pattern moves right
       final centsOff = tuningResult!.centsOff;
-      patternSpeed = (centsOff.abs() / 50.0).clamp(0.1, 2.0);
-      patternOffset = centsOff / 100.0; // Scale cents to reasonable offset
+      final absCents = centsOff.abs();
+
+      if (absCents <= deadZoneCents) {
+        // Freeze the pattern when in tune
+        patternSpeed = 0.0;
+        isInTune = true;
+      } else {
+        // Speed proportional to cents off with direction - faster overall
+        const double minSpeed = 0.2; // Increased minimum speed
+        const double maxSpeed =
+            20.0; // Increased maximum speed for faster animation
+        const double maxCents =
+            250.0; // 100% speed at 250 cents (halfway between strings)
+
+        final double normalized = (absCents.clamp(0.0, maxCents)) / maxCents;
+
+        // Add smoothing near in-tune to prevent jumping
+        double speedMultiplier = 1.0;
+        if (absCents <= deadZoneCents * 2) {
+          // Gradual ramp zone: reduce speed smoothly as we approach dead zone
+          final double rampRange = deadZoneCents * 2;
+          final double rampPosition = absCents / rampRange;
+          speedMultiplier = rampPosition *
+              rampPosition; // Quadratic easing for smooth transition
+        }
+
+        patternSpeed =
+            (minSpeed + (maxSpeed - minSpeed) * normalized) * speedMultiplier;
+        if (centsOff < 0)
+          patternSpeed = -patternSpeed; // Negative for flat (left)
+      }
     }
 
-    // Draw multiple layers of strobe patterns
-    _drawStrobeLayer(canvas, size, paint, 0, patternOffset, patternSpeed);
-    _drawStrobeLayer(
-        canvas, size, paint, 1, patternOffset * 0.7, patternSpeed * 0.8);
-    _drawStrobeLayer(
-        canvas, size, paint, 2, patternOffset * 0.5, patternSpeed * 0.6);
+    // Draw single layer of regular vertical bars
+    _drawStrobeLayer(canvas, size, paint, patternSpeed, isInTune);
   }
 
   void _drawStrobeLayer(
     Canvas canvas,
     Size size,
     Paint paint,
-    int layer,
-    double offset,
     double speed,
+    bool isInTune,
   ) {
-    // Different colors for each layer
-    final colors = [
-      Colors.white.withValues(alpha: 0.3),
-      Colors.blue.withValues(alpha: 0.2),
-      Colors.cyan.withValues(alpha: 0.15),
-    ];
+    // Color based on tuning state
+    final patternColor = isInTune
+        ? const Color(0xFF4CFF4C) // Bright saturated green when in tune
+        : const Color(0xFFB7410E); // Rust color when out of tune
 
-    paint.color = colors[layer % colors.length];
+    paint.color = patternColor.withOpacity(0.8); // High opacity for visibility
 
-    // Pattern parameters
-    final stripeWidth = 8.0 + (layer * 2);
-    final stripeSpacing = stripeWidth * 2;
-    final totalWidth = size.width + stripeSpacing * 2;
+    // Regular repeating pattern: 20x20 squares
+    const double squareSize = 20.0;
+    const double gapSize = 20.0; // Alternating pattern, so gap = square size
+    const double tileWidth = squareSize + gapSize;
 
-    // Calculate animated position
-    final animatedOffset =
-        (animationValue * speed * stripeSpacing) + (offset * stripeSpacing);
-    final startX = -stripeSpacing + (animatedOffset % stripeSpacing);
+    // Vertical positioning: 10px padding top and bottom in 40px container
+    const double verticalPadding = 10.0;
+    const double squareY = verticalPadding; // 10px from top
 
-    // Draw diagonal stripes
-    for (double x = startX; x < totalWidth; x += stripeSpacing) {
-      final path = Path();
+    // Calculate phase offset for smooth animation
+    final animatedOffset = animationValue * speed * tileWidth;
+    final phaseOffset = animatedOffset % tileWidth;
 
-      // Create diagonal stripe
-      path.moveTo(x, 0);
-      path.lineTo(x + stripeWidth, 0);
-      path.lineTo(x + stripeWidth + size.height * 0.3, size.height);
-      path.lineTo(x + size.height * 0.3, size.height);
-      path.close();
+    // Draw squares across the strip with tiling
+    for (int i = -1;; i++) {
+      final x = i * tileWidth + phaseOffset;
+      if (x > size.width + squareSize) break; // Past the right edge
+      if (x < 0 || x + squareSize > size.width)
+        continue; // Only draw fully visible squares
 
-      canvas.drawPath(path, paint);
+      final squareRect = Rect.fromLTWH(x, squareY, squareSize, squareSize);
+      canvas.drawRect(squareRect, paint);
     }
   }
 
   @override
   bool shouldRepaint(StroboscopicPatternPainter oldDelegate) {
     return animationValue != oldDelegate.animationValue ||
-        tuningResult != oldDelegate.tuningResult;
+        tuningResult != oldDelegate.tuningResult ||
+        deadZoneCents != oldDelegate.deadZoneCents;
   }
 }
 

@@ -1,262 +1,259 @@
-# NextChord – Strobe Tuner Refinement Prompt (Peterson‑style + Single Target String)
+# NextChord – Peterson-Style Strobe Tuner Redesign Prompt
 
-You are working in my Flutter app. I **already** have:
+You are working in my Flutter app. I already have:
 
 - A working guitar tuner feature with audio input and pitch detection.
-- A first-pass “strobe-style” tuner UI implementation from a previous prompt.
+- Existing tuner logic that produces a cents offset (negative = flat, positive = sharp) and a current/target string or note.
 
-You are **not** creating the tuner from scratch. Your job now is to **refine and improve the existing strobe tuner UI**, not replace the underlying tuner logic.
+You are NOT creating the tuner logic from scratch. Your job is to design and implement a new Peterson-style virtual strobe display and an updated tuner UI, without changing the underlying tuner logic.
 
 ---
 
 ## High-level goals
 
-1. **Make the strobe animation look and behave more like a Peterson strobe tuner**  
-   - Keep it original enough to avoid copying trade dress, but aim for a similar *feel*:
-     - Crisp, repeating segments/dots.
-     - Very smooth motion.
-     - Clear directional indication for sharp vs flat.
-     - Strong, obvious “lock” when the note is in tune.
+1. Make the strobe animation look and behave more like a Peterson strobe tuner:
+   - Clean, evenly spaced repeating segments/bars.
+   - Very smooth, uniform motion.
+   - Clear directional indication for sharp vs flat.
+   - Strong, obvious "lock" when the note is in tune.
 
-2. **Change the Guitar Tuner modal so that only the currently targeted string is shown**  
-   - Right now, all 6 strings are shown below the animated tuner.
-   - I want **only the string being tuned** (the current “target”) displayed in that area:
-     - Larger, more prominent.
-     - Clearly marked as the active string.
-     - Other strings should not be visible in that section.
+2. Change the Guitar Tuner modal so that only the currently targeted string is shown:
+   - Only the current target string should be displayed in the main "string" area under the strobe strip.
+   - That string should be visually prominent and clearly marked as active.
 
-3. **Do NOT modify or refactor the core tuner logic**  
-   - No changes to audio input, pitch detection, frequency-to-note mapping, or any data models/services beyond exposing data the UI needs (like cents offset or current target string).
-
----
-
-## Existing context
-
-There is already:
-
-- A tuner screen / modal (the Guitar Tuner modal).
-- A working tuner pipeline:
-  - Audio input.
-  - Pitch detection.
-  - Mapping detected frequency → note/string.
-  - A “cents off” / tuning accuracy value in some form.
-- A first implementation of a strobe-like widget (or related UI code) from a previous pass at this prompt.
-
-You must **reuse and refine** the existing strobe tuner implementation where it makes sense, instead of throwing it away and rewriting everything.
+3. Do NOT modify or refactor the core tuner logic:
+   - No changes to audio input, pitch detection, frequency-to-note mapping, or data models, beyond minimally exposing centsOffset and currentTargetString/currentNote to the UI.
 
 ---
 
 ## Constraints
 
-Do **NOT**:
+Do NOT:
 
 - Change audio input handling.
 - Change or replace pitch detection.
 - Change note detection or mapping logic.
 - Break any existing public APIs or data models used by the tuner feature.
 
-You **may**:
+You MAY:
 
-- Expose a minimal `centsOffset` value for the UI if it’s not already available.
-- Expose a “current target string” / “current note” property if needed for the UI.
-- Refactor UI/widget/layout code **only as much as needed** to:
-  - Improve visuals.
-  - Integrate the strobe strip.
-  - Show only the active string.
+- Expose a minimal `centsOffset` value for the UI if it is not already available.
+- Expose a `currentTargetString` / `currentNote` property if needed for the UI.
+- Refactor UI/widget/layout code only as much as needed to improve visuals, integrate the strobe strip, and show only the active string.
 
 ---
 
-## Task 1 – Scan & summarize the current implementation
+## Task 1 – Scan and summarize the current implementation
 
 1. Locate:
-   - The **Guitar Tuner modal / screen** file(s).
-   - The existing **strobe tuner UI implementation**, including:
-     - Any `CustomPainter`/`CustomPaint` code.
-     - Any `AnimationController`/`Ticker` setup.
-   - Where the **“cents off” / tuning accuracy** value is computed or exposed.
-   - Where the **list of 6 strings** is rendered in the tuner modal.
+   - The Guitar Tuner modal/screen file(s).
+   - Any existing strobe-style tuner UI implementation (CustomPainter/AnimationController/etc).
+   - Where the cents offset value is computed or exposed.
+   - Where the list of 6 strings is rendered in the tuner modal.
 
-2. Briefly summarize in comments (or in a single block of text you output):
-   - The key file(s) and classes involved (e.g. `guitar_tuner_modal.dart`, `StrobeTunerStrip`, `TunerController`, etc.).
-   - How the current strobe UI is wired to the tuner logic (how it gets the cents offset).
+2. Briefly summarize (in comments or one output block):
+   - Key files/classes involved.
+   - How the current tuner UI gets the cents offset.
    - How the 6-string list is currently displayed and updated.
 
-Do **not** change any behavior yet in this step; just document where things are.
+Do not change behavior in this step; just document.
 
 ---
 
-## Task 2 – Refine the strobe tuner to feel more like a Peterson
+## Task 2 – Implement a Peterson-style strobe tuner widget
 
-You are refining the **existing strobe widget** (or creating a new version that reuses its logic). The core idea:
+You are creating/refining a strobe strip widget that behaves like a Peterson tuner:
 
-> A virtual stroboscopic strip where the pattern’s apparent motion speed depends on how many cents off the note is, and stops when in tune.
+> A virtual stroboscopic strip where a regular pattern’s apparent motion speed depends on how many cents off the note is, and stops when in tune.
 
-### Public API (concept)
+### Widget API
 
-If a widget already exists (e.g. `StrobeTunerStrip`), refine it. If not, create one as described:
+Create or refine a reusable widget, e.g. `StrobeTunerStrip`:
 
-- `StrobeTunerStrip` (or similar clear name)
-  - `final double centsOffset;   // negative = flat, positive = sharp`
-  - `final double deadZoneCents; // e.g. 2–5 cents, configurable`
-  - Optional visual configuration parameters (colors, dot size, etc.) if needed.
+- `final double centsOffset;   // negative = flat, positive = sharp`
+- `final double deadZoneCents; // e.g. 2–5 cents, configurable`
+- Optional visual configuration parameters if needed (but keep sensible defaults).
 
 ### Animation behavior
 
-Use a time-based animation (e.g. `AnimationController` with a `TickerProviderStateMixin`) to animate the strip:
+Use a time-based animation (AnimationController + TickerProviderStateMixin):
 
-- The animation should run continuously while the tuner is active.
-- Each frame should compute an **offset phase** for the strip based on:
-  - Current time.
-  - Current `centsOffset`.
+- The animation runs continuously while the tuner is active.
+- Each frame uses a phase value that advances over time based on centsOffset.
 
 Pseudo-behavior:
 
 ```dart
 final double absCents = centsOffset.abs();
-final double minSpeed = ...; // small but visible
-final double maxSpeed = ...; // fast but not nauseating
-final double maxCents = ...; // clamp, e.g. 50–100 cents
+const double minSpeed = 0.1; // example
+const double maxSpeed = 2.0; // example
+const double maxCents = 50.0;
 
 final double normalized = (absCents.clamp(0, maxCents)) / maxCents;
 double speed = minSpeed + (maxSpeed - minSpeed) * normalized;
+
+if (absCents <= deadZoneCents) {
+  speed = 0.0;
+}
+
+final int direction = centsOffset >= 0 ? 1 : -1;
+// phase is a double stored in state, updated each tick: phase += dt * speed * direction;
 ```
 
-- If `abs(centsOffset) <= deadZoneCents`, set `speed = 0` so the pattern appears frozen.
-- The **direction** of the offset should depend on sign:
-  - `centsOffset > 0` (sharp) → e.g. scroll right.
-  - `centsOffset < 0` (flat) → e.g. scroll left.
+- Direction of movement depends on sign of centsOffset:
+  - Positive (sharp) → bars move in one direction (e.g., right).
+  - Negative (flat) → bars move in the opposite direction (e.g., left).
+- When abs(centsOffset) <= deadZoneCents, speed must be exactly 0 so the pattern is frozen.
 
-### Visual style – closer to Peterson
-
-Refine the visuals to evoke a Peterson strobe tuner (without copying exact graphics):
-
-- Use a **dark background** for the strip, fitting the app’s dark theme.
-- Use bright segments/dots for the “strobe” pattern:
-  - Cyan/blue or green segments on dark background (consistent with the rest of the app’s design).
-- Consider these refinements to make it feel more “Peterson-like”:
-
-  - Use **vertical columns / bars** or **tight dots** in multiple repeating cycles across the strip.
-  - Add very subtle **gradient or brightness variation** to give a sense of depth.
-  - Make the pattern **crisp and high-contrast** so the direction of motion is obvious.
-  - When in tune (`abs(centsOffset) <= deadZoneCents`):
-    - Freeze the pattern (speed = 0).
-    - Optionally:
-      - Change color (e.g. shift to a brighter green).
-      - Increase intensity/opacity of segments.
-      - Slightly scale up the strip or thicken the segments to accentuate the “locked” state.
-
-- Rendering approach:
-
-  - Prefer a single `CustomPaint` with a `CustomPainter` that:
-    - Uses the animation’s **phase** (0–1) to offset the repeated pattern horizontally.
-    - Draws a seamless repeating pattern: basically tile a pattern across the width and use the phase to shift it.
-  - Avoid rebuilding the entire widget tree on every frame; only repaint via the painter.
-
-- You can:
-  - Reuse any good ideas from the existing implementation (e.g., pattern generation, painter structure).
-  - Replace or refine parts that look too basic or jittery.
+Use CustomPaint + CustomPainter so that only painting work happens each frame (no heavy rebuilds).
 
 ---
 
-## Task 3 – Show only the currently targeted string in the Guitar Tuner modal
+## Task 3 – Strobe pattern geometry (very important)
 
-Right now, the tuner modal shows **all 6 strings** below the strobe UI. I want to redesign that so:
+Previous attempts with random bar widths and varying cyan shades are NOT acceptable.
 
-- Only the **currently targeted string** (the string the user is actively tuning) is shown in that area.
-- The UI should still look clean and consistent with the rest of the app.
+You must render a very regular, repeating pattern:
 
-### Determine “currently targeted string”
+- Use evenly spaced vertical bars:
+  - All bright bars have the same width (e.g., 6–10 logical pixels; choose a constant).
+  - All gaps between bright bars have the same width (e.g., 4–8 logical pixels; choose a constant).
+  - There should be no per-bar variation in width or spacing.
 
-Inspect the existing tuner logic/UX to decide what “targeted string” means:
+- Pattern logic (explicit):
+  - Define `barWidth` and `gapWidth` constants.
+  - Define `tileWidth = barWidth + gapWidth`.
+  - Maintain a continuously updated `phase` in the range [0, tileWidth).
+  - In the painter:
+    - For each integer i, compute `double x = i * tileWidth + phase;`.
+    - For each x that intersects the visible strip:
+      - Draw a single bright bar from `x` to `x + barWidth` (clamped to the canvas).
+      - Leave the remaining gap as dark background.
+  - The visual result should be identical bright bars marching across the screen.
 
-- If the tuner already has an explicit concept of a **selected/target string** (e.g., user taps “E”, “A”, “D”, etc.), use that.
-- If not, it might be:
-  - The note that’s currently most strongly detected.
-  - The string that’s closest to the current detected frequency.
+Remove any logic that:
+- Varies color by bar index.
+- Varies width or spacing by bar index.
+- Applies random gradients per bar.
 
-Whichever is already in place, use it. If there is no clear current target, you can minimally:
-
-- Introduce a simple UI-level notion of `currentTargetString`:
-  - e.g., track the last stable detected note/string.
-  - Expose it from the tuner controller/state without changing the core detection algorithm.
-
-### UI changes
-
-Update the tuner modal layout:
-
-- Replace the area currently showing all 6 strings with a **single focused display** for the targeted string:
-  - Example elements:
-    - String name (e.g., “E2”, “A2”, etc.) in large text.
-    - Maybe a label like “Currently tuning” / “Target string”.
-    - Optionally a small icon/indicator that it’s active.
-- Do **not** show the other 5 strings in that section anymore.
-- Keep any other existing tuner info that’s useful (note name, frequency readout, etc.) visible and intact.
-
-If there is a place elsewhere in the app where all 6 strings are needed (e.g., for selection), that’s fine—keep that behavior—but the **main area under the strobe strip** should only show the active string.
+The pattern must look like a single clean row of identical, evenly spaced vertical bars sliding smoothly left/right.
 
 ---
 
-## Task 4 – Integrate the refined strobe and single-string display
+## Task 4 – Color and visual styling (critical)
 
-In the tuner screen/modal:
+Use a dark theme that fits the rest of the tuner UI. Be precise and consistent.
+
+### Background
+
+- Very dark, nearly black (e.g., #050814 – #0A0F1A).
+- Solid or a very subtle vertical gradient, but it should clearly read as a dark strip behind the pattern.
+
+### Out-of-tune bars (moving state)
+
+- Color: a single cool, bright cyan/blue that contrasts strongly with the background.
+  - Examples: #18B7FF, #26D9FF (or similar).
+- All bars must use the same solid color in the moving/out-of-tune state:
+  - Do NOT vary hue per bar.
+  - Do NOT vary opacity per bar.
+  - Do NOT apply per-bar gradients.
+
+### In-tune bars (locked state)
+
+- Condition: abs(centsOffset) <= deadZoneCents.
+- Behavior:
+  - The phase stops changing (speed = 0), so the pattern is frozen.
+  - Change bar color to a bright, saturated green.
+    - Examples: #3CFF82, #4CFF4C.
+  - You may slightly increase opacity or add a very subtle outer glow/halo to emphasize the locked state.
+- Do NOT flash or pulse the bars; rely on motion stopping + color change.
+
+### Flat vs sharp
+
+- Direction is the only difference:
+  - Sharp → bars move one way.
+  - Flat → bars move the opposite way.
+- Do NOT change color for flat vs sharp. Keep the palette fixed:
+  - Cyan/blue for moving (out of tune, either direction).
+  - Green for frozen (in tune).
+
+### General rules
+
+- Avoid pastel, low-contrast, or muddy colors.
+- The strip must remain clearly visible and distinct from the modal background.
+- Keep the palette minimal and consistent: dark background, cyan/blue moving bars, green locked bars.
+
+---
+
+## Task 5 – Show only the current target string in the tuner modal
+
+Currently, the modal shows all 6 strings below the strobe UI. Redesign that area so:
+
+- Only the current target string is shown in the main "string" section under the strobe strip.
+- That string should be visually prominent and clearly labeled.
+
+### Determine current target string
+
+Use whatever concept already exists:
+
+- If there is an explicit selected/target string (user taps E/A/D/etc.), use that.
+- If not, use the string/note that the tuner logic already considers "current" or "closest".
+
+If necessary, add a minimal UI-level property:
+
+- `currentTargetString` (or similar) exposed from the tuner controller/state.
+- Do NOT modify the pitch detection itself; just surface what is already being computed.
+
+### UI updates
+
+- Replace the 6-string list area with a single focused display of the active string:
+  - Large string name/note (e.g., "E2", "A2").
+  - Optional label such as "Currently tuning" or "Target string".
+  - Optional icon/badge to show it is active.
+- Do NOT show the other strings in that section anymore.
+- Keep other useful info (note name, detected frequency, etc.) visible elsewhere in the modal.
+
+If there is a different UI location where the user needs to see or select all 6 strings, that can remain unchanged. Only the main area under the strobe strip should show just the active string.
+
+---
+
+## Task 6 – Integrate into the tuner screen
+
+In the Guitar Tuner modal/screen:
 
 1. Ensure you have access to:
    - `centsOffset` (double).
-   - `deadZoneCents` (some reasonable default; you can make it configurable if needed).
-   - `currentTargetString` / current note or string info.
+   - `deadZoneCents` (reasonable default, e.g. 3–5 cents).
+   - `currentTargetString` / `currentNote` info.
 
-2. Wire the strobe strip:
+2. Integrate the strobe strip:
+   - Replace the old in-tune/out-of-tune visual with the new `StrobeTunerStrip` widget.
+   - Feed it the live centsOffset.
+   - Ensure it repaints smoothly via animation + CustomPainter.
 
-   - Replace the existing “in/out of tune” visual with the improved `StrobeTunerStrip` (or equivalent widget).
-   - Feed it the live `centsOffset`.
-   - Ensure it rebuilds or repaints smoothly as the tuner updates.
+3. Integrate the single-string display:
+   - Remove or hide the multi-string list from the main tuner area.
+   - Add a "Current string" section under the strobe strip showing only the target string.
 
-3. Update the string display:
-
-   - Remove or hide the UI that shows all 6 strings in the main tuner area.
-   - Add a dedicated section under the strobe strip that shows **only the current target string**, with a design consistent with the rest of the tuner UI.
-
-4. Keep:
-
-   - Note name display.
-   - Detected frequency display.
-   - Any other existing readouts that are useful to the user.
-
-Do not remove information that is helpful for tuning; just restructure that specific string list area.
+4. Preserve all other useful information (frequency, note labels, status text, etc.).
 
 ---
 
-## Task 5 – Code quality, structure, and non-breaking changes
+## Task 7 – Code quality and diffs
 
-- Keep new UI code well-organized (e.g., separate reusable widgets, painters).
-- Do not break any existing public APIs that other parts of the app might depend on.
-- If you refactor:
-  - Keep changes localized to the tuner UI code and any associated state/controllers.
-- Make sure the animation is efficient and doesn’t cause jank:
-  - Use `CustomPainter`/`CustomPaint` correctly.
-  - Avoid excessive allocations or rebuilds inside the animation loop.
+- Keep new UI code well organized (separate widgets/painters).
+- Respect existing best-practice and debugging rules (e.g., myDebug wrappers).
+- Avoid introducing performance problems; no heavy rebuilds in the animation loop.
 
-If the project has existing rules for debugging (e.g., `myDebug` wrappers) or best practices (per `.windsurf` rules), respect them when adding logging or comments.
+When finished:
 
----
+1. Output a short summary of what you changed and which files you touched.
+2. Show the key diffs for:
+   - The new/updated `StrobeTunerStrip` widget and painter.
+   - The tuner modal layout where the strip and current string are integrated.
+   - Any controller/state changes that expose centsOffset or currentTargetString.
 
-## Task 6 – Plan, implement, and show diffs
+Remember: do NOT change the core tuner logic. Only improve the UI so that:
 
-1. After you scan the codebase (Task 1), output a **short plan** that includes:
-   - Files/classes to modify.
-   - Which parts of the existing strobe widget you’ll reuse vs refine.
-   - Where the `currentTargetString` and `centsOffset` are coming from.
-
-2. Implement the changes according to the plan:
-   - Refine the strobe widget.
-   - Update the tuner modal layout.
-   - Wire the data correctly.
-
-3. Show me the final changes as a **clear diff**:
-   - Key widget/class additions or updates (strobe painter, tuner modal UI, etc.).
-   - Any new properties/fields added to expose `centsOffset` or `currentTargetString`.
-
-Again: **do not modify the core tuner logic**. Only improve the UI so:
-
-- The animation behaves and feels more like a Peterson strobe tuner (speed/direction driven by cents).
+- The strobe looks and feels like a Peterson-style tuner (regular bars, cyan when moving, green when locked, speed/direction based on cents).
 - Only the currently targeted string is shown under the strobe strip in the Guitar Tuner modal.

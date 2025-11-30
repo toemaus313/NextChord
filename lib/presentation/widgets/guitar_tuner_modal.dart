@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/audio/guitar_tuner_service.dart';
-import 'semicircle_tuner_display.dart';
+import 'stroboscopic_tuner_display.dart';
 import 'templates/concise_modal_template.dart';
 import '../providers/appearance_provider.dart';
 
@@ -37,7 +37,8 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
   @override
   void initState() {
     super.initState();
-    _tunerService = GuitarTunerService();
+    _tunerService =
+        GuitarTunerService(); // Factory constructor returns singleton instance
     _initializeTuner();
   }
 
@@ -162,11 +163,14 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
     return Center(
       child: Column(
         children: [
-          // Semicircle tuner display with moving dots
-          SemicircleTunerDisplay(
+          // Add 20px top padding to move the animated window down
+          const SizedBox(height: 20),
+          // Strobe tuner display with vertical columns
+          StroboscopicTunerDisplay(
             tuningResult: tunerService.currentResult,
             width: displayWidth,
-            height: 110,
+            height: 40, // Reduced to 40px for compact squares display
+            deadZoneCents: 5.0,
           ),
         ],
       ),
@@ -174,6 +178,11 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
   }
 
   Widget _buildStringSelector(GuitarTunerService tunerService) {
+    final closestString = tunerService.currentResult?.closestString;
+    if (closestString == null) {
+      return const SizedBox.shrink(); // No string detected yet
+    }
+
     return Center(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -183,10 +192,10 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
           border: Border.all(color: Colors.white24),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Standard Tuning',
+              'Currently tuning',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -194,50 +203,34 @@ class _GuitarTunerModalState extends State<GuitarTunerModal>
               ),
             ),
             const SizedBox(height: 8),
-            // Use Wrap instead of Row so string buttons can flow on small screens
-            Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: 8,
-              runSpacing: 8,
-              children: GuitarTunerService.standardTuning.map((string) {
-                final isActive =
-                    tunerService.currentResult?.closestString?.stringNumber ==
-                        string.stringNumber;
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isActive ? Colors.white : Colors.white24,
-                      width: isActive ? 2 : 1,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    closestString.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        string.name,
-                        style: TextStyle(
-                          color: isActive ? Colors.white : Colors.white70,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${string.frequency.toStringAsFixed(1)}Hz',
-                        style: TextStyle(
-                          color: isActive ? Colors.white70 : Colors.white54,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${closestString.frequency.toStringAsFixed(1)} Hz',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
                   ),
-                );
-              }).toList(),
+                ],
+              ),
             ),
           ],
         ),

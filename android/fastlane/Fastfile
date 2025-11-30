@@ -3,6 +3,10 @@ default_platform(:android)
 platform :android do
   desc "Build & upload a beta (test) Android appbundle to Google Play"
   lane :beta do |options|
+    flutter_bump_version(
+      bump_build: true,
+      pubspec: "../pubspec.yaml"  # Correct parameter name to avoid being prompted
+    )
     # 1. Build the appbundle using Flutter from the project root
     Dir.chdir("..") do
       sh "flutter pub get"
@@ -23,7 +27,7 @@ platform :android do
     upload_to_play_store(
       aab: aab_path,
       track: options[:track] || "internal",  # "internal", "beta", "alpha", "production"
-      release_status: options[:status] || "completed"
+      release_status: options[:status] || "draft"  # Use "draft" for draft apps, "completed" for published apps
     )
   end
 end
