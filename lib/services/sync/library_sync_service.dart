@@ -742,17 +742,6 @@ class LibrarySyncService {
         appearanceSettings = null;
       }
 
-      if (appearanceSettings != null) {
-        main.myDebug('LibrarySyncService.exportLibraryToJson: local appearance '
-            'recentColor1=${appearanceSettings.recentColor1}, '
-            'recentColor2=${appearanceSettings.recentColor2}, '
-            'recentColor3=${appearanceSettings.recentColor3}, '
-            'updatedAt=${appearanceSettings.updatedAt}');
-      } else {
-        main.myDebug(
-            'LibrarySyncService.exportLibraryToJson: no local appearance_settings row');
-      }
-
       // Convert to JSON models
       final songJsons = songs
           .map((s) => SongJson(
@@ -858,18 +847,6 @@ class LibrarySyncService {
         deletions: deletionJsons,
         appearanceSettings: appearanceJson,
       );
-
-      if (appearanceJson != null) {
-        main.myDebug(
-            'LibrarySyncService.exportLibraryToJson: exporting appearance '
-            'recentColor1=${appearanceJson.recentColor1}, '
-            'recentColor2=${appearanceJson.recentColor2}, '
-            'recentColor3=${appearanceJson.recentColor3}, '
-            'updatedAt=${appearanceJson.updatedAt}');
-      } else {
-        main.myDebug(
-            'LibrarySyncService.exportLibraryToJson: exporting appearance=null');
-      }
 
       return jsonEncode(libraryJson.toJson());
     } catch (e) {
@@ -1081,13 +1058,7 @@ class LibrarySyncService {
           final remoteUpdatedAt = remote.updatedAt;
           final localUpdatedAt = localAppearanceSettings?.updatedAt ?? 0;
 
-          main.myDebug(
-              'LibrarySyncService.importAndMergeLibraryFromJson: comparing appearance '
-              'remoteUpdatedAt=$remoteUpdatedAt localUpdatedAt=$localUpdatedAt');
-
           if (remoteUpdatedAt >= localUpdatedAt) {
-            main.myDebug(
-                'LibrarySyncService.importAndMergeLibraryFromJson: applying remote appearance');
             final companion = AppearanceSettingsCompanion(
               id: const Value(1),
               recentColor1: Value(remote.recentColor1),

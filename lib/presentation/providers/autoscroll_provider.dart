@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../../main.dart' as main;
 import '../../core/utils/chordpro_parser.dart';
 import '../../core/constants/song_viewer_constants.dart';
 import 'metronome_provider.dart';
@@ -9,14 +10,14 @@ class AutoscrollProvider extends ChangeNotifier {
   static const int _defaultDurationSeconds = 180; // 3:00 default
 
   bool _isActive = false;
-  Timer? _scrollTimer;
   Timer? _resumeTimer;
   ScrollController? _scrollController;
   double _totalScrollExtent = 0.0;
-  double _currentScrollOffset = 0.0;
   int _durationSeconds = _defaultDurationSeconds;
   int _originalDurationSeconds = _defaultDurationSeconds;
   bool _isUserScrolling = false;
+  DateTime? _autoscrollStartTime;
+  DateTime? _autoscrollEndTime;
   MetronomeProvider? _metronomeProvider;
   MetronomeSettingsProvider? _settingsProvider;
   bool _isCountingIn = false;
@@ -59,9 +60,6 @@ class AutoscrollProvider extends ChangeNotifier {
   void setScrollController(ScrollController controller) {
     _scrollController = controller;
 
-    // Listen for user scroll events
-    controller.addListener(_onUserScroll);
-
     // Calculate total scroll extent when layout is complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculateScrollExtent();
@@ -80,14 +78,19 @@ class AutoscrollProvider extends ChangeNotifier {
     if (_scrollController == null || !_scrollController!.hasClients) return;
 
     _totalScrollExtent = _scrollController!.position.maxScrollExtent;
-    _currentScrollOffset = _scrollController!.offset;
   }
 
   // Start autoscrolling
   void start() {
+    main.myDebug('AutoscrollProvider.start called');
     if (_scrollController == null || !_scrollController!.hasClients) {
+      main.myDebug('AutoscrollProvider.start aborted: no scroll clients');
       return;
     }
+
+    // Reset timing for a fresh autoscroll run
+    _autoscrollStartTime = null;
+    _autoscrollEndTime = null;
 
     // Check if we should do count-in
     final shouldCountIn = _shouldDoCountIn();
@@ -100,10 +103,21 @@ class AutoscrollProvider extends ChangeNotifier {
 
   // Stop autoscrolling
   void stop() {
+    main.myDebug('AutoscrollProvider.stop called');
+
+    // Cancel any in-flight scroll animation by snapping to the current offset.
+    if (_scrollController != null && _scrollController!.hasClients) {
+      final currentOffset = _scrollController!.offset;
+      _scrollController!.jumpTo(currentOffset);
+      main.myDebug(
+          'AutoscrollProvider.stop: cancelled animation at offset=$currentOffset');
+    }
+
     _isActive = false;
     _isCountingIn = false;
-    _scrollTimer?.cancel();
     _resumeTimer?.cancel();
+    _autoscrollStartTime = null;
+    _autoscrollEndTime = null;
     if (_settingsProvider?.metronomeOnAutoscroll == true) {
       _metronomeProvider?.stop();
     }
@@ -179,37 +193,37 @@ class AutoscrollProvider extends ChangeNotifier {
 
       // If currently scrolling, restart with new duration
       if (_isActive) {
-        _scrollTimer?.cancel();
-        _startScrolling();
+        _restartFromCurrentPositionWithNewDuration();
       }
 
       notifyListeners();
     }
   }
 
-  // Handle user scroll events
-  void _onUserScroll() {
+  /// Handle user-driven scroll activity (wired from UserScrollNotification
+  /// in the SongViewerScreen). This debounces autoscroll resume so that any
+  /// user scroll pauses the animation and restarts it 2 seconds after the
+  /// last scroll notification.
+  void handleUserScrollActivity() {
     if (_scrollController == null || !_isActive) return;
 
-    final isScrolling = _scrollController!.position.isScrollingNotifier.value;
-
-    if (isScrolling && !_isUserScrolling) {
-      // User started scrolling - pause autoscroll
+    if (!_isUserScrolling) {
       _isUserScrolling = true;
-      _scrollTimer?.cancel();
-    } else if (!isScrolling && _isUserScrolling) {
-      // User stopped scrolling - start resume timer
-      _isUserScrolling = false;
-      _currentScrollOffset = _scrollController!.offset;
-
-      // Resume autoscroll after 2 seconds
-      _resumeTimer?.cancel();
-      _resumeTimer = Timer(const Duration(seconds: 2), () {
-        if (_isActive && !_isUserScrolling) {
-          _startScrolling();
-        }
-      });
+      main.myDebug(
+          'AutoscrollProvider.handleUserScrollActivity: user scroll started, offset=${_scrollController!.offset}');
     }
+
+    _resumeTimer?.cancel();
+    main.myDebug(
+        'AutoscrollProvider.handleUserScrollActivity: scheduling resume timer');
+    _resumeTimer = Timer(const Duration(seconds: 2), () {
+      _isUserScrolling = false;
+      if (_isActive) {
+        main.myDebug(
+            'AutoscrollProvider.handleUserScrollActivity resume timer fired; restarting autoscroll with preserved speed');
+        _restartFromCurrentPositionPreservingSpeed();
+      }
+    });
   }
 
   // Reset duration to original value from song metadata
@@ -217,8 +231,7 @@ class AutoscrollProvider extends ChangeNotifier {
     _durationSeconds = _originalDurationSeconds;
 
     if (_isActive) {
-      _scrollTimer?.cancel();
-      _startScrolling();
+      _restartFromCurrentPositionWithNewDuration();
     }
 
     notifyListeners();
@@ -226,9 +239,7 @@ class AutoscrollProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _scrollTimer?.cancel();
     _resumeTimer?.cancel();
-    _scrollController?.removeListener(_onUserScroll);
     super.dispose();
   }
 
@@ -312,43 +323,124 @@ class AutoscrollProvider extends ChangeNotifier {
     // Mark that count-in has been run for this song
     _hasRunAutoscrollCountIn = true;
 
+    // Initialize timing window if this is the first start for this run
+    final now = DateTime.now();
+    _autoscrollStartTime ??= now;
+    _autoscrollEndTime ??=
+        _autoscrollStartTime!.add(Duration(seconds: _durationSeconds));
+    main.myDebug(
+        'AutoscrollProvider._startScrolling: offset=${_scrollController!.offset}, total=$_totalScrollExtent, endTime=$_autoscrollEndTime');
+
     _performScrollStart();
     notifyListeners();
   }
 
   // Perform the actual scroll start logic
   void _performScrollStart() {
-    if (_totalScrollExtent <= 0) return;
+    if (_totalScrollExtent <= 0 || _autoscrollEndTime == null) return;
 
-    final remainingDistance = _totalScrollExtent - _currentScrollOffset;
-    if (remainingDistance <= 0) {
-      // Already at the end
+    // If we've already reached or passed the planned end time, jump to the end
+    // and stop autoscroll.
+    final now = DateTime.now();
+    var remaining = _autoscrollEndTime!.difference(now);
+    if (remaining <= Duration.zero) {
+      if (_scrollController != null && _scrollController!.hasClients) {
+        _scrollController!.jumpTo(_totalScrollExtent);
+      }
       stop();
       return;
     }
 
-    // Calculate scroll rate based on remaining distance and duration
-    // We scroll at a constant rate to reach the end in the remaining time
-    final scrollRate = remainingDistance / _durationSeconds;
+    // Ensure a minimum duration to avoid extremely fast jumps if we're very
+    // close to the planned end time.
+    const minDuration = Duration(milliseconds: 300);
+    if (remaining < minDuration) {
+      remaining = minDuration;
+    }
 
-    _scrollTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (_scrollController == null || !_scrollController!.hasClients) {
-        timer.cancel();
-        return;
-      }
+    if (_scrollController != null && _scrollController!.hasClients) {
+      main.myDebug(
+          'AutoscrollProvider._performScrollStart: animating to end=$_totalScrollExtent over ${remaining.inMilliseconds}ms from offset=${_scrollController!.offset}');
+      _scrollController!.animateTo(
+        _totalScrollExtent,
+        duration: remaining,
+        curve: Curves.linear,
+      );
+    }
+  }
 
-      final currentOffset = _scrollController!.offset;
-      final newOffset =
-          currentOffset + (scrollRate * 0.1); // 0.1 seconds per tick
+  // Restart autoscroll timing from the current position with the current
+  // duration setting. Used when the user adjusts duration while autoscroll is
+  // active or when we reset to the original duration.
+  void _restartFromCurrentPositionWithNewDuration() {
+    if (_scrollController == null || !_scrollController!.hasClients) return;
+    if (_totalScrollExtent <= 0 || _durationSeconds <= 0) return;
 
-      if (newOffset >= _totalScrollExtent) {
-        // Reached the end
-        _scrollController!.jumpTo(_totalScrollExtent);
-        stop();
-      } else {
-        _scrollController!.jumpTo(newOffset);
-        _currentScrollOffset = newOffset;
-      }
-    });
+    _calculateScrollExtent();
+
+    final currentOffset = _scrollController!.offset;
+    final remainingDistance = _totalScrollExtent - currentOffset;
+    if (remainingDistance <= 0) {
+      stop();
+      return;
+    }
+
+    // New scroll speed in pixels per second based on the updated duration.
+    final pixelsPerSecond = _totalScrollExtent / _durationSeconds;
+    var remainingSeconds = remainingDistance / pixelsPerSecond;
+
+    // Enforce a minimum remaining duration to avoid abrupt jumps.
+    const minSeconds = 0.3; // 300ms
+    if (remainingSeconds < minSeconds) {
+      remainingSeconds = minSeconds;
+    }
+
+    final now = DateTime.now();
+    _autoscrollStartTime = now;
+    _autoscrollEndTime =
+        now.add(Duration(milliseconds: (remainingSeconds * 1000).round()));
+
+    main.myDebug(
+        'AutoscrollProvider._restartFromCurrentPositionWithNewDuration: offset=$currentOffset, remainingDistance=$remainingDistance, pixelsPerSecond=$pixelsPerSecond, remainingSeconds=$remainingSeconds, newEndTime=$_autoscrollEndTime');
+
+    _performScrollStart();
+  }
+
+  // Restart autoscroll from the current position but preserve the original
+  // scroll speed (pixels per second). This is used when resuming after a
+  // manual user scroll so that the scroll rate feels consistent regardless
+  // of where the user repositioned the view.
+  void _restartFromCurrentPositionPreservingSpeed() {
+    if (_scrollController == null || !_scrollController!.hasClients) return;
+    if (_totalScrollExtent <= 0 || _durationSeconds <= 0) return;
+
+    _calculateScrollExtent();
+
+    final currentOffset = _scrollController!.offset;
+    final remainingDistance = _totalScrollExtent - currentOffset;
+    if (remainingDistance <= 0) {
+      stop();
+      return;
+    }
+
+    // Original scroll speed in pixels per second based on the full run.
+    final pixelsPerSecond = _totalScrollExtent / _durationSeconds;
+    var remainingSeconds = remainingDistance / pixelsPerSecond;
+
+    // Enforce a minimum remaining duration to avoid abrupt jumps.
+    const minSeconds = 0.3; // 300ms
+    if (remainingSeconds < minSeconds) {
+      remainingSeconds = minSeconds;
+    }
+
+    final now = DateTime.now();
+    _autoscrollStartTime = now;
+    _autoscrollEndTime =
+        now.add(Duration(milliseconds: (remainingSeconds * 1000).round()));
+
+    main.myDebug(
+        'AutoscrollProvider._restartFromCurrentPositionPreservingSpeed: offset=$currentOffset, remainingDistance=$remainingDistance, pixelsPerSecond=$pixelsPerSecond, remainingSeconds=$remainingSeconds, newEndTime=$_autoscrollEndTime');
+
+    _performScrollStart();
   }
 }

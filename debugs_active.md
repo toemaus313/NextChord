@@ -20,3 +20,7 @@
   - File: lib/services/sync/library_sync_service.dart
   - Purpose: Log local appearance_settings row, exported appearance JSON, and remote vs local appearance during JSON sync merge for troubleshooting recent custom color swatch sync across devices
 
+- AutoscrollProvider lifecycle
+  - File: lib/presentation/providers/autoscroll_provider.dart
+  - Purpose: Log autoscroll start/stop, user scroll detection, resume timer scheduling/firing, and scroll animation parameters to debug why autoscroll does not resume after manual scrolling
+

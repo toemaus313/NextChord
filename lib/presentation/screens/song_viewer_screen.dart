@@ -213,7 +213,13 @@ class _SongViewerScreenState extends State<SongViewerScreen>
       updatedAt: DateTime.now(),
     );
     await repository.updateSong(updated);
-    await _reloadSong();
+    // Avoid reinitializing autoscroll while it is actively running, since
+    // that would stop the current run and reset state. Only reload the song
+    // when autoscroll is inactive.
+    final autoscroll = context.read<AutoscrollProvider>();
+    if (!autoscroll.isActive) {
+      await _reloadSong();
+    }
   }
 
   @override
@@ -361,36 +367,43 @@ class _SongViewerScreenState extends State<SongViewerScreen>
     final themeProvider = Theme.of(context);
     final isDarkMode = themeProvider.brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final autoscroll = context.read<AutoscrollProvider>();
 
-    return SingleChildScrollView(
-      controller: scrollController,
-      padding: const EdgeInsets.all(SongViewerConstants.contentPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Song metadata section
-          SongMetadataSection(
-            song: song,
-            currentCapo: _songViewerProvider.currentCapo,
-            keyDisplayLabel: _songViewerProvider.keyDisplayLabel,
-            tags: song.tags,
-            hasTags: song.tags.isNotEmpty,
-            textColor: textColor,
-            onRemoveTag: _removeTag,
-            onEditTags: _openTagsDialog,
-            onReorderTags: _reorderTags,
-            getTagColors: (tag) => _getTagColors(tag, context),
-          ),
-          const SizedBox(height: 24),
-          // Song content
-          ChordRenderer(
-            chordProText: song.body,
-            fontSize: _songViewerProvider.fontSize,
-            isDarkMode: isDarkMode,
-            transposeSteps: _songViewerProvider.transposeSteps -
-                _songViewerProvider.currentCapo,
-          ),
-        ],
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (notification) {
+        autoscroll.handleUserScrollActivity();
+        return false;
+      },
+      child: SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.all(SongViewerConstants.contentPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Song metadata section
+            SongMetadataSection(
+              song: song,
+              currentCapo: _songViewerProvider.currentCapo,
+              keyDisplayLabel: _songViewerProvider.keyDisplayLabel,
+              tags: song.tags,
+              hasTags: song.tags.isNotEmpty,
+              textColor: textColor,
+              onRemoveTag: _removeTag,
+              onEditTags: _openTagsDialog,
+              onReorderTags: _reorderTags,
+              getTagColors: (tag) => _getTagColors(tag, context),
+            ),
+            const SizedBox(height: 24),
+            // Song content
+            ChordRenderer(
+              chordProText: song.body,
+              fontSize: _songViewerProvider.fontSize,
+              isDarkMode: isDarkMode,
+              transposeSteps: _songViewerProvider.transposeSteps -
+                  _songViewerProvider.currentCapo,
+            ),
+          ],
+        ),
       ),
     );
   }
