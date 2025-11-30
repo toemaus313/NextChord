@@ -54,6 +54,8 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   bool _timing = false;
   bool _isLoading = false;
   int? _selectedCommandIndex;
+  final GlobalKey<MidiCodeInputState> _midiCodeInputKey =
+      GlobalKey<MidiCodeInputState>();
 
   @override
   void initState() {
@@ -298,6 +300,9 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           ),
         );
       }
+
+      // Refresh autocomplete labels for immediate availability
+      _midiCodeInputKey.currentState?.refreshAvailableLabels();
     } catch (e) {
       main.myDebug('MidiProfilesModal._saveProfile: error saving profile: $e');
     } finally {
@@ -383,7 +388,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       _selectedProfile =
           null; // Clear selection since we're creating a new profile
       _nameController.text = ''; // Blank name
-      _controlChanges = commands; // Copy commands
+      _controlChanges = List<MidiCC>.from(commands); // Copy commands
       _timing = timing; // Copy timing setting
       _notesController.text = ''; // Clear notes
     });
@@ -513,6 +518,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                       const SizedBox(height: 5),
                       // MIDI code input
                       MidiCodeInput(
+                        key: _midiCodeInputKey,
                         controlChangeController: _controlChangeController,
                         notesController: _notesController,
                         midiCodeFocusNode: _midiCodeFocusNode,

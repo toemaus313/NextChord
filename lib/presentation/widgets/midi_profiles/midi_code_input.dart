@@ -21,10 +21,10 @@ class MidiCodeInput extends StatefulWidget {
   });
 
   @override
-  State<MidiCodeInput> createState() => _MidiCodeInputState();
+  State<MidiCodeInput> createState() => MidiCodeInputState();
 }
 
-class _MidiCodeInputState extends State<MidiCodeInput> {
+class MidiCodeInputState extends State<MidiCodeInput> {
   List<String> _availableLabels = [];
   List<String> _filteredLabels = [];
   bool _showSuggestions = false;
@@ -49,6 +49,11 @@ class _MidiCodeInputState extends State<MidiCodeInput> {
     } catch (e) {
       main.myDebug('MidiCodeInput: error loading labels: $e');
     }
+  }
+
+  /// Refresh the available labels for autocomplete (call after saving profiles)
+  Future<void> refreshAvailableLabels() async {
+    await _loadAvailableLabels();
   }
 
   void _onCommentChanged(String value) {
