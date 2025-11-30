@@ -108,6 +108,7 @@ class _MidiProfileSelectorState extends State<MidiProfileSelector> {
                   ],
                   onChanged: (value) async {
                     if (value == 'manage') {
+                      await _showMidiProfilesDialog();
                       return;
                     }
 
@@ -135,11 +136,7 @@ class _MidiProfileSelectorState extends State<MidiProfileSelector> {
     setState(() => _isLoadingProfiles = true);
 
     try {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const MidiProfilesModal(),
-      );
+      await MidiProfilesModal.show(context);
 
       // Trigger profile reload via callback if provided
       widget.onProfilesReloaded?.call();

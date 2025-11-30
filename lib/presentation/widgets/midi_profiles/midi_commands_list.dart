@@ -8,6 +8,13 @@ class MidiCommandsList extends StatelessWidget {
   final bool timing;
   final Function(int) onRemoveCommand;
   final VoidCallback onRemoveTiming;
+  final void Function(int oldIndex, int newIndex) onReorderCommand;
+  final int? selectedIndex;
+  final void Function(int index) onSelectCommand;
+  final VoidCallback onMoveSelectedUp;
+  final VoidCallback onMoveSelectedDown;
+  final bool canMoveUp;
+  final bool canMoveDown;
 
   const MidiCommandsList({
     super.key,
@@ -15,12 +22,19 @@ class MidiCommandsList extends StatelessWidget {
     required this.timing,
     required this.onRemoveCommand,
     required this.onRemoveTiming,
+    required this.onReorderCommand,
+    required this.selectedIndex,
+    required this.onSelectCommand,
+    required this.onMoveSelectedUp,
+    required this.onMoveSelectedDown,
+    required this.canMoveUp,
+    required this.canMoveDown,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(10),
         borderRadius: BorderRadius.circular(16),
@@ -30,15 +44,40 @@ class MidiCommandsList extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'MIDI Commands:',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11.9, // Reduced by 15% from 14
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            children: [
+              const Text(
+                'MIDI Commands:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.9, // Reduced by 15% from 14
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_upward,
+                  size: 16,
+                  color: canMoveUp ? Colors.white : Colors.white24,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 16),
+                onPressed: canMoveUp ? onMoveSelectedUp : null,
+              ),
+              const SizedBox(width: 2),
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_downward,
+                  size: 16,
+                  color: canMoveDown ? Colors.white : Colors.white24,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 16),
+                onPressed: canMoveDown ? onMoveSelectedDown : null,
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
           if (controlChanges.isEmpty && !timing)
             Container(
               width: double.infinity,
@@ -56,60 +95,87 @@ class MidiCommandsList extends StatelessWidget {
                 ),
               ),
             )
-          else
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (timing)
-                      _buildCommandRow(
-                        'MIDI Clock: timing',
-                        onRemoveTiming,
+          else ...[
+            if (timing)
+              _buildCommandRow(
+                'MIDI Clock: timing',
+                onRemoveTiming,
+                isSelected: false,
+                onTap: null,
+              ),
+            if (controlChanges.isNotEmpty)
+              Expanded(
+                child: ReorderableListView.builder(
+                  padding: EdgeInsets.zero,
+                  onReorder: onReorderCommand,
+                  itemCount: controlChanges.length,
+                  itemBuilder: (context, index) {
+                    final cc = controlChanges[index];
+                    return Container(
+                      key: ValueKey('midi_cc_'
+                          '${cc.controller}_'
+                          '${cc.value}_'
+                          '${cc.label ?? ''}_'
+                          '$index'),
+                      child: _buildCommandRow(
+                        _formatCommand(cc),
+                        () => onRemoveCommand(index),
+                        isSelected: selectedIndex == index,
+                        onTap: () => onSelectCommand(index),
                       ),
-                    for (int i = 0; i < controlChanges.length; i++)
-                      _buildCommandRow(
-                        _formatCommand(controlChanges[i]),
-                        () => onRemoveCommand(i),
-                      ),
-                  ],
+                    );
+                  },
                 ),
               ),
-            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCommandRow(String command, VoidCallback onDelete) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withAlpha(20)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              command,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10.2, // Reduced by 15% from 12
+  Widget _buildCommandRow(
+    String command,
+    VoidCallback onDelete, {
+    required bool isSelected,
+    VoidCallback? onTap,
+  }) {
+    final backgroundColor =
+        isSelected ? Colors.white.withAlpha(40) : Colors.white.withAlpha(5);
+    final borderColor =
+        isSelected ? Colors.white.withAlpha(120) : Colors.white.withAlpha(20);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                command,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.2, // Reduced by 15% from 12
+                ),
               ),
             ),
-          ),
-          GestureDetector(
-            onTap: onDelete,
-            child: const Icon(
-              Icons.close,
-              size: 16,
-              color: Colors.white70,
+            GestureDetector(
+              onTap: onDelete,
+              child: const Icon(
+                Icons.close,
+                size: 16,
+                color: Colors.white70,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

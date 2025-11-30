@@ -51,6 +51,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   List<MidiCC> _controlChanges = [];
   bool _timing = false;
   bool _isLoading = false;
+  int? _selectedCommandIndex;
 
   @override
   void initState() {
@@ -144,7 +145,66 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   void _removeControlChange(int index) {
     setState(() {
       _controlChanges.removeAt(index);
+
+      if (_selectedCommandIndex != null) {
+        if (index == _selectedCommandIndex) {
+          _selectedCommandIndex = null;
+        } else if (index < _selectedCommandIndex!) {
+          _selectedCommandIndex = _selectedCommandIndex! - 1;
+        }
+      }
     });
+  }
+
+  void _reorderControlChange(int oldIndex, int newIndex,
+      {bool fromDrag = true}) {
+    setState(() {
+      if (fromDrag && newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final currentSelected = _selectedCommandIndex;
+      if (oldIndex < 0 || oldIndex >= _controlChanges.length) {
+        return;
+      }
+      if (newIndex < 0 || newIndex > _controlChanges.length) {
+        return;
+      }
+      final item = _controlChanges.removeAt(oldIndex);
+      _controlChanges.insert(newIndex, item);
+
+      if (currentSelected != null) {
+        if (currentSelected == oldIndex) {
+          _selectedCommandIndex = newIndex;
+        } else if (oldIndex < currentSelected && currentSelected <= newIndex) {
+          _selectedCommandIndex = currentSelected - 1;
+        } else if (newIndex <= currentSelected && currentSelected < oldIndex) {
+          _selectedCommandIndex = currentSelected + 1;
+        }
+      }
+    });
+  }
+
+  void _selectControlChange(int index) {
+    setState(() {
+      _selectedCommandIndex = index;
+    });
+  }
+
+  void _moveSelectedCommandUp() {
+    if (_selectedCommandIndex == null || _selectedCommandIndex! <= 0) {
+      return;
+    }
+    final index = _selectedCommandIndex!;
+    _reorderControlChange(index, index - 1, fromDrag: false);
+  }
+
+  void _moveSelectedCommandDown() {
+    if (_selectedCommandIndex == null ||
+        _selectedCommandIndex! >= _controlChanges.length - 1) {
+      return;
+    }
+    final index = _selectedCommandIndex!;
+    _reorderControlChange(index, index + 1, fromDrag: false);
   }
 
   void _removeTiming() {
@@ -269,94 +329,134 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   Widget build(BuildContext context) {
     return Consumer<AppearanceProvider>(
       builder: (context, appearanceProvider, child) {
-        return StandardModalTemplate.buildModalContainer(
-          context: context,
-          appearanceProvider: appearanceProvider,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header with Close button
-              Container(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Close button (upper left)
-                    TextButton(
-                      onPressed: () => _cancelChanges(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 21, vertical: 11),
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                          side: const BorderSide(color: Colors.white24),
+        return Material(
+          type: MaterialType.transparency,
+          child: StandardModalTemplate.buildModalContainer(
+            context: context,
+            appearanceProvider: appearanceProvider,
+            maxHeight: 650,
+            maxWidth: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with Close and Save buttons
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      // Close button (upper left)
+                      TextButton(
+                        onPressed: () => _cancelChanges(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 21, vertical: 11),
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            side: const BorderSide(color: Colors.white24),
+                          ),
+                        ),
+                        child: const Text(
+                          'Close',
+                          style: TextStyle(fontSize: 14),
                         ),
                       ),
-                      child:
-                          const Text('Close', style: TextStyle(fontSize: 14)),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'MIDI Profiles',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.6, // Reduced by 15% from 16
-                        fontWeight: FontWeight.w600,
+                      const Spacer(),
+                      Text(
+                        'MIDI Profiles',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.6, // Reduced by 15% from 16
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    // Invisible spacer to balance layout (where OK button used to be)
-                    const SizedBox(width: 80),
-                  ],
+                      const Spacer(),
+                      // Save button (upper right)
+                      TextButton(
+                        onPressed: _isLoading ? null : _saveProfile,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 21, vertical: 11),
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            side: const BorderSide(color: Colors.white24),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Form content
-              StandardModalTemplate.buildContent(
-                children: [
-                  // Profile selector
-                  ProfileSelector(
-                    profiles: _profiles,
-                    selectedProfile: _selectedProfile,
-                    onProfileSelected: _selectProfile,
+                // Form content (non-scrollable; only commands list scrolls)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Profile selector
+                      ProfileSelector(
+                        profiles: _profiles,
+                        selectedProfile: _selectedProfile,
+                        onProfileSelected: _selectProfile,
+                      ),
+                      const SizedBox(height: 5),
+                      // Profile name input
+                      ProfileNameInput(
+                        nameController: _nameController,
+                      ),
+                      const SizedBox(height: 5),
+                      // MIDI code input
+                      MidiCodeInput(
+                        controlChangeController: _controlChangeController,
+                        notesController: _notesController,
+                        midiCodeFocusNode: _midiCodeFocusNode,
+                        onAddCommand: _addControlChange,
+                      ),
+                      const SizedBox(height: 5),
+                      // MIDI commands list (scrolls within a fixed-height area)
+                      SizedBox(
+                        height: 140,
+                        child: MidiCommandsList(
+                          controlChanges: _controlChanges,
+                          timing: _timing,
+                          onRemoveCommand: _removeControlChange,
+                          onRemoveTiming: _removeTiming,
+                          onReorderCommand: _reorderControlChange,
+                          selectedIndex: _selectedCommandIndex,
+                          onSelectCommand: _selectControlChange,
+                          onMoveSelectedUp: _moveSelectedCommandUp,
+                          onMoveSelectedDown: _moveSelectedCommandDown,
+                          canMoveUp: _selectedCommandIndex != null &&
+                              _selectedCommandIndex! > 0,
+                          canMoveDown: _selectedCommandIndex != null &&
+                              _selectedCommandIndex! <
+                                  _controlChanges.length - 1,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      // Action buttons
+                      MidiActionButtons(
+                        selectedProfile: _selectedProfile,
+                        isLoading: _isLoading,
+                        onTest: _testProfileMidiCommands,
+                        onDelete: _deleteProfile,
+                      ),
+                      const SizedBox(height: 5),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  // Profile name input
-                  ProfileNameInput(
-                    nameController: _nameController,
-                  ),
-                  const SizedBox(height: 8),
-                  // MIDI code input
-                  MidiCodeInput(
-                    controlChangeController: _controlChangeController,
-                    notesController: _notesController,
-                    midiCodeFocusNode: _midiCodeFocusNode,
-                    onAddCommand: _addControlChange,
-                  ),
-                  const SizedBox(height: 8),
-                  // MIDI commands list
-                  Flexible(
-                    child: MidiCommandsList(
-                      controlChanges: _controlChanges,
-                      timing: _timing,
-                      onRemoveCommand: _removeControlChange,
-                      onRemoveTiming: _removeTiming,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Action buttons
-                  MidiActionButtons(
-                    selectedProfile: _selectedProfile,
-                    isLoading: _isLoading,
-                    onSave: _saveProfile,
-                    onTest: _testProfileMidiCommands,
-                    onDelete: _deleteProfile,
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         );
       },
