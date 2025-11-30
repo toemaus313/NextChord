@@ -34,6 +34,7 @@ class StandardModalTemplate {
     required BuildContext context,
     required Widget child,
     double? maxHeight,
+    double? maxWidth,
     AppearanceProvider? appearanceProvider,
   }) {
     // Calculate available screen height with padding
@@ -41,6 +42,12 @@ class StandardModalTemplate {
     final availableHeight = screenHeight - 48; // Account for dialog padding
     final effectiveMaxHeight =
         maxHeight ?? (availableHeight < 650 ? availableHeight : 650.0);
+
+    // Calculate available screen width with padding
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 48; // Account for dialog padding
+    final effectiveMaxWidth =
+        maxWidth ?? (availableWidth < 480 ? availableWidth : 480.0);
 
     // Get gradient colors from appearance provider or use defaults
     final gradientStart =
@@ -50,7 +57,7 @@ class StandardModalTemplate {
 
     return Container(
       constraints: BoxConstraints(
-        maxWidth: 480,
+        maxWidth: effectiveMaxWidth,
         maxHeight: effectiveMaxHeight,
       ),
       decoration: BoxDecoration(
@@ -142,7 +149,7 @@ class StandardModalTemplate {
   }) {
     return Flexible(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

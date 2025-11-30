@@ -154,11 +154,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   }
 
   Future<void> _saveProfile() async {
-    if (_nameController.text.trim().isEmpty) {
-      _showError('Please enter a profile name');
-      return;
-    }
-
     setState(() => _isLoading = true);
     try {
       await _profileService.saveProfile(
@@ -270,17 +265,6 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     Navigator.of(context).pop();
   }
 
-  void _showError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<AppearanceProvider>(
@@ -291,12 +275,42 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with Cancel/Save buttons
-              StandardModalTemplate.buildHeader(
-                context: context,
-                title: 'MIDI Profiles',
-                onCancel: () => _cancelChanges(context),
-                onOk: () => _saveProfile(),
+              // Header with Close button
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    // Close button (upper left)
+                    TextButton(
+                      onPressed: () => _cancelChanges(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 21, vertical: 11),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                          side: const BorderSide(color: Colors.white24),
+                        ),
+                      ),
+                      child:
+                          const Text('Close', style: TextStyle(fontSize: 14)),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'MIDI Profiles',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.6, // Reduced by 15% from 16
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Invisible spacer to balance layout (where OK button used to be)
+                    const SizedBox(width: 80),
+                  ],
+                ),
               ),
               // Form content
               StandardModalTemplate.buildContent(

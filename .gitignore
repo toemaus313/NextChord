@@ -82,3 +82,4 @@ SCRATCHPAD.md
 .vscode/launch.json
 
 android/fastlane/report.xml
+ios/Runner.app.dSYM.zip

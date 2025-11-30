@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/appearance_provider.dart';
 import 'templates/standard_modal_template.dart';
+import 'custom_color_picker_modal.dart';
 
 /// Appearance Settings Modal - For customizing app color theme
 class AppearanceSettingsModal extends StatefulWidget {
@@ -247,81 +247,9 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
 
   Future<void> _showCustomColorPicker(
       BuildContext context, AppearanceProvider appearanceProvider) async {
-    Color tempColor = appearanceProvider.customColor;
-
-    final selectedColor = await showDialog<Color>(
-      context: context,
-      builder: (dialogContext) {
-        final mediaQuery = MediaQuery.of(dialogContext);
-        final screenSize = mediaQuery.size;
-        final screenHeight = screenSize.height;
-        final isWide = screenSize.width >= 800;
-
-        return AlertDialog(
-          backgroundColor: const Color(0xFF111111),
-          insetPadding: isWide
-              ? const EdgeInsets.symmetric(horizontal: 160, vertical: 220)
-              : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Custom Color',
-            style: TextStyle(color: Colors.white),
-          ),
-          // Constrain the picker differently for mobile vs desktop:
-          // - On mobile/narrow layouts, keep it tall, scrollable, and allow
-          //   FittedBox scaling to avoid overflow.
-          // - On wide/desktop layouts, center the picker in a reasonably sized
-          //   box without excessive blank space and without scaling.
-          content: Align(
-            alignment: Alignment.center,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: isWide ? 820 : double.infinity,
-                maxHeight: isWide ? screenHeight * 0.4 : screenHeight * 0.7,
-              ),
-              child: SingleChildScrollView(
-                child: isWide
-                    ? ColorPicker(
-                        pickerColor: tempColor,
-                        onColorChanged: (color) {
-                          tempColor = color;
-                        },
-                        enableAlpha: false,
-                        labelTypes: const [],
-                        pickerAreaBorderRadius:
-                            const BorderRadius.all(Radius.circular(12)),
-                      )
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.topCenter,
-                        child: ColorPicker(
-                          pickerColor: tempColor,
-                          onColorChanged: (color) {
-                            tempColor = color;
-                          },
-                          enableAlpha: false,
-                          labelTypes: const [],
-                          pickerAreaBorderRadius:
-                              const BorderRadius.all(Radius.circular(12)),
-                        ),
-                      ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(tempColor),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+    final selectedColor = await CustomColorPickerModal.show(
+      context,
+      appearanceProvider.customColor,
     );
 
     if (selectedColor != null) {
