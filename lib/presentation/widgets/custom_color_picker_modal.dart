@@ -88,8 +88,9 @@ class _CustomColorPickerModalState extends State<CustomColorPickerModal> {
     } else {
       // Portrait mode
       if (isSmallScreen) {
-        // Phone portrait - use most available height (scaled down 15%)
-        return availableHeight * 0.8 * 0.85;
+        // Phone portrait - use a more compact portion of available height
+        // so the modal does not become excessively tall
+        return availableHeight * 0.55;
       } else {
         // Tablet/Desktop portrait - compact height for small ColorPicker
         return 360.0; // Compact height for centered layout
@@ -137,6 +138,16 @@ class _CustomColorPickerModalState extends State<CustomColorPickerModal> {
     // Determine if we're on a small screen
     final isSmallScreen = screenSize.width < 600;
 
+    // Give the horizontal color slider more room in portrait on both
+    // phones and tablets, while keeping the existing behavior in
+    // landscape.
+    final double pickerWidth;
+    if (orientation == Orientation.portrait) {
+      pickerWidth = isSmallScreen ? 230.0 : 230.0;
+    } else {
+      pickerWidth = 150.0;
+    }
+
     return SingleChildScrollView(
       child: Align(
         alignment: Alignment.topCenter,
@@ -154,10 +165,12 @@ class _CustomColorPickerModalState extends State<CustomColorPickerModal> {
             enableAlpha: false,
             labelTypes: const [],
             pickerAreaBorderRadius: const BorderRadius.all(Radius.circular(12)),
-            colorPickerWidth: 150.0, // Reduce further for narrower sliders
+            colorPickerWidth: pickerWidth,
             paletteType: PaletteType.hsvWithHue, // Different palette layout
-            // Adjust layout based on orientation and screen size
-            portraitOnly: orientation == Orientation.portrait && isSmallScreen,
+            // Keep a consistent horizontal layout in both orientations so
+            // the slider stays reasonably long and the overall height
+            // remains compact.
+            portraitOnly: false,
           ),
         ),
       ),
