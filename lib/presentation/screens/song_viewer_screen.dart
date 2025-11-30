@@ -748,10 +748,10 @@ class _SongViewerScreenState extends State<SongViewerScreen>
           Positioned(
             top: 8,
             right: 8,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.end,
               children: [
-                // Share button
                 IconButton(
                   icon: Icon(
                     Icons.share,
@@ -768,15 +768,11 @@ class _SongViewerScreenState extends State<SongViewerScreen>
                   },
                   tooltip: 'Share song',
                 ),
-                const SizedBox(width: 8),
-                // Delete button
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red, size: 28),
                   onPressed: _deleteSong,
                   tooltip: 'Delete song',
                 ),
-                const SizedBox(width: 8),
-                // Edit button
                 IconButton(
                   icon: Icon(
                     Icons.edit,

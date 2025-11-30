@@ -192,6 +192,53 @@ class SongEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Normalize the duration field into a canonical M:SS or MM:SS string.
+  ///
+  /// Supports:
+  /// - Empty string -> null
+  /// - Existing M:SS / MM:SS formats -> unchanged
+  /// - 1-4 digit numeric input (e.g. 300) -> minutes/seconds, where the
+  ///   last two digits are seconds. For example:
+  ///   3   -> 0:03
+  ///   45  -> 0:45
+  ///   300 -> 3:00
+  ///   123 -> 1:23
+  /// If the derived seconds are >= 60, the raw value is returned so that
+  /// validation can flag it instead of silently changing it.
+  String? _normalizedDurationOrNull() {
+    final raw = durationController.text.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+
+    // If the user already entered a colon-based duration, keep it as-is.
+    if (raw.contains(':')) {
+      return raw;
+    }
+
+    // Support 1–4 digit numeric input.
+    final digitsOnly = RegExp(r'^\d{1,4}$');
+    if (!digitsOnly.hasMatch(raw)) {
+      // Something unexpected – let the validator handle it.
+      return raw;
+    }
+
+    final value = int.tryParse(raw);
+    if (value == null) {
+      return raw;
+    }
+
+    // Interpret last two digits as seconds.
+    final minutes = value ~/ 100;
+    final seconds = value % 100;
+    if (seconds >= 60) {
+      // Obviously invalid (e.g. 367 -> 3:67); let validator complain.
+      return raw;
+    }
+
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
   // Getters
   String get selectedKey => _selectedKey;
   int get selectedCapo => _selectedCapo;
@@ -485,6 +532,7 @@ class SongEditorController extends ChangeNotifier {
 
   Song createSong() {
     final bpm = int.tryParse(bpmController.text) ?? 120;
+    final normalizedDuration = _normalizedDurationOrNull();
 
     return Song(
       id: song?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -501,9 +549,7 @@ class SongEditorController extends ChangeNotifier {
           ? null
           : notesController.text.trim(),
       profileId: _selectedMidiProfile?.id,
-      duration: durationController.text.trim().isEmpty
-          ? null
-          : durationController.text.trim(),
+      duration: normalizedDuration,
       createdAt: song?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );

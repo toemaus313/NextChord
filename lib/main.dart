@@ -26,6 +26,13 @@ import 'services/midi/midi_service.dart';
 // Global debug configuration
 bool isDebug = true;
 
+/// When true, log full diagnostic details for layout errors like
+/// RenderFlex overflows (including widget tree) via [myDebug].
+///
+/// Leave this false for normal usage to keep logs lighter, and
+/// temporarily flip to true when you need deeper layout diagnostics.
+bool logRenderOverflowDetails = false;
+
 void myDebug(String message) {
   if (isDebug) {
     final timestamp =
@@ -43,17 +50,61 @@ void main() async {
   // Set up global error handlers to catch SQLite errors and other exceptions
   FlutterError.onError = (FlutterErrorDetails details) {
     if (isDebug) {
-      final timestamp = DateTime.now().toIso8601String().substring(11, 19);
-      debugPrint('[$timestamp] FRAMEWORK ERROR: ${details.exception}');
-      debugPrint('[$timestamp] Stack trace: ${details.stack}');
+      final message = details.exceptionAsString();
+      final diagnostics = details.toString();
+
+      // Detect the noisy, benign RenderFlex overflows that only happen
+      // while UI elements (like the sidebar) are animating in a
+      // nearly-collapsed state.
+      final isRenderFlexOverflow =
+          message.contains('A RenderFlex overflowed by') &&
+              details.library == 'rendering library';
+
+      final isKnownNarrowWidget =
+          diagnostics.contains('sidebar_components/sidebar_header.dart') ||
+              diagnostics.contains('standard_wide_button.dart') ||
+              diagnostics.contains('song_list_tile.dart');
+
+      // Heuristic: these animation-time overflows always report an
+      // extremely small max width constraint (a few logical pixels).
+      final hasTinyWidthConstraint =
+          diagnostics.contains('BoxConstraints(0.0<=w<=1') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=2') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=3') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=5') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=10') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=18.') ||
+              diagnostics.contains('BoxConstraints(0.0<=w<=20.');
+
+      final isBenignNarrowOverflow =
+          isRenderFlexOverflow && isKnownNarrowWidget && hasTinyWidthConstraint;
+
+      if (isBenignNarrowOverflow) {
+        // Ignore these known, animation-only overflows where the
+        // render object is being laid out at an absurdly tiny width.
+        return;
+      }
+
+      // Always log a concise summary of the framework error.
+      myDebug('FRAMEWORK ERROR: $message');
+
+      // Optionally log full diagnostic information (including widget
+      // tree for RenderFlex overflows) when explicitly enabled.
+      if (logRenderOverflowDetails) {
+        myDebug('FRAMEWORK ERROR DETAILS: $diagnostics');
+        if (details.stack != null) {
+          myDebug('FRAMEWORK STACK TRACE: ${details.stack}');
+        } else {
+          myDebug('FRAMEWORK STACK TRACE: <null>');
+        }
+      }
     }
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
     if (isDebug) {
-      final timestamp = DateTime.now().toIso8601String().substring(11, 19);
-      debugPrint('[$timestamp] GLOBAL ERROR: $error');
-      debugPrint('[$timestamp] Stack trace: $stack');
+      myDebug('GLOBAL ERROR: $error');
+      myDebug('GLOBAL STACK TRACE: $stack');
     }
     return true; // Prevent default error handling
   };

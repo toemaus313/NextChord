@@ -360,16 +360,21 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
       _lastError = null;
       notifyListeners();
 
+      main.myDebug('SyncProvider.signIn: starting sign-in for backend=' +
+          _syncBackend.shortName);
       _isSignedIn = await _currentSyncService.signIn();
 
       if (_isSignedIn) {
         // Enable sync when successfully signed in
         await setSyncEnabled(true);
         await handleInitialSync();
-      } else {}
+      } else {
+        main.myDebug('SyncProvider.signIn: sign-in returned false');
+      }
       return _isSignedIn;
     } catch (e) {
       _lastError = e.toString();
+      main.myDebug('SyncProvider.signIn error: ' + e.toString());
       return false;
     } finally {
       _isSyncing = false;

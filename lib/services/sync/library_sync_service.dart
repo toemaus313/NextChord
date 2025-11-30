@@ -4,6 +4,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import '../../main.dart' as main;
 
 /// Model for Google Drive file metadata
 class DriveLibraryMetadata {
@@ -170,6 +171,7 @@ class SongJson {
   final int bpm;
   final String timeSignature;
   final String tags;
+  final String? duration;
   final String? audioFilePath;
   final String? notes;
   final String? profileId;
@@ -187,6 +189,7 @@ class SongJson {
     required this.bpm,
     required this.timeSignature,
     required this.tags,
+    this.duration,
     this.audioFilePath,
     this.notes,
     this.profileId,
@@ -205,6 +208,7 @@ class SongJson {
         'bpm': bpm,
         'timeSignature': timeSignature,
         'tags': tags,
+        'duration': duration,
         'audioFilePath': audioFilePath,
         'notes': notes,
         'profileId': profileId,
@@ -223,6 +227,7 @@ class SongJson {
         bpm: json['bpm'] as int,
         timeSignature: json['timeSignature'] as String,
         tags: json['tags'] as String,
+        duration: json['duration'] as String?,
         audioFilePath: json['audioFilePath'] as String?,
         notes: json['notes'] as String?,
         profileId: json['profileId'] as String?,
@@ -598,6 +603,10 @@ class LibrarySyncService {
       changes.add(
           'time signature changed from ${local.timeSignature} to ${remote.timeSignature}');
     }
+    if (local.duration != remote.duration) {
+      changes.add(
+          'duration changed from ${local.duration ?? 'null'} to ${remote.duration ?? 'null'}');
+    }
     if (local.tags != remote.tags) {
       if (local.tags.isEmpty && remote.tags.isNotEmpty) {
         try {
@@ -696,6 +705,7 @@ class LibrarySyncService {
                 bpm: s.bpm,
                 timeSignature: s.timeSignature,
                 tags: s.tags,
+                duration: s.duration,
                 audioFilePath: s.audioFilePath,
                 notes: s.notes,
                 profileId: s.profileId,
@@ -835,6 +845,7 @@ class LibrarySyncService {
           bpm: json.bpm,
           timeSignature: json.timeSignature,
           tags: json.tags,
+          duration: json.duration,
           audioFilePath: json.audioFilePath,
           notes: json.notes,
           profileId: json.profileId,
@@ -912,7 +923,19 @@ class LibrarySyncService {
       await _database.transaction(() async {
         // Clear and insert songs
         await _database.delete(_database.songs).go();
+
         for (final song in mergedSongs) {
+          final localBefore = localSongsMap[song.id];
+          if (localBefore != null && localBefore.duration != song.duration) {
+            main.myDebug('LibrarySyncService.importAndMergeLibraryFromJson: '
+                    'duration changed for song ' +
+                song.id +
+                ' from ' +
+                (localBefore.duration ?? 'null') +
+                ' to ' +
+                (song.duration ?? 'null'));
+          }
+
           await _database.into(_database.songs).insert(song);
         }
 

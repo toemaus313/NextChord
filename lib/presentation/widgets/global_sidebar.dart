@@ -124,6 +124,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
       // Desktop/Tablet mode: animated sidebar
       // Make the sidebar 10% wider on desktop/tablet while keeping a fixed pixel width
       final sidebarWidth = Platform.isIOS ? 352.0 : 282.0;
+      const double _minContentWidth = 48.0;
 
       return AnimatedBuilder(
         animation: _animation,
@@ -138,7 +139,12 @@ class _GlobalSidebarState extends State<GlobalSidebar>
               color: backgroundColor,
             ),
             clipBehavior: Clip.hardEdge,
-            child: width > 0 ? _buildSidebar(context, sidebarWidth) : null,
+            // Only build contents when there is enough horizontal space to
+            // lay them out. This prevents temporary RenderFlex overflows
+            // when the sidebar is almost fully collapsed during animation.
+            child: width >= _minContentWidth
+                ? _buildSidebar(context, width)
+                : null,
           );
         },
       );

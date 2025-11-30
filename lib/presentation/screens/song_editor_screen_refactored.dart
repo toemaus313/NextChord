@@ -471,6 +471,37 @@ class _SongEditorScreenRefactoredState
       final now = DateTime.now();
       final updatedBody = _bodyController.text.trim();
 
+      // Normalize duration input: support both M:SS / MM:SS and 1–4 digit
+      // numeric input where the last two digits are seconds (e.g. 300 -> 3:00,
+      // 518 -> 5:18).
+      final rawDuration = _durationController.text.trim();
+      String? normalizedDuration;
+      if (rawDuration.isEmpty) {
+        normalizedDuration = null;
+      } else if (rawDuration.contains(':')) {
+        // Already M:SS or MM:SS
+        normalizedDuration = rawDuration;
+      } else if (RegExp(r'^\d{1,4}$').hasMatch(rawDuration)) {
+        // Pure digits: interpret last two digits as seconds
+        final value = int.tryParse(rawDuration);
+        if (value != null) {
+          final minutes = value ~/ 100;
+          final seconds = value % 100;
+          if (seconds < 60) {
+            normalizedDuration =
+                '$minutes:${seconds.toString().padLeft(2, '0')}';
+          } else {
+            // 3-digit like 367 -> 3:67 (invalid seconds); let validator complain
+            normalizedDuration = rawDuration;
+          }
+        } else {
+          normalizedDuration = rawDuration;
+        }
+      } else {
+        // Unexpected format; leave as-is and let validator handle it
+        normalizedDuration = rawDuration;
+      }
+
       final song = Song(
         id: widget.song?.id ?? '',
         title: _titleController.text.trim(),
@@ -483,9 +514,7 @@ class _SongEditorScreenRefactoredState
         tags: _tags,
         audioFilePath: null,
         notes: widget.song?.notes,
-        duration: _durationController.text.trim().isNotEmpty
-            ? _durationController.text.trim()
-            : null,
+        duration: normalizedDuration,
         createdAt: widget.song?.createdAt ?? now,
         updatedAt: now,
       );

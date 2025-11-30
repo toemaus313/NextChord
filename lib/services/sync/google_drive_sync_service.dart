@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/config/google_oauth_config.dart';
+import '../../main.dart' as main;
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
 import 'library_sync_service.dart';
@@ -221,9 +222,12 @@ class GoogleDriveSyncService {
     try {
       if (_isMobilePlatform()) {
         // Use GoogleSignIn for mobile platforms
+        main.myDebug('GoogleDriveSyncService.signIn: starting mobile sign-in');
         final GoogleSignInAccount? account =
             await _googleSignInInstance.signIn();
         final result = account != null;
+        main.myDebug(
+            'GoogleDriveSyncService.signIn: mobile sign-in completed, account null=${account == null}');
         return result;
       } else {
         // Use universal web OAuth for desktop platforms
@@ -231,6 +235,7 @@ class GoogleDriveSyncService {
         return result;
       }
     } catch (e) {
+      main.myDebug('GoogleDriveSyncService.signIn error: ' + e.toString());
       return false;
     }
   }

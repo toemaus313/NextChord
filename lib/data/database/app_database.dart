@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/services/database_change_service.dart';
 import 'dart:convert';
 import 'dart:math';
-import 'package:nextchord/main.dart' as main;
+import '../../main.dart' as main;
 import 'tables/tables.dart';
 import 'migrations/migrations.dart';
 import '../../services/sync/library_sync_service.dart';
@@ -106,6 +106,21 @@ class AppDatabase extends _$AppDatabase {
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
+
+    SongModel? existing;
+    try {
+      existing = await getSongById(songWithTimestamp.id);
+    } catch (_) {}
+
+    if (existing != null && existing.duration != songWithTimestamp.duration) {
+      main.myDebug('AppDatabase.saveSong: duration changed for song ' +
+          songWithTimestamp.id +
+          ' from ' +
+          (existing.duration ?? 'null') +
+          ' to ' +
+          (songWithTimestamp.duration ?? 'null'));
+    }
+
     into(songs).insertOnConflictUpdate(songWithTimestamp);
   }
 
@@ -114,6 +129,13 @@ class AppDatabase extends _$AppDatabase {
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
+    if (songWithTimestamp.duration != null) {
+      main.myDebug('AppDatabase.insertSong: initial duration for song ' +
+          songWithTimestamp.id +
+          ' = ' +
+          (songWithTimestamp.duration ?? 'null'));
+    }
+
     await into(songs).insert(songWithTimestamp);
   }
 
@@ -122,6 +144,21 @@ class AppDatabase extends _$AppDatabase {
     final songWithTimestamp = song.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
+
+    SongModel? existing;
+    try {
+      existing = await getSongById(songWithTimestamp.id);
+    } catch (_) {}
+
+    if (existing != null && existing.duration != songWithTimestamp.duration) {
+      main.myDebug('AppDatabase.updateSong: duration changed for song ' +
+          songWithTimestamp.id +
+          ' from ' +
+          (existing.duration ?? 'null') +
+          ' to ' +
+          (songWithTimestamp.duration ?? 'null'));
+    }
+
     await update(songs).replace(songWithTimestamp);
   }
 
