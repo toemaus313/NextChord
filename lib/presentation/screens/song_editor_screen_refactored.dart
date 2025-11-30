@@ -1069,7 +1069,7 @@ class _SongEditorScreenRefactoredState
       }
     } else {
       // Desktop / tablet proportions remain as before.
-      metadataFlex = 8;
+      metadataFlex = 11;
       bodyFlex = 15;
     }
 
@@ -1126,81 +1126,150 @@ class _SongEditorScreenRefactoredState
                         ],
                       ),
                     ),
-                  // Metadata section: allow it to shrink and scroll so it
-                  // doesn't push the editor body off the bottom of the screen.
-                  // On mobile, we give it explicit flex so it uses about
-                  // half the height alongside the body.
                   if (!hideMetadata)
                     Expanded(
                       flex: metadataFlex,
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(
-                            16.0,
-                            widget.setlistContext != null ? 16.0 : 60.0,
-                            16.0,
-                            16.0),
-                        child: Column(
-                          children: [
-                            // Metadata form
-                            Column(
-                              children: [
-                                // Debug API test button
-                                ElevatedButton(
-                                  onPressed: _testSongMetadataAPI,
-                                  child: const Text('Retrieve Song Info'),
-                                ),
-                                const SizedBox(height: 8),
-                                // Actual metadata form
-                                SongMetadataForm(
-                                  titleController: _titleController,
-                                  artistController: _artistController,
-                                  bpmController: _bpmController,
-                                  durationController: _durationController,
-                                  selectedKey: _selectedKey,
-                                  selectedCapo: _selectedCapo,
-                                  selectedTimeSignature: _selectedTimeSignature,
-                                  textColor: textColor,
-                                  isDarkMode: isDarkMode,
-                                  hasSetlistContext:
-                                      widget.setlistContext != null,
-                                  onKeyChanged: _handleKeySelection,
-                                  onCapoChanged: _handleCapoSelection,
-                                  onTimeSignatureChanged:
-                                      _handleTimeSignatureChanged,
-                                  onAutoTransposeChanged:
-                                      _handleAutoTransposeChanged,
-                                  isAutoTransposeEnabled:
-                                      _isAutoTransposeEnabled,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
+                      child: isMobileWidth
+                          ? SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                  16.0,
+                                  widget.setlistContext != null ? 16.0 : 60.0,
+                                  16.0,
+                                  16.0),
+                              child: Column(
+                                children: [
+                                  // Metadata form
+                                  Column(
+                                    children: [
+                                      // Debug API test button
+                                      ElevatedButton(
+                                        onPressed: _testSongMetadataAPI,
+                                        child: const Text('Retrieve Song Info'),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // Actual metadata form
+                                      SongMetadataForm(
+                                        titleController: _titleController,
+                                        artistController: _artistController,
+                                        bpmController: _bpmController,
+                                        durationController: _durationController,
+                                        selectedKey: _selectedKey,
+                                        selectedCapo: _selectedCapo,
+                                        selectedTimeSignature:
+                                            _selectedTimeSignature,
+                                        textColor: textColor,
+                                        isDarkMode: isDarkMode,
+                                        hasSetlistContext:
+                                            widget.setlistContext != null,
+                                        onKeyChanged: _handleKeySelection,
+                                        onCapoChanged: _handleCapoSelection,
+                                        onTimeSignatureChanged:
+                                            _handleTimeSignatureChanged,
+                                        onAutoTransposeChanged:
+                                            _handleAutoTransposeChanged,
+                                        isAutoTransposeEnabled:
+                                            _isAutoTransposeEnabled,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
 
-                            // MIDI Sends section
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: isDarkMode
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade400,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
+                                  // MIDI Sends section
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade400,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: MidiProfileSelector(
+                                      selectedProfile: _selectedMidiProfile,
+                                      onProfileChanged:
+                                          _handleMidiProfileChanged,
+                                      profiles: _midiProfiles,
+                                      isLoading: _isLoadingProfiles,
+                                      onProfilesReloaded: _loadMidiProfiles,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
                               ),
-                              child: MidiProfileSelector(
-                                selectedProfile: _selectedMidiProfile,
-                                onProfileChanged: _handleMidiProfileChanged,
-                                profiles: _midiProfiles,
-                                isLoading: _isLoadingProfiles,
-                                onProfilesReloaded: _loadMidiProfiles,
+                            )
+                          : Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                  16.0,
+                                  widget.setlistContext != null ? 16.0 : 60.0,
+                                  16.0,
+                                  16.0),
+                              child: Column(
+                                children: [
+                                  // Metadata form
+                                  Column(
+                                    children: [
+                                      // Debug API test button
+                                      ElevatedButton(
+                                        onPressed: _testSongMetadataAPI,
+                                        child: const Text('Retrieve Song Info'),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // Actual metadata form
+                                      SongMetadataForm(
+                                        titleController: _titleController,
+                                        artistController: _artistController,
+                                        bpmController: _bpmController,
+                                        durationController: _durationController,
+                                        selectedKey: _selectedKey,
+                                        selectedCapo: _selectedCapo,
+                                        selectedTimeSignature:
+                                            _selectedTimeSignature,
+                                        textColor: textColor,
+                                        isDarkMode: isDarkMode,
+                                        hasSetlistContext:
+                                            widget.setlistContext != null,
+                                        onKeyChanged: _handleKeySelection,
+                                        onCapoChanged: _handleCapoSelection,
+                                        onTimeSignatureChanged:
+                                            _handleTimeSignatureChanged,
+                                        onAutoTransposeChanged:
+                                            _handleAutoTransposeChanged,
+                                        isAutoTransposeEnabled:
+                                            _isAutoTransposeEnabled,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // MIDI Sends section
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade400,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: MidiProfileSelector(
+                                      selectedProfile: _selectedMidiProfile,
+                                      onProfileChanged:
+                                          _handleMidiProfileChanged,
+                                      profiles: _midiProfiles,
+                                      isLoading: _isLoadingProfiles,
+                                      onProfilesReloaded: _loadMidiProfiles,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
                     ),
                   // Body (ChordPro text) field - borderless editing area
                   Expanded(
