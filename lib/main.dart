@@ -155,6 +155,13 @@ void main() async {
         songProvider
             .loadDeletedSongs(); // Also refresh deleted songs to prevent disappearing
         setlistProvider.loadSetlists();
+
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          final appearanceProvider =
+              Provider.of<AppearanceProvider>(context, listen: false);
+          appearanceProvider.reloadFromDatabase();
+        }
       });
     },
   );
@@ -230,7 +237,9 @@ class NextChordApp extends StatelessWidget {
           create: (_) => ThemeProvider(),
         ),
         ChangeNotifierProvider(
-          create: (_) => AppearanceProvider(),
+          create: (context) => AppearanceProvider(
+            Provider.of<AppDatabase>(context, listen: false),
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => GlobalSidebarProvider(),

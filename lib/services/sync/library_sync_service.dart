@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
 import '../../main.dart' as main;
@@ -83,6 +84,35 @@ class DeletionJson {
 }
 
 /// JSON model for library export/import
+class AppearanceSettingsJson {
+  final int? recentColor1;
+  final int? recentColor2;
+  final int? recentColor3;
+  final int updatedAt;
+
+  AppearanceSettingsJson({
+    required this.recentColor1,
+    required this.recentColor2,
+    required this.recentColor3,
+    required this.updatedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'recentColor1': recentColor1,
+        'recentColor2': recentColor2,
+        'recentColor3': recentColor3,
+        'updatedAt': updatedAt,
+      };
+
+  factory AppearanceSettingsJson.fromJson(Map<String, dynamic> json) =>
+      AppearanceSettingsJson(
+        recentColor1: json['recentColor1'] as int?,
+        recentColor2: json['recentColor2'] as int?,
+        recentColor3: json['recentColor3'] as int?,
+        updatedAt: json['updatedAt'] as int,
+      );
+}
+
 class LibraryJson {
   final int schemaVersion;
   final int libraryVersion;
@@ -93,6 +123,7 @@ class LibraryJson {
   final List<MidiMappingJson> midiMappings;
   final List<MidiProfileJson> midiProfiles;
   final List<DeletionJson> deletions;
+  final AppearanceSettingsJson? appearanceSettings;
 
   LibraryJson({
     required this.schemaVersion,
@@ -104,6 +135,7 @@ class LibraryJson {
     required this.midiMappings,
     required this.midiProfiles,
     required this.deletions,
+    required this.appearanceSettings,
   });
 
   Map<String, dynamic> toJson() => {
@@ -116,6 +148,7 @@ class LibraryJson {
         'midiMappings': midiMappings.map((m) => m.toJson()).toList(),
         'midiProfiles': midiProfiles.map((m) => m.toJson()).toList(),
         'deletions': deletions.map((d) => d.toJson()).toList(),
+        'appearanceSettings': appearanceSettings?.toJson(),
       };
 
   factory LibraryJson.fromJson(Map<String, dynamic> json) => LibraryJson(
@@ -141,6 +174,11 @@ class LibraryJson {
                 ?.map((d) => DeletionJson.fromJson(d as Map<String, dynamic>))
                 .toList() ??
             const <DeletionJson>[],
+        appearanceSettings: json['appearanceSettings'] != null
+            ? AppearanceSettingsJson.fromJson(
+                json['appearanceSettings'] as Map<String, dynamic>,
+              )
+            : null,
       );
 }
 
@@ -568,6 +606,9 @@ class LibrarySyncService {
         'midiMappings': json['midiMappings'],
         'midiProfiles': json['midiProfiles'],
         'deletions': json['deletions'] ?? [],
+        // Include appearanceSettings so that changes to recent custom
+        // colors trigger an upload and propagate across devices.
+        'appearanceSettings': json['appearanceSettings'],
         // Exclude: exportedAt, devices, libraryVersion (these change on every export)
       };
 
@@ -692,6 +733,25 @@ class LibrarySyncService {
       final deletions =
           await _database.select(_database.deletionTracking).get();
       final syncState = await _database.getSyncState();
+      AppearanceSettingsModel? appearanceSettings;
+      try {
+        appearanceSettings = await _database
+            .select(_database.appearanceSettings)
+            .getSingleOrNull();
+      } catch (_) {
+        appearanceSettings = null;
+      }
+
+      if (appearanceSettings != null) {
+        main.myDebug('LibrarySyncService.exportLibraryToJson: local appearance '
+            'recentColor1=${appearanceSettings.recentColor1}, '
+            'recentColor2=${appearanceSettings.recentColor2}, '
+            'recentColor3=${appearanceSettings.recentColor3}, '
+            'updatedAt=${appearanceSettings.updatedAt}');
+      } else {
+        main.myDebug(
+            'LibrarySyncService.exportLibraryToJson: no local appearance_settings row');
+      }
 
       // Convert to JSON models
       final songJsons = songs
@@ -774,6 +834,17 @@ class LibrarySyncService {
         lastSyncAt: DateTime.now().toIso8601String(),
       );
 
+      // Map appearance settings row (if any) into JSON model
+      AppearanceSettingsJson? appearanceJson;
+      if (appearanceSettings != null) {
+        appearanceJson = AppearanceSettingsJson(
+          recentColor1: appearanceSettings.recentColor1,
+          recentColor2: appearanceSettings.recentColor2,
+          recentColor3: appearanceSettings.recentColor3,
+          updatedAt: appearanceSettings.updatedAt,
+        );
+      }
+
       // Create library JSON
       final libraryJson = LibraryJson(
         schemaVersion: currentSchemaVersion,
@@ -785,7 +856,20 @@ class LibrarySyncService {
         midiMappings: midiMappingJsons,
         midiProfiles: midiProfileJsons,
         deletions: deletionJsons,
+        appearanceSettings: appearanceJson,
       );
+
+      if (appearanceJson != null) {
+        main.myDebug(
+            'LibrarySyncService.exportLibraryToJson: exporting appearance '
+            'recentColor1=${appearanceJson.recentColor1}, '
+            'recentColor2=${appearanceJson.recentColor2}, '
+            'recentColor3=${appearanceJson.recentColor3}, '
+            'updatedAt=${appearanceJson.updatedAt}');
+      } else {
+        main.myDebug(
+            'LibrarySyncService.exportLibraryToJson: exporting appearance=null');
+      }
 
       return jsonEncode(libraryJson.toJson());
     } catch (e) {
@@ -814,6 +898,38 @@ class LibrarySyncService {
           await _database.select(_database.midiMappings).get();
       final localMidiProfiles =
           await _database.select(_database.midiProfiles).get();
+      AppearanceSettingsModel? localAppearanceSettings;
+      try {
+        localAppearanceSettings = await _database
+            .select(_database.appearanceSettings)
+            .getSingleOrNull();
+      } catch (_) {
+        localAppearanceSettings = null;
+      }
+
+      if (remoteLibrary.appearanceSettings != null) {
+        final r = remoteLibrary.appearanceSettings!;
+        main.myDebug('LibrarySyncService.importAndMergeLibraryFromJson: remote '
+            'appearance present recentColor1=${r.recentColor1}, '
+            'recentColor2=${r.recentColor2}, '
+            'recentColor3=${r.recentColor3}, '
+            'updatedAt=${r.updatedAt}');
+      } else {
+        main.myDebug(
+            'LibrarySyncService.importAndMergeLibraryFromJson: remote appearanceSettings is null');
+      }
+
+      if (localAppearanceSettings != null) {
+        main.myDebug('LibrarySyncService.importAndMergeLibraryFromJson: local '
+            'appearance before merge recentColor1=${localAppearanceSettings.recentColor1}, '
+            'recentColor2=${localAppearanceSettings.recentColor2}, '
+            'recentColor3=${localAppearanceSettings.recentColor3}, '
+            'updatedAt=${localAppearanceSettings.updatedAt}');
+      } else {
+        main.myDebug(
+            'LibrarySyncService.importAndMergeLibraryFromJson: no local '
+            'appearance_settings row before merge');
+      }
 
       // Create maps for efficient lookup
       final localSongsMap = {for (var s in localSongs) s.id: s};
@@ -955,6 +1071,42 @@ class LibrarySyncService {
         await _database.delete(_database.midiProfiles).go();
         for (final profile in mergedMidiProfiles) {
           await _database.into(_database.midiProfiles).insert(profile);
+        }
+
+        // Merge appearance settings with simple last-write-wins based on
+        // updatedAt. If the remote library has appearance settings and
+        // they are newer than (or equal to) the local row, upsert them.
+        if (remoteLibrary.appearanceSettings != null) {
+          final remote = remoteLibrary.appearanceSettings!;
+          final remoteUpdatedAt = remote.updatedAt;
+          final localUpdatedAt = localAppearanceSettings?.updatedAt ?? 0;
+
+          main.myDebug(
+              'LibrarySyncService.importAndMergeLibraryFromJson: comparing appearance '
+              'remoteUpdatedAt=$remoteUpdatedAt localUpdatedAt=$localUpdatedAt');
+
+          if (remoteUpdatedAt >= localUpdatedAt) {
+            main.myDebug(
+                'LibrarySyncService.importAndMergeLibraryFromJson: applying remote appearance');
+            final companion = AppearanceSettingsCompanion(
+              id: const Value(1),
+              recentColor1: Value(remote.recentColor1),
+              recentColor2: Value(remote.recentColor2),
+              recentColor3: Value(remote.recentColor3),
+              updatedAt: Value(remoteUpdatedAt),
+            );
+
+            await _database
+                .into(_database.appearanceSettings)
+                .insertOnConflictUpdate(companion);
+          } else {
+            main.myDebug(
+                'LibrarySyncService.importAndMergeLibraryFromJson: keeping local appearance (newer)');
+          }
+        } else {
+          main.myDebug(
+              'LibrarySyncService.importAndMergeLibraryFromJson: no remote '
+              'appearanceSettings to merge');
         }
 
         // Upsert deletion tracking records from remote into the local

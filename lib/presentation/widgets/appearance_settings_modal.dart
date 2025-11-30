@@ -159,7 +159,9 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
   }
 
   Widget _buildColorWheel(AppearanceProvider appearanceProvider) {
-    // Simple color palette - 6x4 grid of preset colors + one custom slot
+    // Simple color palette - 6x4 grid of preset colors + three recent
+    // custom slots and one "Custom..." button in the bottom row.
+    final recent = appearanceProvider.recentCustomColors;
     final List<List<Color?>> colors = [
       // Row 1: Basic colors
       [Colors.red, Colors.pink, Colors.purple, Colors.deepPurple],
@@ -171,8 +173,13 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
       [Colors.yellow, Colors.amber, Colors.orange, Colors.deepOrange],
       // Row 5: Browns and grays
       [Colors.brown, Colors.grey, Colors.blueGrey, Colors.black],
-      // Row 6: Whites and custom slot (bottom-right)
-      [Colors.white, Colors.white70, Colors.white30, null],
+      // Row 6: Recent custom colors (3 slots) + Custom button (bottom-right)
+      [
+        recent.isNotEmpty ? recent[0] : null,
+        recent.length > 1 ? recent[1] : null,
+        recent.length > 2 ? recent[2] : null,
+        null,
+      ],
     ];
 
     return Container(
@@ -182,65 +189,76 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        children: colors
-            .map((row) => Row(
-                  children: row
-                      .map((color) => Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                if (color != null) {
-                                  // Preset color selected
-                                  await appearanceProvider
-                                      .setCustomColor(color);
-                                  _hexController.text =
-                                      appearanceProvider.hexColorString;
-                                  setState(() {
-                                    _hexError =
-                                        _validateHexColor(_hexController.text);
-                                  });
-                                } else {
-                                  // "Custom..." slot - open advanced color picker
-                                  await _showCustomColorPicker(
-                                      context, appearanceProvider);
-                                }
-                              },
-                              child: Container(
-                                height: 32,
-                                margin: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: color ?? Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: color != null &&
-                                            appearanceProvider.customColor ==
-                                                color
-                                        ? Colors.white
-                                        : Colors.white24,
-                                    width: color != null &&
-                                            appearanceProvider.customColor ==
-                                                color
-                                        ? 2
-                                        : 1,
-                                  ),
-                                ),
-                                child: color == null
-                                    ? const Center(
-                                        child: Text(
-                                          'Custom…',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                ))
-            .toList(),
+        children: [
+          for (var rowIndex = 0; rowIndex < colors.length; rowIndex++)
+            Row(
+              children: [
+                for (var colIndex = 0;
+                    colIndex < colors[rowIndex].length;
+                    colIndex++)
+                  Expanded(
+                    child: _buildColorSwatchCell(
+                      context: context,
+                      appearanceProvider: appearanceProvider,
+                      color: colors[rowIndex][colIndex],
+                      isCustomButton:
+                          rowIndex == colors.length - 1 && colIndex == 3,
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorSwatchCell({
+    required BuildContext context,
+    required AppearanceProvider appearanceProvider,
+    required Color? color,
+    required bool isCustomButton,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        if (isCustomButton) {
+          // "Custom..." slot - open advanced color picker
+          await _showCustomColorPicker(context, appearanceProvider);
+        } else if (color != null) {
+          // Preset or recent custom color selected
+          await appearanceProvider.setCustomColor(color);
+          _hexController.text = appearanceProvider.hexColorString;
+          setState(() {
+            _hexError = _validateHexColor(_hexController.text);
+          });
+        }
+      },
+      child: Container(
+        height: 32,
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: color ?? Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: color != null && appearanceProvider.customColor == color
+                ? Colors.white
+                : Colors.white24,
+            width: color != null && appearanceProvider.customColor == color
+                ? 2
+                : 1,
+          ),
+        ),
+        child: isCustomButton
+            ? const Center(
+                child: Text(
+                  'Custom…',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
+            : null,
       ),
     );
   }
@@ -254,6 +272,7 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
 
     if (selectedColor != null) {
       await appearanceProvider.setCustomColor(selectedColor);
+      await appearanceProvider.registerCustomColor(selectedColor);
       _hexController.text = appearanceProvider.hexColorString;
       setState(() {
         _hexError = _validateHexColor(_hexController.text);

@@ -26,6 +26,23 @@ class Songs extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Drift table for appearance settings (e.g., recent custom theme colors)
+@DataClassName('AppearanceSettingsModel')
+class AppearanceSettings extends Table {
+  IntColumn get id => integer()(); // Always 1 for singleton row
+
+  // Recent custom colors stored as ARGB ints; null = empty slot
+  IntColumn get recentColor1 => integer().nullable()();
+  IntColumn get recentColor2 => integer().nullable()();
+  IntColumn get recentColor3 => integer().nullable()();
+
+  // For potential last-write-wins semantics during merges
+  IntColumn get updatedAt => integer()(); // epoch ms
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Drift table for MIDI Mappings
 @DataClassName('MidiMappingModel')
 class MidiMappings extends Table {

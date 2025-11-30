@@ -149,6 +149,13 @@ class DatabaseMigrations {
               await m.createTable(db.deletionTracking);
             } catch (e) {}
           }
+          if (from <= 13 && to >= 14) {
+            // Create appearance_settings table for recent custom theme colors
+            final db = m.database as AppDatabase;
+            try {
+              await m.createTable(db.appearanceSettings);
+            } catch (e) {}
+          }
         },
       );
 
@@ -241,6 +248,18 @@ class DatabaseMigrations {
           'timing',
           'notes',
           'created_at',
+          'updated_at',
+        ],
+      );
+
+      await _mergeTable(
+        db,
+        tableName: 'appearance_settings',
+        primaryKeys: ['id'],
+        columns: [
+          'recent_color1',
+          'recent_color2',
+          'recent_color3',
           'updated_at',
         ],
       );

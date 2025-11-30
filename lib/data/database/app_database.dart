@@ -22,13 +22,14 @@ part 'app_database.g.dart';
   MidiProfiles,
   PedalMappings,
   SyncState,
-  DeletionTracking
+  DeletionTracking,
+  AppearanceSettings,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => DatabaseMigrations.migrationStrategy;

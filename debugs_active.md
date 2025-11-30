@@ -16,3 +16,7 @@
   - File: lib/services/sync/library_sync_service.dart
   - Purpose: Log when JSON sync merge changes a song's duration compared to existing local data
 
+- LibrarySyncService appearance settings sync
+  - File: lib/services/sync/library_sync_service.dart
+  - Purpose: Log local appearance_settings row, exported appearance JSON, and remote vs local appearance during JSON sync merge for troubleshooting recent custom color swatch sync across devices
+

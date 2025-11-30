@@ -3719,6 +3719,324 @@ class DeletionTrackingCompanion extends UpdateCompanion<DeletionTrackingModel> {
   }
 }
 
+class $AppearanceSettingsTable extends AppearanceSettings
+    with TableInfo<$AppearanceSettingsTable, AppearanceSettingsModel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppearanceSettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _recentColor1Meta =
+      const VerificationMeta('recentColor1');
+  @override
+  late final GeneratedColumn<int> recentColor1 = GeneratedColumn<int>(
+      'recent_color1', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _recentColor2Meta =
+      const VerificationMeta('recentColor2');
+  @override
+  late final GeneratedColumn<int> recentColor2 = GeneratedColumn<int>(
+      'recent_color2', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _recentColor3Meta =
+      const VerificationMeta('recentColor3');
+  @override
+  late final GeneratedColumn<int> recentColor3 = GeneratedColumn<int>(
+      'recent_color3', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, recentColor1, recentColor2, recentColor3, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'appearance_settings';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AppearanceSettingsModel> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('recent_color1')) {
+      context.handle(
+          _recentColor1Meta,
+          recentColor1.isAcceptableOrUnknown(
+              data['recent_color1']!, _recentColor1Meta));
+    }
+    if (data.containsKey('recent_color2')) {
+      context.handle(
+          _recentColor2Meta,
+          recentColor2.isAcceptableOrUnknown(
+              data['recent_color2']!, _recentColor2Meta));
+    }
+    if (data.containsKey('recent_color3')) {
+      context.handle(
+          _recentColor3Meta,
+          recentColor3.isAcceptableOrUnknown(
+              data['recent_color3']!, _recentColor3Meta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppearanceSettingsModel map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppearanceSettingsModel(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      recentColor1: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}recent_color1']),
+      recentColor2: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}recent_color2']),
+      recentColor3: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}recent_color3']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $AppearanceSettingsTable createAlias(String alias) {
+    return $AppearanceSettingsTable(attachedDatabase, alias);
+  }
+}
+
+class AppearanceSettingsModel extends DataClass
+    implements Insertable<AppearanceSettingsModel> {
+  final int id;
+  final int? recentColor1;
+  final int? recentColor2;
+  final int? recentColor3;
+  final int updatedAt;
+  const AppearanceSettingsModel(
+      {required this.id,
+      this.recentColor1,
+      this.recentColor2,
+      this.recentColor3,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || recentColor1 != null) {
+      map['recent_color1'] = Variable<int>(recentColor1);
+    }
+    if (!nullToAbsent || recentColor2 != null) {
+      map['recent_color2'] = Variable<int>(recentColor2);
+    }
+    if (!nullToAbsent || recentColor3 != null) {
+      map['recent_color3'] = Variable<int>(recentColor3);
+    }
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  AppearanceSettingsCompanion toCompanion(bool nullToAbsent) {
+    return AppearanceSettingsCompanion(
+      id: Value(id),
+      recentColor1: recentColor1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recentColor1),
+      recentColor2: recentColor2 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recentColor2),
+      recentColor3: recentColor3 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recentColor3),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AppearanceSettingsModel.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppearanceSettingsModel(
+      id: serializer.fromJson<int>(json['id']),
+      recentColor1: serializer.fromJson<int?>(json['recentColor1']),
+      recentColor2: serializer.fromJson<int?>(json['recentColor2']),
+      recentColor3: serializer.fromJson<int?>(json['recentColor3']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'recentColor1': serializer.toJson<int?>(recentColor1),
+      'recentColor2': serializer.toJson<int?>(recentColor2),
+      'recentColor3': serializer.toJson<int?>(recentColor3),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  AppearanceSettingsModel copyWith(
+          {int? id,
+          Value<int?> recentColor1 = const Value.absent(),
+          Value<int?> recentColor2 = const Value.absent(),
+          Value<int?> recentColor3 = const Value.absent(),
+          int? updatedAt}) =>
+      AppearanceSettingsModel(
+        id: id ?? this.id,
+        recentColor1:
+            recentColor1.present ? recentColor1.value : this.recentColor1,
+        recentColor2:
+            recentColor2.present ? recentColor2.value : this.recentColor2,
+        recentColor3:
+            recentColor3.present ? recentColor3.value : this.recentColor3,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  AppearanceSettingsModel copyWithCompanion(AppearanceSettingsCompanion data) {
+    return AppearanceSettingsModel(
+      id: data.id.present ? data.id.value : this.id,
+      recentColor1: data.recentColor1.present
+          ? data.recentColor1.value
+          : this.recentColor1,
+      recentColor2: data.recentColor2.present
+          ? data.recentColor2.value
+          : this.recentColor2,
+      recentColor3: data.recentColor3.present
+          ? data.recentColor3.value
+          : this.recentColor3,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppearanceSettingsModel(')
+          ..write('id: $id, ')
+          ..write('recentColor1: $recentColor1, ')
+          ..write('recentColor2: $recentColor2, ')
+          ..write('recentColor3: $recentColor3, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, recentColor1, recentColor2, recentColor3, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppearanceSettingsModel &&
+          other.id == this.id &&
+          other.recentColor1 == this.recentColor1 &&
+          other.recentColor2 == this.recentColor2 &&
+          other.recentColor3 == this.recentColor3 &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AppearanceSettingsCompanion
+    extends UpdateCompanion<AppearanceSettingsModel> {
+  final Value<int> id;
+  final Value<int?> recentColor1;
+  final Value<int?> recentColor2;
+  final Value<int?> recentColor3;
+  final Value<int> updatedAt;
+  const AppearanceSettingsCompanion({
+    this.id = const Value.absent(),
+    this.recentColor1 = const Value.absent(),
+    this.recentColor2 = const Value.absent(),
+    this.recentColor3 = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  AppearanceSettingsCompanion.insert({
+    this.id = const Value.absent(),
+    this.recentColor1 = const Value.absent(),
+    this.recentColor2 = const Value.absent(),
+    this.recentColor3 = const Value.absent(),
+    required int updatedAt,
+  }) : updatedAt = Value(updatedAt);
+  static Insertable<AppearanceSettingsModel> custom({
+    Expression<int>? id,
+    Expression<int>? recentColor1,
+    Expression<int>? recentColor2,
+    Expression<int>? recentColor3,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (recentColor1 != null) 'recent_color1': recentColor1,
+      if (recentColor2 != null) 'recent_color2': recentColor2,
+      if (recentColor3 != null) 'recent_color3': recentColor3,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  AppearanceSettingsCompanion copyWith(
+      {Value<int>? id,
+      Value<int?>? recentColor1,
+      Value<int?>? recentColor2,
+      Value<int?>? recentColor3,
+      Value<int>? updatedAt}) {
+    return AppearanceSettingsCompanion(
+      id: id ?? this.id,
+      recentColor1: recentColor1 ?? this.recentColor1,
+      recentColor2: recentColor2 ?? this.recentColor2,
+      recentColor3: recentColor3 ?? this.recentColor3,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (recentColor1.present) {
+      map['recent_color1'] = Variable<int>(recentColor1.value);
+    }
+    if (recentColor2.present) {
+      map['recent_color2'] = Variable<int>(recentColor2.value);
+    }
+    if (recentColor3.present) {
+      map['recent_color3'] = Variable<int>(recentColor3.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppearanceSettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('recentColor1: $recentColor1, ')
+          ..write('recentColor2: $recentColor2, ')
+          ..write('recentColor3: $recentColor3, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3730,6 +4048,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $DeletionTrackingTable deletionTracking =
       $DeletionTrackingTable(this);
+  late final $AppearanceSettingsTable appearanceSettings =
+      $AppearanceSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3741,7 +4061,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         midiProfiles,
         pedalMappings,
         syncState,
-        deletionTracking
+        deletionTracking,
+        appearanceSettings
       ];
 }
 
@@ -5498,6 +5819,180 @@ typedef $$DeletionTrackingTableProcessedTableManager = ProcessedTableManager<
     ),
     DeletionTrackingModel,
     PrefetchHooks Function()>;
+typedef $$AppearanceSettingsTableCreateCompanionBuilder
+    = AppearanceSettingsCompanion Function({
+  Value<int> id,
+  Value<int?> recentColor1,
+  Value<int?> recentColor2,
+  Value<int?> recentColor3,
+  required int updatedAt,
+});
+typedef $$AppearanceSettingsTableUpdateCompanionBuilder
+    = AppearanceSettingsCompanion Function({
+  Value<int> id,
+  Value<int?> recentColor1,
+  Value<int?> recentColor2,
+  Value<int?> recentColor3,
+  Value<int> updatedAt,
+});
+
+class $$AppearanceSettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppearanceSettingsTable> {
+  $$AppearanceSettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get recentColor1 => $composableBuilder(
+      column: $table.recentColor1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get recentColor2 => $composableBuilder(
+      column: $table.recentColor2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get recentColor3 => $composableBuilder(
+      column: $table.recentColor3, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AppearanceSettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppearanceSettingsTable> {
+  $$AppearanceSettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get recentColor1 => $composableBuilder(
+      column: $table.recentColor1,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get recentColor2 => $composableBuilder(
+      column: $table.recentColor2,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get recentColor3 => $composableBuilder(
+      column: $table.recentColor3,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AppearanceSettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppearanceSettingsTable> {
+  $$AppearanceSettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get recentColor1 => $composableBuilder(
+      column: $table.recentColor1, builder: (column) => column);
+
+  GeneratedColumn<int> get recentColor2 => $composableBuilder(
+      column: $table.recentColor2, builder: (column) => column);
+
+  GeneratedColumn<int> get recentColor3 => $composableBuilder(
+      column: $table.recentColor3, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AppearanceSettingsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppearanceSettingsTable,
+    AppearanceSettingsModel,
+    $$AppearanceSettingsTableFilterComposer,
+    $$AppearanceSettingsTableOrderingComposer,
+    $$AppearanceSettingsTableAnnotationComposer,
+    $$AppearanceSettingsTableCreateCompanionBuilder,
+    $$AppearanceSettingsTableUpdateCompanionBuilder,
+    (
+      AppearanceSettingsModel,
+      BaseReferences<_$AppDatabase, $AppearanceSettingsTable,
+          AppearanceSettingsModel>
+    ),
+    AppearanceSettingsModel,
+    PrefetchHooks Function()> {
+  $$AppearanceSettingsTableTableManager(
+      _$AppDatabase db, $AppearanceSettingsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppearanceSettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppearanceSettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppearanceSettingsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int?> recentColor1 = const Value.absent(),
+            Value<int?> recentColor2 = const Value.absent(),
+            Value<int?> recentColor3 = const Value.absent(),
+            Value<int> updatedAt = const Value.absent(),
+          }) =>
+              AppearanceSettingsCompanion(
+            id: id,
+            recentColor1: recentColor1,
+            recentColor2: recentColor2,
+            recentColor3: recentColor3,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int?> recentColor1 = const Value.absent(),
+            Value<int?> recentColor2 = const Value.absent(),
+            Value<int?> recentColor3 = const Value.absent(),
+            required int updatedAt,
+          }) =>
+              AppearanceSettingsCompanion.insert(
+            id: id,
+            recentColor1: recentColor1,
+            recentColor2: recentColor2,
+            recentColor3: recentColor3,
+            updatedAt: updatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AppearanceSettingsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AppearanceSettingsTable,
+    AppearanceSettingsModel,
+    $$AppearanceSettingsTableFilterComposer,
+    $$AppearanceSettingsTableOrderingComposer,
+    $$AppearanceSettingsTableAnnotationComposer,
+    $$AppearanceSettingsTableCreateCompanionBuilder,
+    $$AppearanceSettingsTableUpdateCompanionBuilder,
+    (
+      AppearanceSettingsModel,
+      BaseReferences<_$AppDatabase, $AppearanceSettingsTable,
+          AppearanceSettingsModel>
+    ),
+    AppearanceSettingsModel,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5516,4 +6011,6 @@ class $AppDatabaseManager {
       $$SyncStateTableTableManager(_db, _db.syncState);
   $$DeletionTrackingTableTableManager get deletionTracking =>
       $$DeletionTrackingTableTableManager(_db, _db.deletionTracking);
+  $$AppearanceSettingsTableTableManager get appearanceSettings =>
+      $$AppearanceSettingsTableTableManager(_db, _db.appearanceSettings);
 }
