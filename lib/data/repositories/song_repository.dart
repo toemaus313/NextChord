@@ -410,6 +410,7 @@ class SongRepository {
   Future<List<MidiProfile>> getAllMidiProfiles() async {
     try {
       final profileModels = await (_db.select(_db.midiProfiles)
+            ..where((tbl) => tbl.isDeleted.equals(false))
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
       final profiles = profileModels
@@ -444,7 +445,8 @@ class SongRepository {
   Future<MidiProfile?> getMidiProfile(String profileId) async {
     try {
       final model = await (_db.select(_db.midiProfiles)
-            ..where((tbl) => tbl.id.equals(profileId)))
+            ..where((tbl) =>
+                tbl.id.equals(profileId) & tbl.isDeleted.equals(false)))
           .getSingleOrNull();
 
       if (model == null) return null;
@@ -464,7 +466,7 @@ class SongRepository {
     }
   }
 
-  /// Delete a MIDI profile
+  /// Delete a MIDI profile (soft delete)
   Future<void> deleteMidiProfile(String profileId) async {
     try {
       // First, remove profile reference from any songs that use it
@@ -472,11 +474,20 @@ class SongRepository {
             ..where((tbl) => tbl.profileId.equals(profileId)))
           .write(const SongsCompanion(profileId: Value(null)));
 
-      // Then delete the profile
-      await (_db.delete(_db.midiProfiles)
+      // Then soft delete the profile (mark as deleted)
+      await (_db.update(_db.midiProfiles)
             ..where((tbl) => tbl.id.equals(profileId)))
-          .go();
-    } catch (e) {}
+          .write(MidiProfilesCompanion(
+        isDeleted: const Value(true),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ));
+
+      // Notify database change for auto-sync
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'midi_profiles', operation: 'update');
+    } catch (e) {
+      throw SongRepositoryException('Failed to delete MIDI profile: $e');
+    }
   }
 
   /// Assign a MIDI profile to a song

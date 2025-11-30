@@ -32,8 +32,9 @@ class MidiProfileService {
         if (profileNotes != targetNotes) continue;
 
         // Check if controlChanges match exactly (including order and labels)
-        if (!_controlChangesEqual(profile.controlChanges, controlChanges))
+        if (!_controlChangesEqual(profile.controlChanges, controlChanges)) {
           continue;
+        }
 
         return profile;
       }
@@ -150,15 +151,6 @@ class MidiProfileService {
     }
   }
 
-  /// Delete a MIDI profile from the database
-  Future<void> deleteProfile(String profileId) async {
-    try {
-      await _repository.deleteMidiProfile(profileId);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Test MIDI commands for a profile
   Future<void> testProfile({
     required List<MidiCC> controlChanges,
@@ -217,6 +209,19 @@ class MidiProfileService {
   /// Check if a command is a timing command
   bool isTimingCommand(String command) {
     return MidiCommandParser.isTimingCommand(command);
+  }
+
+  /// Delete a MIDI profile (soft delete for sync compatibility)
+  Future<void> deleteProfile(String profileId) async {
+    try {
+      await _repository.deleteMidiProfile(profileId);
+      main.myDebug(
+          'MidiProfileService.deleteProfile: soft deleted profile $profileId');
+    } catch (e) {
+      main.myDebug(
+          'MidiProfileService.deleteProfile: error deleting profile: $e');
+      rethrow;
+    }
   }
 
   /// Convert control changes to display format
