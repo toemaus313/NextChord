@@ -182,6 +182,8 @@ class MidiCommandsList extends StatelessWidget {
 
   String _formatCommand(MidiCC cc) {
     final command = MidiCommandParser.midiCCToString(cc);
-    return cc.label != null ? '$command - ${cc.label}' : command;
+    return cc.label != null && cc.label!.isNotEmpty
+        ? '$command - ${cc.label}'
+        : command;
   }
 }

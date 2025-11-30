@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../main.dart' as main;
 import '../../../domain/entities/midi_profile.dart';
 import '../providers/song_provider.dart';
 import '../../../services/midi/midi_service.dart';
 import '../../../services/midi/midi_profile_service.dart';
+import '../../../services/midi/midi_command_parser.dart';
 import 'midi_profiles/profile_selector.dart';
 import 'midi_profiles/profile_name_input.dart';
 import 'midi_profiles/midi_code_input.dart';
@@ -79,6 +81,12 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
 
   Future<void> _loadProfiles() async {
     final profiles = await _profileService.loadProfiles();
+    main.myDebug(
+        'MidiProfilesModal._loadProfiles: loaded ${profiles.length} profiles');
+    for (final profile in profiles) {
+      main.myDebug(
+          '  Profile ${profile.name}: controlChanges order: ${profile.controlChanges.map((cc) => MidiCommandParser.midiCCToString(cc)).join(', ')}');
+    }
     if (mounted) {
       setState(() {
         _profiles = profiles;
@@ -87,11 +95,19 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   }
 
   void _selectProfile(MidiProfile? profile) {
+    main.myDebug(
+        'MidiProfilesModal._selectProfile: selecting profile ${profile?.name ?? 'null'}');
+    if (profile != null) {
+      main.myDebug(
+          '  Profile controlChanges order: ${profile.controlChanges.map((cc) => cc.label ?? 'no label').join(', ')}');
+    }
     setState(() {
       _selectedProfile = profile;
       if (profile != null) {
         _nameController.text = profile.name;
         _controlChanges = _profileService.profileToDisplayFormat(profile);
+        main.myDebug(
+            'MidiProfilesModal._selectProfile: set _controlChanges to order: ${_controlChanges.map((cc) => MidiCommandParser.midiCCToString(cc)).join(', ')}');
         _timing = profile.timing;
         _notesController.text = profile.notes ?? '';
       } else {
@@ -172,6 +188,9 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       final item = _controlChanges.removeAt(oldIndex);
       _controlChanges.insert(newIndex, item);
 
+      main.myDebug(
+          'MidiProfilesModal._reorderControlChange: reordered from $oldIndex to $newIndex (fromDrag: $fromDrag), new order: ${_controlChanges.map((cc) => MidiCommandParser.midiCCToString(cc)).join(', ')}');
+
       if (currentSelected != null) {
         if (currentSelected == oldIndex) {
           _selectedCommandIndex = newIndex;
@@ -214,15 +233,54 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
   }
 
   Future<void> _saveProfile() async {
+    final profileName = _nameController.text.trim();
+
+    // Validate profile name is not empty
+    if (profileName.isEmpty) {
+      // Show error - profile name is required
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile name cannot be empty'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check for duplicate profile names (case-insensitive)
+    final duplicateProfile = _profiles
+        .where(
+          (profile) =>
+              profile.name.toLowerCase() == profileName.toLowerCase() &&
+              profile.id != _selectedProfile?.id,
+        )
+        .isNotEmpty;
+
+    if (duplicateProfile) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profile name "${profileName}" already exists'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    main.myDebug(
+        'MidiProfilesModal._saveProfile: saving profile with controlChanges order: ${_controlChanges.map((cc) => MidiCommandParser.midiCCToString(cc)).join(', ')}');
+
     setState(() => _isLoading = true);
     try {
       await _profileService.saveProfile(
-        name: _nameController.text.trim(),
+        name: profileName,
         controlChanges: _controlChanges,
         timing: _timing,
-        notes: _controlChanges.isNotEmpty ? _controlChanges.first.label : null,
+        notes: null, // Notes are stored separately from command labels
         id: _selectedProfile?.id,
       );
+
+      main.myDebug(
+          'MidiProfilesModal._saveProfile: profile saved successfully');
 
       await _loadProfiles();
       _clearForm();
@@ -241,6 +299,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
         );
       }
     } catch (e) {
+      main.myDebug('MidiProfilesModal._saveProfile: error saving profile: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -254,16 +313,22 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Profile'),
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: const Text(
+          'Delete MIDI Profile',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
-            'Are you sure you want to delete "${_selectedProfile!.name}"? This will remove it from any songs that use it.'),
+          'Are you sure you want to delete "${_selectedProfile!.name}"?',
+          style: const TextStyle(color: Colors.white),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -271,29 +336,60 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        await _profileService.deleteProfile(_selectedProfile!.id);
+        await _loadProfiles();
+        _clearForm();
+        _selectProfile(null);
 
-    setState(() => _isLoading = true);
-    try {
-      await _profileService.deleteProfile(_selectedProfile!.id);
-      await _loadProfiles();
-      _clearForm();
-      _selectProfile(null);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('MIDI profile deleted successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('MIDI profile deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        main.myDebug(
+            'MidiProfilesModal._deleteProfile: error deleting profile: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete MIDI profile'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
+  }
+
+  void _copyProfile() {
+    if (_selectedProfile == null) return;
+
+    // Capture the profile data before clearing selection
+    final commands = List.from(_selectedProfile!.controlChanges);
+    final timing = _selectedProfile!.timing;
+
+    // Copy the commands and timing, but clear the name
+    setState(() {
+      _selectedProfile =
+          null; // Clear selection since we're creating a new profile
+      _nameController.text = ''; // Blank name
+      _controlChanges = commands; // Copy commands
+      _timing = timing; // Copy timing setting
+      _notesController.text = ''; // Clear notes
+    });
+
+    main.myDebug(
+        'MidiProfilesModal._copyProfile: copied profile with ${commands.length} commands');
   }
 
   Future<void> _testProfileMidiCommands() async {
@@ -368,7 +464,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                         'MIDI Profiles',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 13.6, // Reduced by 15% from 16
+                          fontSize: 13.6,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -421,6 +517,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                         notesController: _notesController,
                         midiCodeFocusNode: _midiCodeFocusNode,
                         onAddCommand: _addControlChange,
+                        profileService: _profileService,
                       ),
                       const SizedBox(height: 5),
                       // MIDI commands list (scrolls within a fixed-height area)
@@ -449,6 +546,7 @@ class _MidiProfilesModalState extends State<MidiProfilesModal> {
                         selectedProfile: _selectedProfile,
                         isLoading: _isLoading,
                         onTest: _testProfileMidiCommands,
+                        onCopy: _copyProfile,
                         onDelete: _deleteProfile,
                       ),
                       const SizedBox(height: 5),

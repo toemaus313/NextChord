@@ -6,7 +6,7 @@ class MidiCommandParser {
   ///
   /// Supported formats:
   /// - "PC5" or "PC:5" for Program Change
-  /// - "CC7:100" for Control Change
+  /// - "CC7,100" or "CC7:100" for Control Change (comma preferred)
   /// - "timing" for MIDI Clock (handled separately)
   static MidiCC? parseControlChange(String text) {
     final upperText = text.toUpperCase().trim();
@@ -23,9 +23,9 @@ class MidiCommandParser {
       }
     }
 
-    // Parse Control Change: "CC0:127"
+    // Parse Control Change: "CC0,127" or "CC0:127" (accept both comma and colon)
     if (upperText.startsWith('CC')) {
-      final ccMatch = RegExp(r'^CC(\d+):(\d+)$').firstMatch(upperText);
+      final ccMatch = RegExp(r'^CC(\d+)[,:]\s*(\d+)$').firstMatch(upperText);
       if (ccMatch != null) {
         final controller = int.tryParse(ccMatch.group(1)!);
         final value = int.tryParse(ccMatch.group(2)!);
@@ -53,7 +53,7 @@ class MidiCommandParser {
     if (cc.controller == -1) {
       return 'PC${cc.value}';
     } else {
-      return 'CC${cc.controller}:${cc.value}';
+      return 'CC${cc.controller},${cc.value}';
     }
   }
 
@@ -82,21 +82,10 @@ class MidiCommandParser {
     return (programChangeNumber: programChangeNumber, controlChanges: ccList);
   }
 
-  /// Convert stored profile back to display format (with PC as CC)
+  /// Convert a stored profile to display format
   static List<MidiCC> profileToDisplayFormat(MidiProfile profile) {
-    final displayChanges = <MidiCC>[];
-
-    // Add program change as CC with controller -1
-    if (profile.programChangeNumber != null) {
-      displayChanges.add(MidiCC(
-        controller: -1, // -1 indicates PC
-        value: profile.programChangeNumber!,
-      ));
-    }
-
-    // Add regular control changes
-    displayChanges.addAll(profile.controlChanges);
-
-    return displayChanges;
+    // Since we now store all commands (including PC) in controlChanges,
+    // just return them as-is to preserve order
+    return profile.controlChanges;
   }
 }

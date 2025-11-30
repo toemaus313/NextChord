@@ -6,6 +6,7 @@ class MidiActionButtons extends StatelessWidget {
   final MidiProfile? selectedProfile;
   final bool isLoading;
   final VoidCallback onTest;
+  final VoidCallback onCopy;
   final VoidCallback onDelete;
 
   const MidiActionButtons({
@@ -13,16 +14,16 @@ class MidiActionButtons extends StatelessWidget {
     required this.selectedProfile,
     required this.isLoading,
     required this.onTest,
+    required this.onCopy,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       children: [
         // Test MIDI button
-        SizedBox(
-          width: double.infinity,
+        Expanded(
           child: ElevatedButton(
             onPressed: isLoading ? null : onTest,
             style: ElevatedButton.styleFrom(
@@ -48,11 +49,38 @@ class MidiActionButtons extends StatelessWidget {
                   ),
           ),
         ),
-        const SizedBox(height: 6),
-        // Delete button at bottom (only when editing)
+        const SizedBox(width: 8),
+        // Copy button
+        Expanded(
+          child: ElevatedButton(
+            onPressed: (isLoading || selectedProfile == null) ? null : onCopy,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.withAlpha(100),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'Copy',
+                    style: TextStyle(fontSize: 11.9), // Reduced by 15% from 14
+                  ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Delete button (only when editing)
         if (selectedProfile != null)
-          SizedBox(
-            width: double.infinity,
+          Expanded(
             child: ElevatedButton(
               onPressed: isLoading ? null : onDelete,
               style: ElevatedButton.styleFrom(
@@ -78,7 +106,10 @@ class MidiActionButtons extends StatelessWidget {
                           TextStyle(fontSize: 11.9), // Reduced by 15% from 14
                     ),
             ),
-          ),
+          )
+        else
+          // Spacer to maintain layout when no profile selected
+          const Expanded(child: SizedBox()),
       ],
     );
   }

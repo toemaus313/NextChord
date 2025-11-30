@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import '../../main.dart' as main;
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import '../../services/midi/midi_command_parser.dart';
 
 /// Repository for managing Songs
 /// Provides clean CRUD interface and abstracts database layer from business logic
@@ -361,6 +363,9 @@ class SongRepository {
 
   /// Save or update a MIDI profile
   Future<void> saveMidiProfile(MidiProfile profile) async {
+    main.myDebug(
+        'SongRepository.saveMidiProfile: saving profile with controlChanges order: ${profile.controlChanges.map((cc) => MidiCommandParser.midiCCToString(cc)).join(', ')}');
+
     try {
       final existingProfile = await getMidiProfile(profile.id);
       if (existingProfile != null) {
@@ -377,6 +382,8 @@ class SongRepository {
                 isDeleted: false, // Default to false for active profiles
               ),
             );
+        main.myDebug(
+            'SongRepository.saveMidiProfile: updated existing profile');
       } else {
         await _db.into(_db.midiProfiles).insert(
               MidiProfileModel(
@@ -391,8 +398,10 @@ class SongRepository {
                 isDeleted: false, // Default to false for active profiles
               ),
             );
+        main.myDebug('SongRepository.saveMidiProfile: inserted new profile');
       }
     } catch (e) {
+      main.myDebug('SongRepository.saveMidiProfile: error saving profile: $e');
       // Handle error silently
     }
   }
@@ -403,8 +412,7 @@ class SongRepository {
       final profileModels = await (_db.select(_db.midiProfiles)
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
-
-      return profileModels
+      final profiles = profileModels
           .map((model) => MidiProfile.fromModel(
                 id: model.id,
                 name: model.name,
@@ -416,7 +424,18 @@ class SongRepository {
                 notes: model.notes,
               ))
           .toList();
+
+      main.myDebug(
+          'SongRepository.getAllMidiProfiles: loaded ${profiles.length} profiles');
+      for (final profile in profiles) {
+        main.myDebug(
+            '  Profile ${profile.name}: controlChanges order: ${profile.controlChanges.map((cc) => cc.label ?? 'no label').join(', ')}');
+      }
+
+      return profiles;
     } catch (e) {
+      main.myDebug(
+          'SongRepository.getAllMidiProfiles: error loading profiles: $e');
       return <MidiProfile>[];
     }
   }
