@@ -31,7 +31,7 @@ bool isDebug = true;
 ///
 /// Leave this false for normal usage to keep logs lighter, and
 /// temporarily flip to true when you need deeper layout diagnostics.
-bool logRenderOverflowDetails = false;
+bool logRenderOverflowDetails = true;
 
 void myDebug(String message) {
   if (isDebug) {

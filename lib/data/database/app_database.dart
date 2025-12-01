@@ -504,6 +504,15 @@ class AppDatabase extends _$AppDatabase {
             updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
   }
 
+  /// Update a setlist's image path
+  Future<void> updateSetlistImagePath(
+      String setlistId, String imagePath) async {
+    await (update(setlists)..where((tbl) => tbl.id.equals(setlistId))).write(
+        SetlistsCompanion(
+            imagePath: Value(imagePath),
+            updatedAt: Value(DateTime.now().millisecondsSinceEpoch)));
+  }
+
   /// Permanently delete a setlist (hard delete)
   Future<void> permanentlyDeleteSetlist(String id) async {
     await (delete(setlists)..where((tbl) => tbl.id.equals(id))).go();

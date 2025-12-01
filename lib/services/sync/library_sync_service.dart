@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import '../../core/services/sync_service_locator.dart';
 import '../../main.dart' as main;
 
 /// Model for Google Drive file metadata
@@ -1012,6 +1014,9 @@ class LibrarySyncService {
         isDeleted: (model) => model.isDeleted,
       );
 
+      // Sync setlist images
+      await _syncSetlistImages(mergedSetlists);
+
       // Apply merged data to database in a transaction
       await _database.transaction(() async {
         // Clear and insert songs
@@ -1315,5 +1320,80 @@ class LibrarySyncService {
     }
 
     return merged;
+  }
+
+  /// Sync setlist images between local and remote storage
+  Future<void> _syncSetlistImages(List<SetlistModel> setlists) async {
+    try {
+      main.myDebug(
+          'LibrarySyncService._syncSetlistImages: syncing images for ${setlists.length} setlists');
+
+      for (final setlist in setlists) {
+        if (setlist.imagePath != null && setlist.imagePath!.isNotEmpty) {
+          await _syncSetlistImage(setlist.id, setlist.imagePath!);
+        }
+      }
+
+      main.myDebug('LibrarySyncService._syncSetlistImages: completed');
+    } catch (e) {
+      main.myDebug('LibrarySyncService._syncSetlistImages: error $e');
+      // Don't fail the entire sync for image errors
+    }
+  }
+
+  /// Sync a single setlist image
+  Future<void> _syncSetlistImage(String setlistId, String imagePath) async {
+    try {
+      final localFile = File(imagePath);
+      final fileExistsLocally = await localFile.exists();
+
+      // Create relative path for cloud storage
+      final fileName =
+          'setlist_${setlistId}_image${_getFileExtension(imagePath)}';
+      final relativePath = 'images/setlists/$fileName';
+
+      main.myDebug(
+          'LibrarySyncService._syncSetlistImage: setlistId=$setlistId, localPath=$imagePath, relativePath=$relativePath, existsLocally=$fileExistsLocally');
+
+      if (fileExistsLocally) {
+        // Upload local image to cloud
+        main.myDebug(
+            'LibrarySyncService._syncSetlistImage: calling uploadFile with localPath=$imagePath, relativePath=$relativePath');
+        final uploadSuccess =
+            await SyncServiceLocator.uploadFile(imagePath, relativePath);
+        if (uploadSuccess) {
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: uploaded $relativePath');
+        } else {
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: failed to upload $relativePath');
+        }
+      } else {
+        // Try to download from cloud
+        main.myDebug(
+            'LibrarySyncService._syncSetlistImage: calling downloadFile with relativePath=$relativePath');
+        final downloadedPath =
+            await SyncServiceLocator.downloadFile(relativePath);
+        if (downloadedPath != null) {
+          // Update the setlist's image path to point to the downloaded file
+          await _database.updateSetlistImagePath(setlistId, downloadedPath);
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: downloaded and updated path for setlist $setlistId to $downloadedPath');
+        } else {
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: download failed for $relativePath');
+        }
+      }
+    } catch (e) {
+      main.myDebug(
+          'LibrarySyncService._syncSetlistImage: error syncing image for setlist $setlistId: $e');
+    }
+  }
+
+  /// Get file extension from path
+  String _getFileExtension(String path) {
+    final lastDot = path.lastIndexOf('.');
+    if (lastDot == -1) return '';
+    return path.substring(lastDot);
   }
 }

@@ -161,40 +161,38 @@ class MidiProfileService {
         throw Exception('Connect a MIDI device before testing commands.');
       }
 
-      // Separate program changes from control changes for testing
-      final separated =
-          MidiCommandParser.separateProgramChanges(controlChanges);
-
-      final hasCommands = separated.programChangeNumber != null ||
-          separated.controlChanges.isNotEmpty ||
-          timing;
-
-      if (!hasCommands) {
+      if (controlChanges.isEmpty && !timing) {
         throw Exception('Add some MIDI commands before testing.');
       }
 
-      // Send program change if present
-      if (separated.programChangeNumber != null) {
-        await _midiService.sendProgramChange(
-          separated.programChangeNumber!,
-          channel: _midiService.midiChannel,
-        );
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
+      // Send all commands in order with 100ms delay between each
+      for (final cc in controlChanges) {
+        if (cc.controller == -1) {
+          // Program Change command
+          await _midiService.sendProgramChange(
+            cc.value,
+            channel: _midiService.midiChannel,
+          );
+          main.myDebug('MidiProfileService.testProfile: sent PC${cc.value}');
+        } else {
+          // Control Change command
+          await _midiService.sendControlChange(
+            cc.controller,
+            cc.value,
+            channel: _midiService.midiChannel,
+          );
+          main.myDebug(
+              'MidiProfileService.testProfile: sent CC${cc.controller},${cc.value}');
+        }
 
-      // Send control changes
-      for (final cc in separated.controlChanges) {
-        await _midiService.sendControlChange(
-          cc.controller,
-          cc.value,
-          channel: _midiService.midiChannel,
-        );
-        await Future.delayed(const Duration(milliseconds: 200));
+        // 100ms delay between commands
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       // Send MIDI clock if timing is enabled
       if (timing) {
         await _midiService.sendMidiClock();
+        main.myDebug('MidiProfileService.testProfile: sent MIDI clock');
       }
     } catch (e) {
       rethrow;

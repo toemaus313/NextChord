@@ -56,33 +56,19 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
+        print("ICloudDrivePlugin.getICloudDriveFolderPath: returning documentsPath=\(documentsPath.path)")
         result(documentsPath.path)
     }
     
-    /// Ensure NextChord folder exists in iCloud Drive Documents
+    /// Ensure the iCloud Documents folder is accessible
     private func ensureNextChordFolder(result: @escaping FlutterResult) {
         guard let ubiquityContainer = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             result(false)
             return
         }
         
-        let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        let nextChordPath = documentsPath.appendingPathComponent("NextChord")
-        
-        do {
-            // Create NextChord folder if it doesn't exist
-            try FileManager.default.createDirectory(at: nextChordPath, 
-                                                   withIntermediateDirectories: true, 
-                                                   attributes: nil)
-            
-            // Start downloading the folder if it's not already downloaded
-            try FileManager.default.startDownloadingUbiquitousItem(at: nextChordPath)
-            
-            result(true)
-        } catch {
-            print("Error creating NextChord folder: \(error)")
-            result(false)
-        }
+        // Just ensure the Documents folder is accessible - no need to create subfolders
+        result(true)
     }
     
     /// Upload a file to iCloud Drive NextChord folder
@@ -94,14 +80,17 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
             return
         }
         
+        print("ICloudDrivePlugin.uploadFile: localPath=\(localPath), relativePath=\(relativePath)")
+        
         guard let ubiquityContainer = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             result(false)
             return
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        let nextChordPath = documentsPath.appendingPathComponent("NextChord")
-        let destinationURL = nextChordPath.appendingPathComponent(relativePath)
+        let destinationURL = documentsPath.appendingPathComponent(relativePath)
+        
+        print("ICloudDrivePlugin.uploadFile: ubiquityContainer=\(ubiquityContainer.path), documentsPath=\(documentsPath.path), destinationURL=\(destinationURL.path)")
         
         let sourceURL = URL(fileURLWithPath: localPath)
         
@@ -132,14 +121,17 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
             return
         }
         
+        print("ICloudDrivePlugin.downloadFile: relativePath=\(relativePath)")
+        
         guard let ubiquityContainer = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             result(nil)
             return
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        let nextChordPath = documentsPath.appendingPathComponent("NextChord")
-        let sourceURL = nextChordPath.appendingPathComponent(relativePath)
+        let sourceURL = documentsPath.appendingPathComponent(relativePath)
+        
+        print("ICloudDrivePlugin.downloadFile: ubiquityContainer=\(ubiquityContainer.path), documentsPath=\(documentsPath.path), sourceURL=\(sourceURL.path)")
         
         // Create temporary file
         let tempDir = FileManager.default.temporaryDirectory
@@ -174,8 +166,7 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        let nextChordPath = documentsPath.appendingPathComponent("NextChord")
-        let fileURL = nextChordPath.appendingPathComponent(relativePath)
+        let fileURL = documentsPath.appendingPathComponent(relativePath)
         
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
@@ -213,8 +204,7 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        let nextChordPath = documentsPath.appendingPathComponent("NextChord")
-        let fileURL = nextChordPath.appendingPathComponent(relativePath)
+        let fileURL = documentsPath.appendingPathComponent(relativePath)
         
         let exists = FileManager.default.fileExists(atPath: fileURL.path)
         result(exists)

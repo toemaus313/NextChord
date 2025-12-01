@@ -1068,9 +1068,17 @@ class _SongEditorScreenRefactoredState
         bodyFlex = 1;
       }
     } else {
-      // Desktop / tablet proportions remain as before.
-      metadataFlex = 11;
-      bodyFlex = 15;
+      // Desktop / tablet: check keyboard visibility for on-screen keyboards
+      if (isKeyboardVisible) {
+        // Keyboard visible on tablet/desktop: reduce metadata height
+        // to give more space to the editor body
+        metadataFlex = 10;
+        bodyFlex = 8;
+      } else {
+        // Keyboard hidden on tablet/desktop: use full metadata height
+        metadataFlex = 10;
+        bodyFlex = 16;
+      }
     }
 
     return Scaffold(
@@ -1200,7 +1208,7 @@ class _SongEditorScreenRefactoredState
                                 ],
                               ),
                             )
-                          : Padding(
+                          : SingleChildScrollView(
                               padding: EdgeInsets.fromLTRB(
                                   16.0,
                                   widget.setlistContext != null ? 16.0 : 60.0,

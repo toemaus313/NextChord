@@ -36,7 +36,7 @@ class WindowsICloudUtils {
       // Test write permissions by attempting to create a temporary test file
       // This verifies iCloud sync is actually working, not just that folder exists
       final testFile = File(
-          '$iCloudPath\\iCloud~us~antonovich~nextchord\\NextChord\\.icloud_test_${DateTime.now().millisecondsSinceEpoch}.tmp');
+          '$iCloudPath\\iCloud~us~antonovich~nextchord\\.icloud_test_${DateTime.now().millisecondsSinceEpoch}.tmp');
       try {
         await testFile.writeAsString('test');
         await testFile.delete();
@@ -115,21 +115,16 @@ class WindowsICloudUtils {
       // Check for old Windows path and migrate files if needed
       await _migrateFromOldPath(iCloudPath);
 
-      // Use app container path: <icloud root>/iCloud~us~antonovich~nextchord/NextChord/
-      // This matches the iOS/macOS iCloud container structure
-      final containerDir =
-          Directory('$iCloudPath\\iCloud~us~antonovich~nextchord');
-      if (!await containerDir.exists()) {
-        await containerDir.create(recursive: true);
+      // Create Documents folder within app container
+      final containerPath = '$iCloudPath\\iCloud~us~antonovich~nextchord';
+      final documentsPath = '$containerPath\\Documents';
+
+      final documentsDir = Directory(documentsPath);
+      if (!await documentsDir.exists()) {
+        await documentsDir.create(recursive: true);
       }
 
-      final nextChordDir =
-          Directory('$iCloudPath\\iCloud~us~antonovich~nextchord\\NextChord');
-      if (!await nextChordDir.exists()) {
-        await nextChordDir.create(recursive: true);
-      }
-
-      return await nextChordDir.exists();
+      return await documentsDir.exists();
     } catch (e) {
       return false;
     }
@@ -159,7 +154,8 @@ class WindowsICloudUtils {
   static Future<void> _migrateFilesFromDirectory(
       Directory oldDir, String iCloudPath) async {
     try {
-      final newPath = '$iCloudPath\\iCloud~us~antonovich~nextchord\\NextChord';
+      // Migrate to Documents folder structure
+      final newPath = '$iCloudPath\\iCloud~us~antonovich~nextchord\\Documents';
       final newDir = Directory(newPath);
 
       // Ensure new directory exists
@@ -205,19 +201,19 @@ class WindowsICloudUtils {
       final iCloudPath = await getICloudDrivePath();
       if (iCloudPath == null) return null;
 
-      // Use app container path: <icloud root>/iCloud~us~antonovich~nextchord/NextChord/
-      // This matches the iOS/macOS iCloud container structure
-      final nextChordPath =
-          '$iCloudPath\\iCloud~us~antonovich~nextchord\\NextChord';
-      final nextChordDir = Directory(nextChordPath);
+      // Use Documents folder within the app container
+      // <icloud root>/iCloud~us~antonovich~nextchord/Documents/
+      final containerPath = '$iCloudPath\\iCloud~us~antonovich~nextchord';
+      final documentsPath = '$containerPath\\Documents';
+      final documentsDir = Directory(documentsPath);
 
-      if (await nextChordDir.exists()) {
-        return nextChordPath;
+      if (await documentsDir.exists()) {
+        return documentsPath;
       }
 
       // Try to create it if it doesn't exist
       if (await ensureNextChordFolder()) {
-        return nextChordPath;
+        return documentsPath;
       }
 
       return null;

@@ -8,11 +8,79 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/config/google_oauth_config.dart';
 import '../../main.dart' as main;
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
 import 'library_sync_service.dart';
+
+/// Custom HTTP client for authenticated Google API requests
+class GoogleHttpClient extends http.BaseClient {
+  http.Client _client = http.Client();
+  String? _accessToken;
+  final Future<String?> Function()? onUnauthorized;
+
+  GoogleHttpClient({this.onUnauthorized});
+
+  Future<void> authenticateWithAccessToken(String accessToken) async {
+    _accessToken = accessToken;
+  }
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (_accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+
+    // Send the request
+    var response = await _client.send(request);
+
+    // If we get a 401 and have an onUnauthorized callback, try to refresh
+    if (response.statusCode == 401 && onUnauthorized != null) {
+      // Try to get a new token
+      final newToken = await onUnauthorized!();
+      if (newToken != null) {
+        // Update our token and retry the request
+        _accessToken = newToken;
+
+        // Clone the request with the new token
+        final newRequest = _cloneRequest(request);
+        newRequest.headers['Authorization'] = 'Bearer $newToken';
+        response = await _client.send(newRequest);
+      }
+    }
+
+    return response;
+  }
+
+  /// Clone a request for retry with new token
+  http.BaseRequest _cloneRequest(http.BaseRequest request) {
+    http.BaseRequest newRequest;
+
+    if (request is http.Request) {
+      newRequest = http.Request(request.method, request.url)
+        ..bodyBytes = request.bodyBytes;
+    } else if (request is http.MultipartRequest) {
+      newRequest = http.MultipartRequest(request.method, request.url)
+        ..fields.addAll(request.fields)
+        ..files.addAll(request.files);
+    } else if (request is http.StreamedRequest) {
+      throw Exception('Cannot clone StreamedRequest');
+    } else {
+      throw Exception('Unknown request type');
+    }
+
+    newRequest.headers.addAll(request.headers);
+    return newRequest;
+  }
+
+  @override
+  void close() {
+    _client.close();
+    super.close();
+  }
+}
 
 class GoogleDriveSyncService {
   final LibrarySyncService _librarySyncService;
@@ -689,73 +757,106 @@ class GoogleDriveSyncService {
     _metadataPollingTimer = null;
   }
 
-  /// Check if metadata polling is currently active
-  bool get isPollingActive => _isPollingActive;
-}
-
-/// Custom HTTP client for authenticated Google API requests
-class GoogleHttpClient extends http.BaseClient {
-  http.Client _client = http.Client();
-  String? _accessToken;
-  final Future<String?> Function()? onUnauthorized;
-
-  GoogleHttpClient({this.onUnauthorized});
-
-  Future<void> authenticateWithAccessToken(String accessToken) async {
-    _accessToken = accessToken;
-  }
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_accessToken != null) {
-      request.headers['Authorization'] = 'Bearer $_accessToken';
-    }
-
-    // Send the request
-    var response = await _client.send(request);
-
-    // If we get a 401 and have an onUnauthorized callback, try to refresh
-    if (response.statusCode == 401 && onUnauthorized != null) {
-      // Try to get a new token
-      final newToken = await onUnauthorized!();
-      if (newToken != null) {
-        // Update our token and retry the request
-        _accessToken = newToken;
-
-        // Clone the request with the new token
-        final newRequest = _cloneRequest(request);
-        newRequest.headers['Authorization'] = 'Bearer $newToken';
-        response = await _client.send(newRequest);
+  /// Upload a file to Google Drive
+  Future<bool> uploadFile(String localPath, String relativePath) async {
+    try {
+      final isAuthenticated = await isSignedIn();
+      if (!isAuthenticated) {
+        throw Exception('Not signed in to Google');
       }
-    }
 
-    return response;
+      final driveApi = await createDriveApi();
+
+      // Find or create backup folder
+      final folderId = await findOrCreateFolder(driveApi);
+      if (folderId == null) {
+        throw Exception('Failed to create/find backup folder');
+      }
+
+      // Check if file already exists
+      final existingFile =
+          await findExistingFile(driveApi, folderId, relativePath);
+
+      final file = File(localPath);
+      if (!await file.exists()) {
+        throw Exception('Local file does not exist: $localPath');
+      }
+
+      final fileContent = await file.readAsBytes();
+
+      final media = drive.Media(
+        Stream.value(fileContent),
+        fileContent.length,
+      );
+
+      if (existingFile != null) {
+        // Update existing file
+        await driveApi.files.update(
+          drive.File(), // Empty metadata - only updating content
+          existingFile.id!,
+          uploadMedia: media,
+        );
+      } else {
+        // Create new file
+        final fileMetadata = drive.File()
+          ..name = relativePath
+          ..parents = [folderId];
+
+        await driveApi.files.create(
+          fileMetadata,
+          uploadMedia: media,
+        );
+      }
+
+      return true;
+    } catch (e) {
+      main.myDebug('GoogleDriveSyncService.uploadFile error: $e');
+      return false;
+    }
   }
 
-  /// Clone a request for retry with new token
-  http.BaseRequest _cloneRequest(http.BaseRequest request) {
-    http.BaseRequest newRequest;
+  /// Download a file from Google Drive
+  Future<String?> downloadFile(String relativePath) async {
+    try {
+      final isAuthenticated = await isSignedIn();
+      if (!isAuthenticated) {
+        throw Exception('Not signed in to Google');
+      }
 
-    if (request is http.Request) {
-      newRequest = http.Request(request.method, request.url)
-        ..bodyBytes = request.bodyBytes;
-    } else if (request is http.MultipartRequest) {
-      newRequest = http.MultipartRequest(request.method, request.url)
-        ..fields.addAll(request.fields)
-        ..files.addAll(request.files);
-    } else if (request is http.StreamedRequest) {
-      throw Exception('Cannot clone StreamedRequest');
-    } else {
-      throw Exception('Unknown request type');
+      final driveApi = await createDriveApi();
+
+      // Find or create backup folder
+      final folderId = await findOrCreateFolder(driveApi);
+      if (folderId == null) {
+        throw Exception('Failed to create/find backup folder');
+      }
+
+      // Find the file
+      final existingFile =
+          await findExistingFile(driveApi, folderId, relativePath);
+
+      if (existingFile == null) {
+        return null; // File doesn't exist
+      }
+
+      // Download the file
+      final response = await driveApi.files.get(existingFile.id!,
+          downloadOptions: drive.DownloadOptions.fullMedia);
+
+      final content = await (response as drive.Media)
+          .stream
+          .fold<List<int>>([], (previous, element) => previous + element);
+
+      // Create a temporary file to store the downloaded content
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$relativePath');
+      await tempFile.create(recursive: true);
+      await tempFile.writeAsBytes(content);
+
+      return tempFile.path;
+    } catch (e) {
+      main.myDebug('GoogleDriveSyncService.downloadFile error: $e');
+      return null;
     }
-
-    newRequest.headers.addAll(request.headers);
-    return newRequest;
-  }
-
-  @override
-  void close() {
-    _client.close();
-    super.close();
   }
 }

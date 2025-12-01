@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/sync_service_locator.dart';
+import '../../main.dart' as main;
 import 'library_sync_service.dart';
 import 'windows_icloud_utils.dart';
 
@@ -538,6 +539,23 @@ class ICloudSyncService {
       throw Exception('Not signed in to iCloud Drive');
     }
     return this;
+  }
+
+  /// Upload a file to iCloud Drive
+  Future<bool> uploadFile(String localPath, String relativePath) async {
+    main.myDebug(
+        'ICloudSyncService.uploadFile: localPath=$localPath, relativePath=$relativePath');
+    final result = await ICloudDriveChannel.uploadFile(localPath, relativePath);
+    main.myDebug('ICloudSyncService.uploadFile: result=$result');
+    return result;
+  }
+
+  /// Download a file from iCloud Drive
+  Future<String?> downloadFile(String relativePath) async {
+    main.myDebug('ICloudSyncService.downloadFile: relativePath=$relativePath');
+    final result = await ICloudDriveChannel.downloadFile(relativePath);
+    main.myDebug('ICloudSyncService.downloadFile: result=$result');
+    return result;
   }
 }
 

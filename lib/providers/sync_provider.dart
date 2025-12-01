@@ -35,6 +35,8 @@ class SyncProvider with ChangeNotifier, WidgetsBindingObserver {
   bool get isSignedIn => _isSignedIn;
   bool get isSyncEnabled => _isSyncEnabled;
   SyncBackend get syncBackend => _syncBackend;
+  GoogleDriveSyncService? get googleDriveService => _googleDriveService;
+  ICloudSyncService? get iCloudService => _icloudService;
 
   SyncProvider({
     required AppDatabase database,
