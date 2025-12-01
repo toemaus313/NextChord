@@ -1363,11 +1363,12 @@ class LibrarySyncService {
       // Copy the original image to temp location
       await File(imagePath).copy(tempFile.path);
 
-      final uploadSuccess =
-          await SyncServiceLocator.uploadFile(tempFile.path, relativePath);
+      await SyncServiceLocator.uploadFile(tempFile.path, relativePath);
 
       // Clean up temp file
       await tempFile.delete();
+
+      // After uploading, download a fresh copy using the deterministic name
       final downloadedPath =
           await SyncServiceLocator.downloadFile(relativePath);
       if (downloadedPath != null) {
@@ -1391,6 +1392,30 @@ class LibrarySyncService {
         }
 
         // Update the setlist's image path to point to the local copy
+        await _database.updateSetlistImagePath(setlistId, destinationFile.path);
+      }
+    } else {
+      // No local file: try to download the image using the deterministic path
+      final downloadedPath =
+          await SyncServiceLocator.downloadFile(relativePath);
+      if (downloadedPath != null) {
+        final documentsDir = await getApplicationDocumentsDirectory();
+        final imagesDir =
+            Directory(p.join(documentsDir.path, 'setlist_images'));
+
+        if (!await imagesDir.exists()) {
+          await imagesDir.create(recursive: true);
+        }
+
+        final destinationPath = p.join(imagesDir.path, fileName);
+        final destinationFile = await File(downloadedPath).copy(
+          destinationPath,
+        );
+
+        if (downloadedPath != destinationFile.path) {
+          await File(downloadedPath).delete();
+        }
+
         await _database.updateSetlistImagePath(setlistId, destinationFile.path);
       }
     }

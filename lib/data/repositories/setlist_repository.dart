@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
-import '../../main.dart' as main;
 
 /// Repository for managing Setlists
 class SetlistRepository {
@@ -117,18 +116,9 @@ class SetlistRepository {
 
   /// Fetch all setlists
   Future<List<Setlist>> getAllSetlists() async {
-    try {
-      final models = await _db.getAllSetlists();
-      final setlists = models.map(_modelToSetlist).toList();
-
-      for (final s in setlists) {
-        main.myDebug(
-            'SetlistRepository.getAllSetlists: id=${s.id}, name=${s.name}, imagePath=${s.imagePath}');
-      }
-      return setlists;
-    } catch (e) {
-      return [];
-    }
+    final models = await _db.getAllSetlists();
+    final setlists = models.map(_modelToSetlist).toList();
+    return setlists;
   }
 
   /// Fetch a single setlist by ID

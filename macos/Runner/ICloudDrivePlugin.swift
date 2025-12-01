@@ -78,9 +78,7 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
             result(FlutterError(code: "INVALID_ARGUMENTS", message: "Invalid arguments", details: nil))
             return
         }
-        
-        print("ICloudDrivePlugin.uploadFile: localPath=\(localPath), relativePath=\(relativePath)")
-        
+               
         guard let ubiquityContainer = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             result(false)
             return
@@ -88,9 +86,7 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
         let destinationURL = documentsPath.appendingPathComponent(relativePath)
-        
-        print("ICloudDrivePlugin.uploadFile: ubiquityContainer=\(ubiquityContainer.path), documentsPath=\(documentsPath.path), destinationURL=\(destinationURL.path)")
-        
+               
         let sourceURL = URL(fileURLWithPath: localPath)
         
         do {
