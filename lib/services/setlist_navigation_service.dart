@@ -19,21 +19,68 @@ class SetlistNavigationService {
         _setlistProvider = setlistProvider,
         _globalSidebarProvider = globalSidebarProvider;
 
+  /// Helper: get only the song items from the active setlist
+  List<SetlistSongItem> _getSongItemsInActiveSetlist() {
+    final activeSetlist = _setlistProvider.activeSetlist;
+    if (activeSetlist == null) return [];
+
+    return activeSetlist.items.whereType<SetlistSongItem>().toList();
+  }
+
+  /// Helper: find the index of the song that is currently loaded in the viewer
+  /// within the active setlist's song-only list.
+  ///
+  /// Priority:
+  /// 1) Use GlobalSidebarProvider.currentSetlistSongItem when available.
+  /// 2) Fallback to GlobalSidebarProvider.currentSong.id.
+  int _getCurrentSongIndexInSetlist(List<SetlistSongItem> songItems) {
+    final currentSetlistItem = _globalSidebarProvider.currentSetlistSongItem;
+    if (currentSetlistItem != null) {
+      final index = songItems
+          .indexWhere((item) => item.songId == currentSetlistItem.songId);
+      if (index != -1) {
+        return index;
+      }
+    }
+
+    final currentSongId = _globalSidebarProvider.currentSong?.id;
+    if (currentSongId != null) {
+      final index =
+          songItems.indexWhere((item) => item.songId == currentSongId);
+      if (index != -1) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
   /// Navigate to the next song in the setlist
   Future<Song?> navigateToNextSong() async {
     if (!_setlistProvider.isSetlistActive) {
       return null;
     }
 
-    final nextSongItem = _setlistProvider.getNextSongItem();
-    if (nextSongItem == null) {
+    final songItems = _getSongItemsInActiveSetlist();
+    if (songItems.isEmpty) {
       return null;
     }
 
+    final currentIndex = _getCurrentSongIndexInSetlist(songItems);
+    if (currentIndex == -1) {
+      return null;
+    }
+
+    final nextIndex = currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= songItems.length) {
+      return null;
+    }
+
+    final nextSongItem = songItems[nextIndex];
+
     try {
-      // Update setlist provider index first
-      _setlistProvider
-          .updateCurrentSongIndex(_setlistProvider.currentSongIndex + 1);
+      // Update setlist provider index based on song-only index
+      _setlistProvider.updateCurrentSongIndex(nextIndex);
 
       // Get the next song from repository
       final nextSong = await _songRepository.getSongById(nextSongItem.songId);
@@ -43,7 +90,7 @@ class SetlistNavigationService {
 
       // Update global sidebar with new song and context
       _globalSidebarProvider.navigateToSongInSetlist(
-          nextSong, _setlistProvider.currentSongIndex, nextSongItem);
+          nextSong, nextIndex, nextSongItem);
 
       return nextSong;
     } catch (e) {
@@ -57,15 +104,26 @@ class SetlistNavigationService {
       return null;
     }
 
-    final prevSongItem = _setlistProvider.getPreviousSongItem();
-    if (prevSongItem == null) {
+    final songItems = _getSongItemsInActiveSetlist();
+    if (songItems.isEmpty) {
       return null;
     }
 
+    final currentIndex = _getCurrentSongIndexInSetlist(songItems);
+    if (currentIndex == -1) {
+      return null;
+    }
+
+    final prevIndex = currentIndex - 1;
+    if (prevIndex < 0 || prevIndex >= songItems.length) {
+      return null;
+    }
+
+    final prevSongItem = songItems[prevIndex];
+
     try {
-      // Update setlist provider index first
-      _setlistProvider
-          .updateCurrentSongIndex(_setlistProvider.currentSongIndex - 1);
+      // Update setlist provider index based on song-only index
+      _setlistProvider.updateCurrentSongIndex(prevIndex);
 
       // Get the previous song from repository
       final prevSong = await _songRepository.getSongById(prevSongItem.songId);
@@ -89,10 +147,22 @@ class SetlistNavigationService {
       return null;
     }
 
-    final nextSongItem = _setlistProvider.getNextSongItem();
-    if (nextSongItem == null) {
+    final songItems = _getSongItemsInActiveSetlist();
+    if (songItems.isEmpty) {
       return null;
     }
+
+    final currentIndex = _getCurrentSongIndexInSetlist(songItems);
+    if (currentIndex == -1) {
+      return null;
+    }
+
+    final nextIndex = currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= songItems.length) {
+      return null;
+    }
+
+    final nextSongItem = songItems[nextIndex];
 
     try {
       final nextSong = await _songRepository.getSongById(nextSongItem.songId);
@@ -135,8 +205,40 @@ class SetlistNavigationService {
   bool get canNavigate => _setlistProvider.isSetlistActive;
 
   /// Check if next song is available
-  bool get hasNextSong => _setlistProvider.getNextSongItem() != null;
+  bool get hasNextSong {
+    if (!_setlistProvider.isSetlistActive) {
+      return false;
+    }
+
+    final songItems = _getSongItemsInActiveSetlist();
+    if (songItems.isEmpty) {
+      return false;
+    }
+
+    final currentIndex = _getCurrentSongIndexInSetlist(songItems);
+    if (currentIndex == -1) {
+      return false;
+    }
+
+    return currentIndex + 1 < songItems.length;
+  }
 
   /// Check if previous song is available
-  bool get hasPreviousSong => _setlistProvider.getPreviousSongItem() != null;
+  bool get hasPreviousSong {
+    if (!_setlistProvider.isSetlistActive) {
+      return false;
+    }
+
+    final songItems = _getSongItemsInActiveSetlist();
+    if (songItems.isEmpty) {
+      return false;
+    }
+
+    final currentIndex = _getCurrentSongIndexInSetlist(songItems);
+    if (currentIndex == -1) {
+      return false;
+    }
+
+    return currentIndex - 1 >= 0;
+  }
 }

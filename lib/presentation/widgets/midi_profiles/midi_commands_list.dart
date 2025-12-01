@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../domain/entities/midi_profile.dart';
 import '../../../services/midi/midi_command_parser.dart';
@@ -33,6 +34,14 @@ class MidiCommandsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final platform = Theme.of(context).platform;
+    final isDesktop = platform == TargetPlatform.macOS ||
+        platform == TargetPlatform.windows ||
+        platform == TargetPlatform.linux ||
+        (kIsWeb &&
+            (platform != TargetPlatform.android &&
+                platform != TargetPlatform.iOS));
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       decoration: BoxDecoration(
@@ -108,20 +117,81 @@ class MidiCommandsList extends StatelessWidget {
                 child: ReorderableListView.builder(
                   padding: EdgeInsets.zero,
                   onReorder: onReorderCommand,
+                  buildDefaultDragHandles: !isDesktop,
                   itemCount: controlChanges.length,
                   itemBuilder: (context, index) {
                     final cc = controlChanges[index];
+                    final commandText = _formatCommand(cc);
+
+                    if (!isDesktop) {
+                      return Container(
+                        key: ValueKey('midi_cc_'
+                            '${cc.controller}_'
+                            '${cc.value}_'
+                            '${cc.label ?? ''}_'
+                            '$index'),
+                        child: _buildCommandRow(
+                          commandText,
+                          () => onRemoveCommand(index),
+                          isSelected: selectedIndex == index,
+                          onTap: () => onSelectCommand(index),
+                        ),
+                      );
+                    }
+
+                    final isSelectedRow = selectedIndex == index;
+                    final backgroundColor = isSelectedRow
+                        ? Colors.white.withAlpha(40)
+                        : Colors.white.withAlpha(5);
+                    final borderColor = isSelectedRow
+                        ? Colors.white.withAlpha(120)
+                        : Colors.white.withAlpha(20);
+
                     return Container(
                       key: ValueKey('midi_cc_'
                           '${cc.controller}_'
                           '${cc.value}_'
                           '${cc.label ?? ''}_'
                           '$index'),
-                      child: _buildCommandRow(
-                        _formatCommand(cc),
-                        () => onRemoveCommand(index),
-                        isSelected: selectedIndex == index,
-                        onTap: () => onSelectCommand(index),
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ReorderableDragStartListener(
+                              index: index,
+                              child: InkWell(
+                                onTap: () => onSelectCommand(index),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text(
+                                    commandText,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => onRemoveCommand(index),
+                            child: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },

@@ -494,7 +494,15 @@ class SongRepository {
   Future<void> assignMidiProfileToSong(String songId, String? profileId) async {
     try {
       await (_db.update(_db.songs)..where((tbl) => tbl.id.equals(songId)))
-          .write(SongsCompanion(profileId: Value(profileId)));
+          .write(SongsCompanion(
+        profileId: Value(profileId),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ));
+
+      // Notify database change for auto-sync so MIDI profile assignments
+      // are included in the next library export and win last-write-wins merge
+      DatabaseChangeService()
+          .notifyDatabaseChanged(table: 'songs', operation: 'update');
     } catch (e) {
       throw SongRepositoryException(
           'Failed to assign MIDI profile to song: $e');

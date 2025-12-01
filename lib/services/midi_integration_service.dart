@@ -1,17 +1,20 @@
 import '../core/constants/song_viewer_constants.dart';
 import '../data/repositories/song_repository.dart';
 import '../services/midi/midi_service.dart';
+import '../services/midi/midi_profile_service.dart';
 
 /// Service for handling MIDI integration in the song viewer
 class MidiIntegrationService {
   final SongRepository _songRepository;
   final MidiService _midiService;
+  final MidiProfileService _midiProfileService;
 
   MidiIntegrationService({
     required SongRepository songRepository,
     required MidiService midiService,
   })  : _songRepository = songRepository,
-        _midiService = midiService;
+        _midiService = midiService,
+        _midiProfileService = MidiProfileService(songRepository, midiService);
 
   /// Send MIDI mapping when song is opened in viewer
   Future<void> sendMidiMappingOnOpen(
@@ -30,35 +33,12 @@ class MidiIntegrationService {
       if (_midiService.isDisposed) {
         return;
       }
-      await _sendMidiProfile(midiProfile, songTitle);
+      await _midiProfileService.sendProfile(midiProfile);
     }
 
     // Send MIDI clock stream if enabled
     if (!_midiService.isDisposed) {
       await _sendMidiClockStreamIfNeeded(bpm);
-    }
-  }
-
-  /// Send MIDI profile data
-  Future<void> _sendMidiProfile(dynamic midiProfile, String songTitle) async {
-    // Send Program Change
-    if (midiProfile.programChangeNumber != null) {
-      await _midiService.sendProgramChange(midiProfile.programChangeNumber!);
-    }
-
-    // Send Control Changes
-    if (midiProfile.controlChanges.isNotEmpty) {
-      for (final cc in midiProfile.controlChanges) {
-        await _midiService.sendControlChange(cc.controller, cc.value);
-      }
-      // Add delay between control changes
-      await Future.delayed(const Duration(
-          milliseconds: SongViewerConstants.midiControlChangeDelay));
-    }
-
-    // Send timing if enabled
-    if (midiProfile.timing) {
-      await _midiService.sendMidiClock();
     }
   }
 
