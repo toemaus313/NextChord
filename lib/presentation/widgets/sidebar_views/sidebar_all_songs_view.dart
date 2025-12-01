@@ -244,19 +244,58 @@ class _SidebarAllSongsViewState extends State<SidebarAllSongsView> {
             ),
           ],
           const SizedBox(height: 8),
-          // Select Songs button at the top (matching mobile layout)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Consumer<SongProvider>(
               builder: (context, provider, child) {
-                return StandardWideButton(
-                  label: provider.selectionMode
-                      ? 'Cancel Selection'
-                      : 'Select Songs',
-                  icon: provider.selectionMode ? Icons.close : Icons.checklist,
-                  onPressed: () {
-                    provider.toggleSelectionMode();
-                  },
+                String sortLabel;
+                IconData sortIcon;
+                switch (provider.sortMode) {
+                  case SongSortMode.titleAsc:
+                    sortLabel = 'Asc';
+                    sortIcon = Icons.arrow_upward;
+                    break;
+                  case SongSortMode.titleDesc:
+                    sortLabel = 'Desc';
+                    sortIcon = Icons.arrow_downward;
+                    break;
+                  case SongSortMode.recentFirst:
+                    sortLabel = 'Recent';
+                    sortIcon = Icons.arrow_downward;
+                    break;
+                  case SongSortMode.oldestFirst:
+                    sortLabel = 'Old';
+                    sortIcon = Icons.arrow_upward;
+                    break;
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: StandardWideButton(
+                        label: provider.selectionMode ? 'Cancel' : 'Select',
+                        icon: provider.selectionMode
+                            ? Icons.close
+                            : Icons.checklist,
+                        onPressed: () {
+                          provider.toggleSelectionMode();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: StandardWideButton(
+                        label: sortLabel,
+                        icon: sortIcon,
+                        onPressed: () {
+                          provider.cycleSortMode();
+                        },
+                        onSecondaryPressed: () {
+                          provider.cycleSortModeBackward();
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

@@ -57,6 +57,85 @@ class SetlistProvider extends ChangeNotifier {
     }
   }
 
+  /// Update transpose/capo settings for a specific song in the active setlist
+  /// identified by its songId. This avoids relying on the provider's
+  /// currentSongIndex, which can become out of sync with the viewer.
+  Future<void> updateSongAdjustmentsBySongId({
+    required String songId,
+    int? transposeSteps,
+    int? capo,
+  }) async {
+    if (!isSetlistActive || _activeSetlist == null) {
+      return;
+    }
+
+    // Find the matching song item in the active setlist
+    final songItems = _getSongItemsInSetlist();
+    SetlistSongItem? targetItem;
+    for (final item in songItems) {
+      if (item.songId == songId) {
+        targetItem = item;
+        break;
+      }
+    }
+
+    if (targetItem == null) {
+      return;
+    }
+
+    final updatedItem = targetItem.copyWith(
+      transposeSteps: transposeSteps,
+      capo: capo,
+    );
+
+    // Update the item in the active setlist
+    final updatedActiveItems = List<SetlistItem>.from(_activeSetlist!.items);
+    final activeItemIndex = updatedActiveItems.indexWhere(
+      (item) => item is SetlistSongItem && item.songId == targetItem!.songId,
+    );
+
+    if (activeItemIndex == -1) {
+      return;
+    }
+
+    updatedActiveItems[activeItemIndex] = updatedItem;
+    final updatedActiveSetlist =
+        _activeSetlist!.copyWith(items: updatedActiveItems);
+
+    try {
+      _isUpdatingFromDatabase = true; // Prevent feedback loop
+      await _repository.updateSetlist(updatedActiveSetlist);
+      _activeSetlist = updatedActiveSetlist;
+
+      // Also update the item in the main setlists list for sidebar display
+      final mainSetlistIndex = _setlists.indexWhere(
+        (setlist) => setlist.id == _activeSetlist!.id,
+      );
+
+      if (mainSetlistIndex != -1) {
+        final updatedMainItems =
+            List<SetlistItem>.from(_setlists[mainSetlistIndex].items);
+        final mainItemIndex = updatedMainItems.indexWhere(
+          (item) =>
+              item is SetlistSongItem && item.songId == targetItem!.songId,
+        );
+
+        if (mainItemIndex != -1) {
+          updatedMainItems[mainItemIndex] = updatedItem;
+          _setlists[mainSetlistIndex] =
+              _setlists[mainSetlistIndex].copyWith(items: updatedMainItems);
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Failed to update song adjustments: $e';
+      notifyListeners();
+    } finally {
+      _isUpdatingFromDatabase = false;
+    }
+  }
+
   /// Get a single setlist by ID
   Future<Setlist?> getSetlistById(String id) async {
     try {

@@ -193,6 +193,8 @@ class _SongViewerScreenState extends State<SongViewerScreen>
       song.body,
       durationSecondsOverride: durationSecondsOverride,
     );
+    // Ensure autoMetronomeFired starts false whenever a song is (re)loaded.
+    autoscroll.resetAutoMetronomeFired();
     autoscroll.setScrollController(scrollController);
     autoscroll.setMetronomeProviders(_metronome, metronomeSettings);
 
@@ -399,8 +401,7 @@ class _SongViewerScreenState extends State<SongViewerScreen>
               chordProText: song.body,
               fontSize: _songViewerProvider.fontSize,
               isDarkMode: isDarkMode,
-              transposeSteps: _songViewerProvider.transposeSteps -
-                  _songViewerProvider.currentCapo,
+              transposeSteps: _songViewerProvider.effectiveTransposeSteps,
             ),
           ],
         ),

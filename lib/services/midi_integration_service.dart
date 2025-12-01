@@ -33,7 +33,13 @@ class MidiIntegrationService {
       if (_midiService.isDisposed) {
         return;
       }
-      await _midiProfileService.sendProfile(midiProfile);
+
+      // Best-effort: if there is no connected MIDI device or the profile is
+      // otherwise not sendable, swallow the exception so opening a song in
+      // the viewer does not trigger a global error.
+      try {
+        await _midiProfileService.sendProfile(midiProfile);
+      } catch (_) {}
     }
 
     // Send MIDI clock stream if enabled

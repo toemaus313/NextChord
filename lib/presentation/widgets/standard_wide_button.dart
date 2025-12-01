@@ -7,6 +7,7 @@ class StandardWideButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool enabled;
+  final VoidCallback? onSecondaryPressed;
 
   const StandardWideButton({
     Key? key,
@@ -14,20 +15,26 @@ class StandardWideButton extends StatelessWidget {
     this.onPressed,
     this.icon,
     this.enabled = true,
+    this.onSecondaryPressed,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: enabled ? onPressed : null,
-      icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white.withAlpha(20),
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 36),
-        disabledBackgroundColor: Colors.white.withAlpha(10),
-        disabledForegroundColor: Colors.white.withAlpha(50),
+    return GestureDetector(
+      onSecondaryTap: enabled && onSecondaryPressed != null
+          ? () => onSecondaryPressed!()
+          : null,
+      child: ElevatedButton.icon(
+        onPressed: enabled ? onPressed : null,
+        icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white.withAlpha(20),
+          foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 36),
+          disabledBackgroundColor: Colors.white.withAlpha(10),
+          disabledForegroundColor: Colors.white.withAlpha(50),
+        ),
       ),
     );
   }

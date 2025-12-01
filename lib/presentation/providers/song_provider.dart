@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/midi_mapping.dart';
@@ -8,6 +9,15 @@ import '../../core/services/database_change_service.dart';
 /// Enum to track what type of song list is currently loaded
 enum SongListType { all, deleted, filtered }
 
+/// Local sort mode for the songs list (sidebar + library). This is
+/// persisted only in SharedPreferences and is not part of sync.
+enum SongSortMode {
+  titleAsc,
+  titleDesc,
+  recentFirst,
+  oldestFirst,
+}
+
 /// Provider for managing song state and operations
 /// Uses ChangeNotifier for reactive state management with Provider package
 /// Now includes reactive database change monitoring for automatic UI updates
@@ -15,12 +25,17 @@ class SongProvider extends ChangeNotifier {
   final SongRepository _repository;
   final DatabaseChangeService _dbChangeService = DatabaseChangeService();
 
+  static const String _sortModePrefsKey = 'song_list_sort_mode_v1';
+
   SongProvider(this._repository) {
     // Set up stream subscription to catch database changes for automatic UI updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _dbChangeSubscription =
           _dbChangeService.changeStream.listen(_handleDatabaseChange);
     });
+
+    // Load persisted sort mode (fire and forget; will re-sort once loaded).
+    _loadSortModeFromPrefs();
   }
 
   // Public getter for repository access
@@ -37,6 +52,7 @@ class SongProvider extends ChangeNotifier {
   final Set<String> _selectedSongIds = {};
   Timer? _searchTimer;
   SongListType _currentListType = SongListType.all;
+  SongSortMode _sortMode = SongSortMode.titleAsc;
 
   // Database change monitoring
   StreamSubscription<DbChangeEvent>? _dbChangeSubscription;
@@ -51,6 +67,7 @@ class SongProvider extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   bool get selectionMode => _selectionMode;
   SongListType get currentListType => _currentListType;
+  SongSortMode get sortMode => _sortMode;
   Set<String> get selectedSongIds => Set.unmodifiable(_selectedSongIds);
   List<Song> get selectedSongs {
     if (_currentListType == SongListType.deleted) {
@@ -209,6 +226,89 @@ class SongProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Apply the current sort mode to the filtered songs list.
+  void _applySort() {
+    if (_filteredSongs.isEmpty) {
+      return;
+    }
+
+    _filteredSongs.sort((a, b) {
+      switch (_sortMode) {
+        case SongSortMode.titleAsc:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        case SongSortMode.titleDesc:
+          return b.title.toLowerCase().compareTo(a.title.toLowerCase());
+        case SongSortMode.recentFirst:
+          return b.updatedAt.compareTo(a.updatedAt);
+        case SongSortMode.oldestFirst:
+          return a.updatedAt.compareTo(b.updatedAt);
+      }
+    });
+  }
+
+  /// Cycle to the next sort mode and persist it.
+  Future<void> cycleSortMode() async {
+    switch (_sortMode) {
+      case SongSortMode.titleAsc:
+        _sortMode = SongSortMode.titleDesc;
+        break;
+      case SongSortMode.titleDesc:
+        _sortMode = SongSortMode.recentFirst;
+        break;
+      case SongSortMode.recentFirst:
+        _sortMode = SongSortMode.oldestFirst;
+        break;
+      case SongSortMode.oldestFirst:
+        _sortMode = SongSortMode.titleAsc;
+        break;
+    }
+
+    _applySort();
+    notifyListeners();
+    await _saveSortModeToPrefs();
+  }
+
+  /// Cycle to the previous sort mode (reverse order) and persist it.
+  Future<void> cycleSortModeBackward() async {
+    switch (_sortMode) {
+      case SongSortMode.titleAsc:
+        _sortMode = SongSortMode.oldestFirst;
+        break;
+      case SongSortMode.titleDesc:
+        _sortMode = SongSortMode.titleAsc;
+        break;
+      case SongSortMode.recentFirst:
+        _sortMode = SongSortMode.titleDesc;
+        break;
+      case SongSortMode.oldestFirst:
+        _sortMode = SongSortMode.recentFirst;
+        break;
+    }
+
+    _applySort();
+    notifyListeners();
+    await _saveSortModeToPrefs();
+  }
+
+  Future<void> _loadSortModeFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final index = prefs.getInt(_sortModePrefsKey);
+      if (index != null && index >= 0 && index < SongSortMode.values.length) {
+        _sortMode = SongSortMode.values[index];
+        _applySort();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveSortModeToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_sortModePrefsKey, _sortMode.index);
+    } catch (_) {}
+  }
+
   /// Search songs by title or artist with debouncing
   /// If query is empty, shows all songs
   void searchSongs(String query) {
@@ -234,12 +334,15 @@ class SongProvider extends ChangeNotifier {
         return titleMatch || artistMatch || tagMatch;
       }).toList();
     }
+
+    _applySort();
   }
 
   /// Clear search query and show all songs
   void clearSearch() {
     _searchQuery = '';
     _filteredSongs = List.from(_songs);
+    _applySort();
     // Preserve selections when clearing search
     notifyListeners();
   }

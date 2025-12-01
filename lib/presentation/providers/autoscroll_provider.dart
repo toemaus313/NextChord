@@ -25,9 +25,15 @@ class AutoscrollProvider extends ChangeNotifier {
   // Per-song count-in tracking for MIDI toggle behavior
   bool _hasRunAutoscrollCountIn = false;
 
+  // Tracks whether this song has already auto-started the metronome due to
+  // the Metronome on Autoscroll feature. Once true, autoscroll and
+  // metronome should be fully decoupled for the remainder of the song.
+  bool _autoMetronomeFired = false;
+
   // Getters
   bool get isActive => _isActive;
   int get durationSeconds => _durationSeconds;
+  bool get autoMetronomeFired => _autoMetronomeFired;
   String get durationDisplay {
     final minutes = _durationSeconds ~/ 60;
     final seconds = _durationSeconds % 60;
@@ -49,11 +55,22 @@ class AutoscrollProvider extends ChangeNotifier {
 
     // Reset count-in state when loading a new song
     _hasRunAutoscrollCountIn = false;
+
+    // Ensure metronome/autoscroll coupling starts "armed" for this song.
+    // The first time autoscroll triggers the metronome, this flag will be
+    // set to true and they will remain decoupled until the next song load.
+    _autoMetronomeFired = false;
   }
 
   /// Reset count-in state (call when exiting song or loading different song)
   void resetCountInState() {
     _hasRunAutoscrollCountIn = false;
+  }
+
+  /// Explicitly reset the auto-metronome flag (used by song loader to ensure
+  /// the flag is always false when a song first loads).
+  void resetAutoMetronomeFired() {
+    _autoMetronomeFired = false;
   }
 
   // Set the scroll controller for the viewer
@@ -118,7 +135,11 @@ class AutoscrollProvider extends ChangeNotifier {
     _resumeTimer?.cancel();
     _autoscrollStartTime = null;
     _autoscrollEndTime = null;
-    if (_settingsProvider?.metronomeOnAutoscroll == true) {
+    // Only allow autoscroll to stop the metronome before the first
+    // auto-metronome start. Once autoMetronomeFired is true, metronome
+    // control is fully decoupled from autoscroll.
+    if (!_autoMetronomeFired &&
+        _settingsProvider?.metronomeOnAutoscroll == true) {
       _metronomeProvider?.stop();
     }
     notifyListeners();
@@ -156,6 +177,12 @@ class AutoscrollProvider extends ChangeNotifier {
 
     // Only perform metronome-driven count-in when explicitly enabled
     if (!_settingsProvider!.metronomeOnAutoscroll) {
+      return false;
+    }
+
+    // If this song has already auto-started the metronome, keep
+    // autoscroll and metronome fully decoupled.
+    if (_autoMetronomeFired) {
       return false;
     }
 
@@ -254,6 +281,12 @@ class AutoscrollProvider extends ChangeNotifier {
       return false;
     }
 
+    // If this song has already auto-started the metronome, keep
+    // autoscroll and metronome fully decoupled.
+    if (_autoMetronomeFired) {
+      return false;
+    }
+
     // If autoscroll is already running, bypass count-in and just start metronome
     if (_isActive) {
       return false;
@@ -283,6 +316,9 @@ class AutoscrollProvider extends ChangeNotifier {
     // to think autoscroll is already running and bypass the count-in.
     // _isActive will be set to true when count-in completes and scrolling starts.
     notifyListeners();
+
+    // Mark that we've auto-started the metronome for this song.
+    _autoMetronomeFired = true;
 
     // Start metronome count-in
     _metronomeProvider!.start();

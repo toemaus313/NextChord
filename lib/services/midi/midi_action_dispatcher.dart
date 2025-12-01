@@ -352,6 +352,18 @@ class MidiActionDispatcher {
   // Action implementation methods
   // These will need to be connected to the actual app state management
 
+  void _notifyAutoscrollOfUserScroll() {
+    final autoscroll = _autoscrollProvider;
+    if (autoscroll == null) {
+      return;
+    }
+
+    // Treat MIDI-driven scrolls as user scroll activity so that
+    // AutoscrollProvider pauses the current animation and schedules
+    // a resume using its existing debounce logic.
+    autoscroll.handleUserScrollActivity();
+  }
+
   void _executeScrollUp(AppControlActionParams params) {
     final scrollController = _getCurrentScrollController?.call();
     if (scrollController == null || !scrollController.hasClients) {
@@ -366,11 +378,15 @@ class MidiActionDispatcher {
     final newOffset = (scrollController.offset - scrollDistance)
         .clamp(0.0, scrollController.position.maxScrollExtent);
 
-    scrollController.animateTo(
+    scrollController
+        .animateTo(
       newOffset,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
+    )
+        .then((_) {
+      _notifyAutoscrollOfUserScroll();
+    });
   }
 
   void _executeScrollDown(AppControlActionParams params) {
@@ -387,11 +403,15 @@ class MidiActionDispatcher {
     final newOffset = (scrollController.offset + scrollDistance)
         .clamp(0.0, scrollController.position.maxScrollExtent);
 
-    scrollController.animateTo(
+    scrollController
+        .animateTo(
       newOffset,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
+    )
+        .then((_) {
+      _notifyAutoscrollOfUserScroll();
+    });
   }
 
   void _executeScrollToTop() {
@@ -400,11 +420,15 @@ class MidiActionDispatcher {
       return;
     }
 
-    scrollController.animateTo(
+    scrollController
+        .animateTo(
       0.0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
+    )
+        .then((_) {
+      _notifyAutoscrollOfUserScroll();
+    });
   }
 
   void _executeScrollToBottom() {
@@ -413,11 +437,15 @@ class MidiActionDispatcher {
       return;
     }
 
-    scrollController.animateTo(
+    scrollController
+        .animateTo(
       scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
+    )
+        .then((_) {
+      _notifyAutoscrollOfUserScroll();
+    });
   }
 
   void _executeStartMetronome() {
@@ -649,9 +677,7 @@ class MidiActionDispatcher {
 
     sectionService.navigateToPreviousSection().then((success) {
       if (success) {
-        // Navigation successful
-      } else {
-        // Navigation failed
+        _notifyAutoscrollOfUserScroll();
       }
     }).catchError((error) {
       // Handle navigation errors silently
@@ -677,9 +703,7 @@ class MidiActionDispatcher {
 
     sectionService.navigateToNextSection().then((success) {
       if (success) {
-        // Navigation successful
-      } else {
-        // Navigation failed
+        _notifyAutoscrollOfUserScroll();
       }
     }).catchError((error) {
       // Handle navigation errors silently

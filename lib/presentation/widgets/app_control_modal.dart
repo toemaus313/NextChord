@@ -7,6 +7,7 @@ import '../../domain/entities/app_control_action.dart';
 import '../../domain/entities/midi_profile.dart';
 import '../../services/midi/midi_device_manager.dart';
 import '../../services/midi/midi_command_parser.dart';
+import '../../services/midi/midi_action_dispatcher.dart';
 import '../../domain/entities/midi_message.dart';
 import '../../presentation/widgets/templates/standard_modal_template.dart';
 import '../../presentation/providers/song_provider.dart';
@@ -308,6 +309,10 @@ class _AppControlModalState extends State<AppControlModal> {
       _clearForm();
       _selectMapping(null);
 
+      // Ensure the global MIDI action dispatcher sees the latest mappings
+      // immediately without requiring an app restart.
+      await MidiActionDispatcher().refreshMappings();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -359,6 +364,10 @@ class _AppControlModalState extends State<AppControlModal> {
       await _loadMappings();
       _clearForm();
       _selectMapping(null);
+
+      // Refresh active mappings so the deleted mapping stops firing
+      // immediately.
+      await MidiActionDispatcher().refreshMappings();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

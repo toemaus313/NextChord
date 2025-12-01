@@ -26,6 +26,7 @@ class _BottomSearchBarState extends State<BottomSearchBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
+  late VoidCallback _textListener;
 
   @override
   void initState() {
@@ -42,6 +43,14 @@ class _BottomSearchBarState extends State<BottomSearchBar>
       curve: Curves.easeOutCubic,
     ));
 
+    // Ensure the clear (X) suffix icon visibility updates when text changes.
+    _textListener = () {
+      if (mounted) {
+        setState(() {});
+      }
+    };
+    widget.controller.addListener(_textListener);
+
     if (widget.isVisible) {
       _animationController.forward();
     }
@@ -50,6 +59,11 @@ class _BottomSearchBarState extends State<BottomSearchBar>
   @override
   void didUpdateWidget(BottomSearchBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // If the controller instance changes, move our listener to the new one.
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_textListener);
+      widget.controller.addListener(_textListener);
+    }
     if (widget.isVisible != oldWidget.isVisible) {
       if (widget.isVisible) {
         _animationController.forward();
@@ -61,6 +75,7 @@ class _BottomSearchBarState extends State<BottomSearchBar>
 
   @override
   void dispose() {
+    widget.controller.removeListener(_textListener);
     _animationController.dispose();
     super.dispose();
   }

@@ -6,6 +6,7 @@ import '../../core/constants/song_viewer_constants.dart';
 import '../../domain/entities/song.dart';
 import '../../domain/entities/setlist.dart';
 import '../../services/song_adjustment_service.dart';
+import '../../core/utils/chordpro_parser.dart';
 import 'setlist_provider.dart';
 
 /// Enum for different flyout types
@@ -125,8 +126,20 @@ class SongViewerProvider extends ChangeNotifier {
   String get capoStatusLabel =>
       SongAdjustmentService.formatCapoLabel(_currentCapo, _currentSong.capo);
 
+  /// Effective transpose taking both viewer transpose and capo offset
+  int get effectiveTransposeSteps {
+    final capoOffset = SongAdjustmentService.calculateCapoOffset(
+      _currentSong.capo,
+      _currentCapo,
+    );
+    return SongAdjustmentService.calculateEffectiveTranspose(
+      _transposeSteps,
+      capoOffset,
+    );
+  }
+
   String? get keyDisplayLabel => SongAdjustmentService.getKeyDisplayLabel(
-      _currentSong.key, _transposeSteps);
+      _currentSong.key, effectiveTransposeSteps);
 
   // Update methods
   void updateSong(Song newSong) {
@@ -351,30 +364,41 @@ class SongViewerProvider extends ChangeNotifier {
     final targetCapo = capo ?? _currentCapo;
     final setlistProvider = _setlistProvider;
 
-    // Prioritize using the inferred setlistContext if available
-    if (_setlistContext != null && setlistProvider?.isSetlistActive == true) {
-      await setlistProvider!.updateCurrentSongAdjustments(
+    // If a setlist is active, always update adjustments by songId so we don't
+    // rely on the provider's currentSongIndex, which might be out of sync
+    // with the viewer.
+    if (setlistProvider?.isSetlistActive == true) {
+      await setlistProvider!.updateSongAdjustmentsBySongId(
+        songId: _currentSong.id,
         transposeSteps: targetTranspose,
         capo: targetCapo,
       );
       return;
     }
 
-    // Fallback to checking getCurrentSongItem() if no inferred context
-    if ((setlistProvider?.isSetlistActive ?? false) &&
-        setlistProvider?.getCurrentSongItem() != null) {
-      await setlistProvider!.updateCurrentSongAdjustments(
-        transposeSteps: targetTranspose,
-        capo: targetCapo,
-      );
-      return;
+    // Save to global song if no setlist context available.
+    // In this mode, changing capo in the Viewer should behave like changing it
+    // in the Editor: adjust the base song (body + key + capo), and treat
+    // transposeSteps as a UI-level overlay that is persisted via metadata.
+
+    var newBody = _currentSong.body;
+    var newCapo = _currentSong.capo;
+
+    // If capo changed, re-baseline the song by transposing body and key.
+    if (targetCapo != _currentSong.capo) {
+      final diff = _currentSong.capo - targetCapo;
+
+      // Transpose full ChordPro body
+      newBody = ChordProParser.transposeChordProText(_currentSong.body, diff);
+
+      newCapo = targetCapo;
     }
 
-    // Save to global song if no setlist context available
     final updatedSong = _currentSong.copyWith(
-      capo: targetCapo,
-      // Base song transpose is represented by storing the transposeSteps on the song body.
-      // Add a 'viewer_transpose' metadata field to preserve UI adjustments outside setlists.
+      body: newBody,
+      capo: newCapo,
+      // Base song transpose is represented by the body/key above. Viewer
+      // transpose is stored as metadata on notes.
       notes: _mergeTransposeIntoNotes(_currentSong.notes, transposeSteps),
     );
     await _songRepository.updateSong(updatedSong);
