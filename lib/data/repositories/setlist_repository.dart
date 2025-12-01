@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/setlist.dart';
 import '../database/app_database.dart';
 import '../../core/services/database_change_service.dart';
+import '../../main.dart' as main;
 
 /// Repository for managing Setlists
 class SetlistRepository {
@@ -29,8 +30,7 @@ class SetlistRepository {
   /// Convert a database SetlistModel to a domain Setlist entity
   Setlist _modelToSetlist(SetlistModel model) {
     final items = _deserializeItems(model.items);
-
-    return Setlist(
+    final setlist = Setlist(
       id: model.id,
       name: model.name,
       items: items,
@@ -39,6 +39,11 @@ class SetlistRepository {
       createdAt: DateTime.fromMillisecondsSinceEpoch(model.createdAt),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
     );
+
+    main.myDebug(
+        'SetlistRepository._modelToSetlist: id=${setlist.id}, name=${setlist.name}, imagePath=${setlist.imagePath}');
+
+    return setlist;
   }
 
   /// Serialize setlist items to JSON-compatible format
@@ -118,6 +123,11 @@ class SetlistRepository {
     try {
       final models = await _db.getAllSetlists();
       final setlists = models.map(_modelToSetlist).toList();
+
+      for (final s in setlists) {
+        main.myDebug(
+            'SetlistRepository.getAllSetlists: id=${s.id}, name=${s.name}, imagePath=${s.imagePath}');
+      }
       return setlists;
     } catch (e) {
       return [];

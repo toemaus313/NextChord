@@ -12,6 +12,7 @@ import '../setlist_editor_dialog.dart';
 import '../standard_wide_button.dart';
 import '../../../services/setlist/setlist_service.dart';
 import 'dart:io';
+import '../../../main.dart' as main;
 
 /// Setlist view for the sidebar
 class SidebarSetlistView extends StatefulWidget {
@@ -86,17 +87,34 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                       height: 200,
                       width: 200,
                       margin: const EdgeInsets.symmetric(vertical: 16),
-                      child: currentSetlist.imagePath != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.file(
-                                File(currentSetlist.imagePath!),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildLogoPlaceholder(),
-                              ),
-                            )
-                          : _buildLogoPlaceholder(),
+                      child: () {
+                        main.myDebug(
+                            'SidebarSetlistView: id=${currentSetlist.id}, name=${currentSetlist.name}, imagePath=${currentSetlist.imagePath}');
+
+                        final path = currentSetlist.imagePath;
+                        if (path == null) {
+                          return _buildLogoPlaceholder();
+                        }
+
+                        final file = File(path);
+                        final exists = file.existsSync();
+                        main.myDebug(
+                            'SidebarSetlistView: image file path=$path, exists=$exists');
+
+                        if (!exists) {
+                          return _buildLogoPlaceholder();
+                        }
+
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.file(
+                            file,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildLogoPlaceholder(),
+                          ),
+                        );
+                      }(),
                     ),
                     // Setlist title area (moved below logo)
                     Padding(

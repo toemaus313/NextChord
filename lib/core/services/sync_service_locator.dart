@@ -1,4 +1,5 @@
 import '../../providers/sync_provider.dart';
+import '../../core/enums/sync_backend.dart';
 import '../../main.dart' as main;
 
 /// Global service locator for accessing sync functionality throughout the app
@@ -18,17 +19,25 @@ class SyncServiceLocator {
     main.myDebug(
         'SyncServiceLocator.uploadFile: localPath=$localPath, relativePath=$relativePath');
     if (_syncProvider != null) {
-      // Try Google Drive first if available
-      if (_syncProvider!.googleDriveService != null) {
-        main.myDebug('SyncServiceLocator.uploadFile: using Google Drive');
-        return await _syncProvider!.googleDriveService!
-            .uploadFile(localPath, relativePath);
-      }
-      // Fall back to iCloud if available
-      if (_syncProvider!.iCloudService != null) {
-        main.myDebug('SyncServiceLocator.uploadFile: using iCloud');
-        return await _syncProvider!.iCloudService!
-            .uploadFile(localPath, relativePath);
+      // Use the configured sync backend
+      switch (_syncProvider!.syncBackend) {
+        case SyncBackend.googleDrive:
+          main.myDebug('SyncServiceLocator.uploadFile: using Google Drive');
+          if (_syncProvider!.googleDriveService != null) {
+            return await _syncProvider!.googleDriveService!
+                .uploadFile(localPath, relativePath);
+          }
+          break;
+        case SyncBackend.iCloud:
+          main.myDebug('SyncServiceLocator.uploadFile: using iCloud');
+          if (_syncProvider!.iCloudService != null) {
+            return await _syncProvider!.iCloudService!
+                .uploadFile(localPath, relativePath);
+          }
+          break;
+        case SyncBackend.local:
+          main.myDebug('SyncServiceLocator.uploadFile: local only - no upload');
+          return false;
       }
     }
     main.myDebug('SyncServiceLocator.uploadFile: no sync service available');
@@ -39,16 +48,26 @@ class SyncServiceLocator {
   static Future<String?> downloadFile(String relativePath) async {
     main.myDebug('SyncServiceLocator.downloadFile: relativePath=$relativePath');
     if (_syncProvider != null) {
-      // Try Google Drive first if available
-      if (_syncProvider!.googleDriveService != null) {
-        main.myDebug('SyncServiceLocator.downloadFile: using Google Drive');
-        return await _syncProvider!.googleDriveService!
-            .downloadFile(relativePath);
-      }
-      // Fall back to iCloud if available
-      if (_syncProvider!.iCloudService != null) {
-        main.myDebug('SyncServiceLocator.downloadFile: using iCloud');
-        return await _syncProvider!.iCloudService!.downloadFile(relativePath);
+      // Use the configured sync backend
+      switch (_syncProvider!.syncBackend) {
+        case SyncBackend.googleDrive:
+          main.myDebug('SyncServiceLocator.downloadFile: using Google Drive');
+          if (_syncProvider!.googleDriveService != null) {
+            return await _syncProvider!.googleDriveService!
+                .downloadFile(relativePath);
+          }
+          break;
+        case SyncBackend.iCloud:
+          main.myDebug('SyncServiceLocator.downloadFile: using iCloud');
+          if (_syncProvider!.iCloudService != null) {
+            return await _syncProvider!.iCloudService!
+                .downloadFile(relativePath);
+          }
+          break;
+        case SyncBackend.local:
+          main.myDebug(
+              'SyncServiceLocator.downloadFile: local only - no download');
+          return null;
       }
     }
     main.myDebug('SyncServiceLocator.downloadFile: no sync service available');

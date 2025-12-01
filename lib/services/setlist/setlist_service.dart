@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../domain/entities/setlist.dart';
 import '../../domain/entities/song.dart';
 import '../../data/repositories/setlist_repository.dart';
@@ -77,19 +80,136 @@ class SetlistService {
   }
 
   /// Pick an image file for setlist cover
-  Future<String?> pickImage() async {
+  Future<String?> pickImage([BuildContext? context]) async {
     try {
-      final result = await openFile(
-        acceptedTypeGroups: [
-          const XTypeGroup(
-            label: 'Images',
-            extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp'],
-          ),
-        ],
-      );
+      // Check if we're on a mobile platform (iOS/Android)
+      final isMobile = Platform.isIOS || Platform.isAndroid;
 
-      if (result != null) {
-        return result.path;
+      if (isMobile) {
+        // On iOS, show a dialog with multiple options
+        if (Platform.isIOS && context != null) {
+          return await _pickImageIOS(context);
+        } else {
+          // Android: use image_picker for photo library
+          final ImagePicker picker = ImagePicker();
+          final XFile? image = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1024,
+            maxHeight: 1024,
+            imageQuality: 85,
+          );
+
+          if (image != null) {
+            return image.path;
+          }
+        }
+      } else {
+        // Desktop platforms: use file_picker
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+        );
+
+        if (result != null && result.files.isNotEmpty) {
+          return result.files.first.path;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// iOS-specific image picker with multiple source options
+  Future<String?> _pickImageIOS(BuildContext context) async {
+    // Check if clipboard has image data
+    bool hasClipboardImage = false;
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      // For now, we'll check if there's any clipboard data at all
+      // In a more advanced implementation, you'd need to check specifically for image data
+      hasClipboardImage = clipboardData?.text?.isNotEmpty == true;
+    } catch (e) {
+      hasClipboardImage = false;
+    }
+
+    // Show dialog with options
+    final ImageSource? selectedSource = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Image Source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Choose from Files
+              ListTile(
+                leading: const Icon(Icons.folder),
+                title: const Text('Choose from Files'),
+                onTap: () => Navigator.of(context).pop(null), // null = files
+              ),
+              // Add Photo (Photo Library)
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Add Photo'),
+                onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+              ),
+              // Take Photo (Camera)
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () => Navigator.of(context).pop(ImageSource.camera),
+              ),
+              // Add from Clipboard
+              ListTile(
+                leading: const Icon(Icons.content_paste),
+                title: const Text('Add from Clipboard'),
+                enabled: hasClipboardImage,
+                onTap: hasClipboardImage
+                    ? () => Navigator.of(context).pop(ImageSource.values.length
+                        as ImageSource?) // Use a sentinel value
+                    : null,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedSource == null) {
+      // Choose from Files
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      return result?.files.first.path;
+    } else if (selectedSource == ImageSource.gallery ||
+        selectedSource == ImageSource.camera) {
+      // Photo Library or Camera
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: selectedSource,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      return image?.path;
+    } else {
+      // Clipboard (our sentinel value)
+      return await _pickImageFromClipboard();
+    }
+  }
+
+  /// Get image from clipboard
+  Future<String?> _pickImageFromClipboard() async {
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      if (clipboardData?.text?.isNotEmpty == true) {
+        // For now, we'll treat text as if it could be an image URL or data
+        // In a full implementation, you'd need to handle different clipboard formats
+        // This is a placeholder for clipboard image functionality
+        return null; // Not implemented yet
       }
       return null;
     } catch (e) {

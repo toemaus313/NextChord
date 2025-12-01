@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../../domain/entities/song.dart';
 import '../../../domain/entities/midi_profile.dart';
 import '../../../services/song_metadata_service.dart';
+import '../../../main.dart' as main;
 
 /// Status enum for online metadata lookup
 enum OnlineMetadataStatus {
@@ -448,7 +449,7 @@ class SongEditorController extends ChangeNotifier {
       setHasAttemptedOnlineLookup(false); // Reset flag to allow retries
       setOnlineLookupCompletedSuccessfully(
           false); // Reset flag to allow retries
-      print('Exception in confirmTitleOnlyLookup: $e');
+      main.myDebug('Exception in confirmTitleOnlyLookup: $e');
     }
   }
 

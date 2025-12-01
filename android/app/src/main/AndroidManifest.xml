@@ -2,6 +2,11 @@
     <!-- Required for Google Sign-In -->
     <uses-permission android:name="android.permission.INTERNET" />
     
+    <!-- Required for image picker -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    
     <application
         android:label="NextChord"
         android:name="${applicationName}"

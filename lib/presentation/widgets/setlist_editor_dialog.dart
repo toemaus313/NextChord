@@ -250,7 +250,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
   Future<void> _pickImage() async {
     setState(() => _imageLoading = true);
     try {
-      final sourcePath = await _setlistService.pickImage();
+      final sourcePath = await _setlistService.pickImage(context);
       if (sourcePath != null) {
         final savedPath =
             await _setlistService.saveImageToAppDirectory(sourcePath);

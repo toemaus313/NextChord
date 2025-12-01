@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../../data/database/app_database.dart';
 import '../../core/services/database_change_service.dart';
 import '../../core/services/sync_service_locator.dart';
@@ -1014,9 +1016,6 @@ class LibrarySyncService {
         isDeleted: (model) => model.isDeleted,
       );
 
-      // Sync setlist images
-      await _syncSetlistImages(mergedSetlists);
-
       // Apply merged data to database in a transaction
       await _database.transaction(() async {
         // Clear and insert songs
@@ -1117,6 +1116,12 @@ class LibrarySyncService {
           lastSyncAt: DateTime.now(),
         );
       });
+
+      // After the merged setlists have been written to the database, sync
+      // setlist images. This may download missing images from the cloud and
+      // update the imagePath column via updateSetlistImagePath so that
+      // subsequent reads (and the UI) see the correct local filesystem path.
+      await _syncSetlistImages(mergedSetlists);
 
       // Emit database change events for all updated songs to trigger UI refresh
       if (deltaSummary.updatedSongIds.isNotEmpty) {
@@ -1330,7 +1335,11 @@ class LibrarySyncService {
 
       for (final setlist in setlists) {
         if (setlist.imagePath != null && setlist.imagePath!.isNotEmpty) {
-          await _syncSetlistImage(setlist.id, setlist.imagePath!);
+          await _syncSetlistImage(
+            setlist.id,
+            setlist.name,
+            setlist.imagePath!,
+          );
         }
       }
 
@@ -1342,25 +1351,49 @@ class LibrarySyncService {
   }
 
   /// Sync a single setlist image
-  Future<void> _syncSetlistImage(String setlistId, String imagePath) async {
+  Future<void> _syncSetlistImage(
+      String setlistId, String setlistName, String imagePath) async {
     try {
       final localFile = File(imagePath);
       final fileExistsLocally = await localFile.exists();
 
-      // Create relative path for cloud storage
+      // Use a deterministic filename per setlist based on the setlist name
+      final sanitizedSetlistName = _sanitizeFileName(setlistName);
+      final extension = _getFileExtension(imagePath);
       final fileName =
-          'setlist_${setlistId}_image${_getFileExtension(imagePath)}';
-      final relativePath = 'images/setlists/$fileName';
+          'setlist_${sanitizedSetlistName}${extension.isNotEmpty ? extension : '.jpg'}';
+      final relativePath = 'setlist_images/$fileName';
 
       main.myDebug(
           'LibrarySyncService._syncSetlistImage: setlistId=$setlistId, localPath=$imagePath, relativePath=$relativePath, existsLocally=$fileExistsLocally');
 
       if (fileExistsLocally) {
-        // Upload local image to cloud
+        // Create a temporary copy of the image file (similar to library.json approach)
+        final tempDir = await getTemporaryDirectory();
+        final tempFileName =
+            'setlist_image_${setlistId}_${DateTime.now().millisecondsSinceEpoch}${_getFileExtension(imagePath)}';
+        final tempFile = File(p.join(tempDir.path, tempFileName));
+
+        // Copy the original image to temp location
+        await File(imagePath).copy(tempFile.path);
+
         main.myDebug(
-            'LibrarySyncService._syncSetlistImage: calling uploadFile with localPath=$imagePath, relativePath=$relativePath');
+            'LibrarySyncService._syncSetlistImage: created temp file at ${tempFile.path}');
+        main.myDebug(
+            'LibrarySyncService._syncSetlistImage: calling uploadFile with tempPath=${tempFile.path}, relativePath=$relativePath');
         final uploadSuccess =
-            await SyncServiceLocator.uploadFile(imagePath, relativePath);
+            await SyncServiceLocator.uploadFile(tempFile.path, relativePath);
+
+        // Clean up temp file
+        try {
+          await tempFile.delete();
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: cleaned up temp file');
+        } catch (e) {
+          main.myDebug(
+              'LibrarySyncService._syncSetlistImage: failed to clean up temp file: $e');
+        }
+
         if (uploadSuccess) {
           main.myDebug(
               'LibrarySyncService._syncSetlistImage: uploaded $relativePath');
@@ -1375,10 +1408,40 @@ class LibrarySyncService {
         final downloadedPath =
             await SyncServiceLocator.downloadFile(relativePath);
         if (downloadedPath != null) {
-          // Update the setlist's image path to point to the downloaded file
-          await _database.updateSetlistImagePath(setlistId, downloadedPath);
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: downloaded and updated path for setlist $setlistId to $downloadedPath');
+          // Copy the downloaded file into the app's setlist_images directory
+          try {
+            final documentsDir = await getApplicationDocumentsDirectory();
+            final imagesDir =
+                Directory(p.join(documentsDir.path, 'setlist_images'));
+
+            if (!await imagesDir.exists()) {
+              await imagesDir.create(recursive: true);
+            }
+
+            final destinationPath = p.join(imagesDir.path, fileName);
+            final destinationFile = await File(downloadedPath).copy(
+              destinationPath,
+            );
+
+            // Clean up the temporary downloaded file if it's different
+            if (downloadedPath != destinationFile.path) {
+              try {
+                await File(downloadedPath).delete();
+              } catch (e) {
+                main.myDebug(
+                    'LibrarySyncService._syncSetlistImage: failed to delete temp downloaded image: $e');
+              }
+            }
+
+            // Update the setlist's image path to point to the local copy
+            await _database.updateSetlistImagePath(
+                setlistId, destinationFile.path);
+            main.myDebug(
+                'LibrarySyncService._syncSetlistImage: downloaded and updated path for setlist $setlistId to ${destinationFile.path}');
+          } catch (e) {
+            main.myDebug(
+                'LibrarySyncService._syncSetlistImage: error copying downloaded image for setlist $setlistId: $e');
+          }
         } else {
           main.myDebug(
               'LibrarySyncService._syncSetlistImage: download failed for $relativePath');
@@ -1395,5 +1458,23 @@ class LibrarySyncService {
     final lastDot = path.lastIndexOf('.');
     if (lastDot == -1) return '';
     return path.substring(lastDot);
+  }
+
+  /// Sanitize a value for safe use in file names
+  String _sanitizeFileName(String value) {
+    // Trim and replace characters that are invalid or problematic in file names
+    var sanitized = value.trim();
+
+    // Replace common invalid filename characters with spaces
+    sanitized = sanitized.replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ');
+
+    // Collapse whitespace to single underscores
+    sanitized = sanitized.replaceAll(RegExp(r'\s+'), '_');
+
+    if (sanitized.isEmpty) {
+      return 'untitled';
+    }
+
+    return sanitized;
   }
 }

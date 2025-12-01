@@ -1,6 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
-import 'midi_profile.dart';
 
 /// Domain entity for a musical Song
 class Song extends Equatable {

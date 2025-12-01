@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../domain/entities/setlist.dart';
 import '../providers/setlist_provider.dart';
 import '../widgets/setlist_editor_dialog.dart';
+import '../../main.dart' as main;
 
 /// Screen that displays all setlists
 class SetlistsScreen extends StatefulWidget {
@@ -113,6 +114,8 @@ class _SetlistsScreenState extends State<SetlistsScreen> {
   }
 
   Widget _buildSetlistCard(Setlist setlist) {
+    main.myDebug(
+        'SetlistsScreen._buildSetlistCard: id=${setlist.id}, name=${setlist.name}, imagePath=${setlist.imagePath}');
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -184,7 +187,11 @@ class _SetlistsScreenState extends State<SetlistsScreen> {
     }
 
     final file = File(path);
-    if (!file.existsSync()) {
+    final exists = file.existsSync();
+    main.myDebug(
+        'SetlistsScreen._buildSetlistImage: path=$path, exists=$exists');
+
+    if (!exists) {
       return _buildPlaceholderImage();
     }
 

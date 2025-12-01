@@ -56,7 +56,6 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         }
         
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
-        print("ICloudDrivePlugin.getICloudDriveFolderPath: returning documentsPath=\(documentsPath.path)")
         result(documentsPath.path)
     }
     
@@ -103,12 +102,8 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
             // Copy file to iCloud Drive
             try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
             
-            // Start uploading the file
-            try FileManager.default.startDownloadingUbiquitousItem(at: destinationURL)
-            
             result(true)
         } catch {
-            print("Error uploading file to iCloud Drive: \(error)")
             result(false)
         }
     }
@@ -121,8 +116,6 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
             return
         }
         
-        print("ICloudDrivePlugin.downloadFile: relativePath=\(relativePath)")
-        
         guard let ubiquityContainer = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
             result(nil)
             return
@@ -131,23 +124,29 @@ public class ICloudDrivePlugin: NSObject, FlutterPlugin {
         let documentsPath = ubiquityContainer.appendingPathComponent("Documents")
         let sourceURL = documentsPath.appendingPathComponent(relativePath)
         
-        print("ICloudDrivePlugin.downloadFile: ubiquityContainer=\(ubiquityContainer.path), documentsPath=\(documentsPath.path), sourceURL=\(sourceURL.path)")
-        
         // Create temporary file
         let tempDir = FileManager.default.temporaryDirectory
         let tempFile = tempDir.appendingPathComponent("icloud_download_\(UUID().uuidString)")
         
         do {
-            // Ensure the file is downloaded from iCloud. We avoid polling
-            // deprecated / unavailable URLResourceValue keys here and instead
-            // optimistically proceed after requesting the download.
-            try FileManager.default.startDownloadingUbiquitousItem(at: sourceURL)
+            // Use NSFileCoordinator for safe access to ubiquity container files
+            let fileCoordinator = NSFileCoordinator()
+            var coordinationError: NSError?
             
-            // Copy to temporary location
-            try FileManager.default.copyItem(at: sourceURL, to: tempFile)
-            result(tempFile.path)
+            fileCoordinator.coordinate(readingItemAt: sourceURL, options: .withoutChanges, error: &coordinationError) { (coordinatedURL) in
+                do {
+                    // Copy file to temporary location
+                    try FileManager.default.copyItem(at: coordinatedURL, to: tempFile)
+                    result(tempFile.path)
+                } catch {
+                    result(nil)
+                }
+            }
+            
+            if let error = coordinationError {
+                result(nil)
+            }
         } catch {
-            print("Error downloading file from iCloud Drive: \(error)")
             result(nil)
         }
     }

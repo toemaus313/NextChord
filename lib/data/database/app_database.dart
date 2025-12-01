@@ -312,7 +312,7 @@ class AppDatabase extends _$AppDatabase {
     final allTags = <String>{};
 
     for (final song in allSongs) {
-      if (song.tags != null && song.tags!.isNotEmpty) {
+      if (song.tags.isNotEmpty) {
         try {
           final tagsList = jsonDecode(song.tags) as List<dynamic>;
           allTags.addAll(tagsList.cast<String>());

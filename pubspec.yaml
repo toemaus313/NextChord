@@ -64,6 +64,7 @@ dependencies:
   # File Handling
   file_selector: ^0.9.0
   file_picker: ^8.0.0
+  image_picker: ^1.0.4
   path_provider: ^2.1.1  # Updated to match required version
   path: ^1.8.3
   shared_preferences: ^2.2.0
