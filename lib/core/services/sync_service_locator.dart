@@ -46,31 +46,25 @@ class SyncServiceLocator {
 
   /// Download a file using the active sync service
   static Future<String?> downloadFile(String relativePath) async {
-    main.myDebug('SyncServiceLocator.downloadFile: relativePath=$relativePath');
     if (_syncProvider != null) {
       // Use the configured sync backend
       switch (_syncProvider!.syncBackend) {
         case SyncBackend.googleDrive:
-          main.myDebug('SyncServiceLocator.downloadFile: using Google Drive');
           if (_syncProvider!.googleDriveService != null) {
             return await _syncProvider!.googleDriveService!
                 .downloadFile(relativePath);
           }
           break;
         case SyncBackend.iCloud:
-          main.myDebug('SyncServiceLocator.downloadFile: using iCloud');
           if (_syncProvider!.iCloudService != null) {
             return await _syncProvider!.iCloudService!
                 .downloadFile(relativePath);
           }
           break;
         case SyncBackend.local:
-          main.myDebug(
-              'SyncServiceLocator.downloadFile: local only - no download');
           return null;
       }
     }
-    main.myDebug('SyncServiceLocator.downloadFile: no sync service available');
     return null;
   }
 

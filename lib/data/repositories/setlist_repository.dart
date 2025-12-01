@@ -40,9 +40,6 @@ class SetlistRepository {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(model.updatedAt),
     );
 
-    main.myDebug(
-        'SetlistRepository._modelToSetlist: id=${setlist.id}, name=${setlist.name}, imagePath=${setlist.imagePath}');
-
     return setlist;
   }
 

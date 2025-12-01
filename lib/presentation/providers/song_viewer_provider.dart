@@ -138,8 +138,11 @@ class SongViewerProvider extends ChangeNotifier {
     );
   }
 
+  /// Key display should reflect only the viewer transpose, not capo offsets,
+  /// so changing capo (including setlist-specific capo) does not alter the
+  /// displayed key. Capo still affects chord rendering via effectiveTransposeSteps.
   String? get keyDisplayLabel => SongAdjustmentService.getKeyDisplayLabel(
-      _currentSong.key, effectiveTransposeSteps);
+      _currentSong.key, _transposeSteps);
 
   // Update methods
   void updateSong(Song newSong) {

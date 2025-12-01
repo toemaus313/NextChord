@@ -543,18 +543,13 @@ class ICloudSyncService {
 
   /// Upload a file to iCloud Drive
   Future<bool> uploadFile(String localPath, String relativePath) async {
-    main.myDebug(
-        'ICloudSyncService.uploadFile: localPath=$localPath, relativePath=$relativePath');
     final result = await ICloudDriveChannel.uploadFile(localPath, relativePath);
-    main.myDebug('ICloudSyncService.uploadFile: result=$result');
     return result;
   }
 
   /// Download a file from iCloud Drive
   Future<String?> downloadFile(String relativePath) async {
-    main.myDebug('ICloudSyncService.downloadFile: relativePath=$relativePath');
     final result = await ICloudDriveChannel.downloadFile(relativePath);
-    main.myDebug('ICloudSyncService.downloadFile: result=$result');
     return result;
   }
 }

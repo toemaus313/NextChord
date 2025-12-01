@@ -88,9 +88,6 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                       width: 200,
                       margin: const EdgeInsets.symmetric(vertical: 16),
                       child: () {
-                        main.myDebug(
-                            'SidebarSetlistView: id=${currentSetlist.id}, name=${currentSetlist.name}, imagePath=${currentSetlist.imagePath}');
-
                         final path = currentSetlist.imagePath;
                         if (path == null) {
                           return _buildLogoPlaceholder();
@@ -98,9 +95,6 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
 
                         final file = File(path);
                         final exists = file.existsSync();
-                        main.myDebug(
-                            'SidebarSetlistView: image file path=$path, exists=$exists');
-
                         if (!exists) {
                           return _buildLogoPlaceholder();
                         }

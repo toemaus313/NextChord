@@ -1329,152 +1329,95 @@ class LibrarySyncService {
 
   /// Sync setlist images between local and remote storage
   Future<void> _syncSetlistImages(List<SetlistModel> setlists) async {
-    try {
-      main.myDebug(
-          'LibrarySyncService._syncSetlistImages: syncing images for ${setlists.length} setlists');
-
-      for (final setlist in setlists) {
-        if (setlist.imagePath != null && setlist.imagePath!.isNotEmpty) {
-          await _syncSetlistImage(
-            setlist.id,
-            setlist.name,
-            setlist.imagePath!,
-          );
-        }
+    for (final setlist in setlists) {
+      if (setlist.imagePath != null && setlist.imagePath!.isNotEmpty) {
+        await _syncSetlistImage(
+          setlist.id,
+          setlist.name,
+          setlist.imagePath!,
+        );
       }
-
-      main.myDebug('LibrarySyncService._syncSetlistImages: completed');
-    } catch (e) {
-      main.myDebug('LibrarySyncService._syncSetlistImages: error $e');
-      // Don't fail the entire sync for image errors
     }
   }
 
   /// Sync a single setlist image
   Future<void> _syncSetlistImage(
       String setlistId, String setlistName, String imagePath) async {
-    try {
-      final localFile = File(imagePath);
-      final fileExistsLocally = await localFile.exists();
+    final localFile = File(imagePath);
+    final fileExistsLocally = await localFile.exists();
 
-      // Use a deterministic filename per setlist based on the setlist name
-      final sanitizedSetlistName = _sanitizeFileName(setlistName);
-      final extension = _getFileExtension(imagePath);
-      final fileName =
-          'setlist_${sanitizedSetlistName}${extension.isNotEmpty ? extension : '.jpg'}';
-      final relativePath = 'setlist_images/$fileName';
+    // Use a deterministic filename per setlist based on the setlist name
+    final sanitizedSetlistName = _sanitizeFileName(setlistName);
+    final extension = _getFileExtension(imagePath);
+    final fileName =
+        'setlist_${sanitizedSetlistName}${extension.isNotEmpty ? extension : '.jpg'}';
+    final relativePath = 'setlist_images/$fileName';
 
-      main.myDebug(
-          'LibrarySyncService._syncSetlistImage: setlistId=$setlistId, localPath=$imagePath, relativePath=$relativePath, existsLocally=$fileExistsLocally');
+    if (fileExistsLocally) {
+      // Create a temporary copy of the image file (similar to library.json approach)
+      final tempDir = await getTemporaryDirectory();
+      final tempFileName =
+          'setlist_image_${setlistId}_${DateTime.now().millisecondsSinceEpoch}${_getFileExtension(imagePath)}';
+      final tempFile = File(p.join(tempDir.path, tempFileName));
 
-      if (fileExistsLocally) {
-        // Create a temporary copy of the image file (similar to library.json approach)
-        final tempDir = await getTemporaryDirectory();
-        final tempFileName =
-            'setlist_image_${setlistId}_${DateTime.now().millisecondsSinceEpoch}${_getFileExtension(imagePath)}';
-        final tempFile = File(p.join(tempDir.path, tempFileName));
+      // Copy the original image to temp location
+      await File(imagePath).copy(tempFile.path);
 
-        // Copy the original image to temp location
-        await File(imagePath).copy(tempFile.path);
+      final uploadSuccess =
+          await SyncServiceLocator.uploadFile(tempFile.path, relativePath);
 
-        main.myDebug(
-            'LibrarySyncService._syncSetlistImage: created temp file at ${tempFile.path}');
-        main.myDebug(
-            'LibrarySyncService._syncSetlistImage: calling uploadFile with tempPath=${tempFile.path}, relativePath=$relativePath');
-        final uploadSuccess =
-            await SyncServiceLocator.uploadFile(tempFile.path, relativePath);
+      // Clean up temp file
+      await tempFile.delete();
+      final downloadedPath =
+          await SyncServiceLocator.downloadFile(relativePath);
+      if (downloadedPath != null) {
+        // Copy the downloaded file into the app's setlist_images directory
+        final documentsDir = await getApplicationDocumentsDirectory();
+        final imagesDir =
+            Directory(p.join(documentsDir.path, 'setlist_images'));
 
-        // Clean up temp file
-        try {
-          await tempFile.delete();
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: cleaned up temp file');
-        } catch (e) {
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: failed to clean up temp file: $e');
+        if (!await imagesDir.exists()) {
+          await imagesDir.create(recursive: true);
         }
 
-        if (uploadSuccess) {
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: uploaded $relativePath');
-        } else {
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: failed to upload $relativePath');
+        final destinationPath = p.join(imagesDir.path, fileName);
+        final destinationFile = await File(downloadedPath).copy(
+          destinationPath,
+        );
+
+        // Clean up the temporary downloaded file if it's different
+        if (downloadedPath != destinationFile.path) {
+          await File(downloadedPath).delete();
         }
-      } else {
-        // Try to download from cloud
-        main.myDebug(
-            'LibrarySyncService._syncSetlistImage: calling downloadFile with relativePath=$relativePath');
-        final downloadedPath =
-            await SyncServiceLocator.downloadFile(relativePath);
-        if (downloadedPath != null) {
-          // Copy the downloaded file into the app's setlist_images directory
-          try {
-            final documentsDir = await getApplicationDocumentsDirectory();
-            final imagesDir =
-                Directory(p.join(documentsDir.path, 'setlist_images'));
 
-            if (!await imagesDir.exists()) {
-              await imagesDir.create(recursive: true);
-            }
-
-            final destinationPath = p.join(imagesDir.path, fileName);
-            final destinationFile = await File(downloadedPath).copy(
-              destinationPath,
-            );
-
-            // Clean up the temporary downloaded file if it's different
-            if (downloadedPath != destinationFile.path) {
-              try {
-                await File(downloadedPath).delete();
-              } catch (e) {
-                main.myDebug(
-                    'LibrarySyncService._syncSetlistImage: failed to delete temp downloaded image: $e');
-              }
-            }
-
-            // Update the setlist's image path to point to the local copy
-            await _database.updateSetlistImagePath(
-                setlistId, destinationFile.path);
-            main.myDebug(
-                'LibrarySyncService._syncSetlistImage: downloaded and updated path for setlist $setlistId to ${destinationFile.path}');
-          } catch (e) {
-            main.myDebug(
-                'LibrarySyncService._syncSetlistImage: error copying downloaded image for setlist $setlistId: $e');
-          }
-        } else {
-          main.myDebug(
-              'LibrarySyncService._syncSetlistImage: download failed for $relativePath');
-        }
+        // Update the setlist's image path to point to the local copy
+        await _database.updateSetlistImagePath(setlistId, destinationFile.path);
       }
-    } catch (e) {
-      main.myDebug(
-          'LibrarySyncService._syncSetlistImage: error syncing image for setlist $setlistId: $e');
     }
   }
+}
 
-  /// Get file extension from path
-  String _getFileExtension(String path) {
-    final lastDot = path.lastIndexOf('.');
-    if (lastDot == -1) return '';
-    return path.substring(lastDot);
+/// Get file extension from path
+String _getFileExtension(String path) {
+  final lastDot = path.lastIndexOf('.');
+  if (lastDot == -1) return '';
+  return path.substring(lastDot);
+}
+
+/// Sanitize a value for safe use in file names
+String _sanitizeFileName(String value) {
+  // Trim and replace characters that are invalid or problematic in file names
+  var sanitized = value.trim();
+
+  // Replace common invalid filename characters with spaces
+  sanitized = sanitized.replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ');
+
+  // Collapse whitespace to single underscores
+  sanitized = sanitized.replaceAll(RegExp(r'\s+'), '_');
+
+  if (sanitized.isEmpty) {
+    return 'untitled';
   }
 
-  /// Sanitize a value for safe use in file names
-  String _sanitizeFileName(String value) {
-    // Trim and replace characters that are invalid or problematic in file names
-    var sanitized = value.trim();
-
-    // Replace common invalid filename characters with spaces
-    sanitized = sanitized.replaceAll(RegExp(r'[\\/:*?"<>|]+'), ' ');
-
-    // Collapse whitespace to single underscores
-    sanitized = sanitized.replaceAll(RegExp(r'\s+'), '_');
-
-    if (sanitized.isEmpty) {
-      return 'untitled';
-    }
-
-    return sanitized;
-  }
+  return sanitized;
 }
