@@ -87,6 +87,8 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
                   StandardModalTemplate.buildContent(
                     children: [
                       _buildThemeModeSection(themeProvider),
+                      const SizedBox(height: 8),
+                      _buildDisableSleepSection(appearanceProvider),
                       const SizedBox(height: 16),
                       _buildColorPickerSection(appearanceProvider),
                       const SizedBox(height: 16),
@@ -125,6 +127,23 @@ class _AppearanceSettingsModalState extends State<AppearanceSettingsModal> {
             themeProvider.setThemeMode(newMode);
           }
         },
+      ),
+    );
+  }
+
+  Widget _buildDisableSleepSection(AppearanceProvider appearanceProvider) {
+    return StandardModalTemplate.buildSettingRow(
+      icon: Icons.bedtime,
+      label: 'Disable device sleep',
+      control: Switch(
+        value: appearanceProvider.disableDeviceSleep,
+        onChanged: (value) {
+          appearanceProvider.setDisableDeviceSleep(value);
+        },
+        activeColor: Colors.white,
+        activeTrackColor: Colors.white70,
+        inactiveThumbColor: Colors.white54,
+        inactiveTrackColor: Colors.white24,
       ),
     );
   }

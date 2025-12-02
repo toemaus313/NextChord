@@ -9,11 +9,14 @@ import '../../data/database/app_database.dart';
 class AppearanceProvider extends ChangeNotifier {
   static const String _customColorKey = 'custom_theme_color';
   static const String _recentIndexKey = 'custom_theme_recent_index';
+  static const String _disableDeviceSleepKey = 'disable_device_sleep';
 
   final AppDatabase _db;
 
   Color _customColor = const Color(0xFF0468cc); // Default primary blue
   SharedPreferences? _prefs;
+
+  bool _disableDeviceSleep = false;
 
   // Three most recent custom colors selected from the advanced picker.
   // Null entries render as blank swatches.
@@ -39,6 +42,9 @@ class AppearanceProvider extends ChangeNotifier {
         ];
       }
 
+      // Load disable-device-sleep flag (default false)
+      _disableDeviceSleep = _prefs?.getBool(_disableDeviceSleepKey) ?? false;
+
       notifyListeners();
     } catch (_) {}
   }
@@ -47,6 +53,8 @@ class AppearanceProvider extends ChangeNotifier {
 
   /// Recent custom colors exposed as an unmodifiable list
   List<Color?> get recentCustomColors => List.unmodifiable(_recentCustomColors);
+
+  bool get disableDeviceSleep => _disableDeviceSleep;
 
   /// Get gradient colors based on the custom color
   Color get gradientStart => _customColor;
@@ -111,6 +119,16 @@ class AppearanceProvider extends ChangeNotifier {
     } catch (e) {
       // Use defaults if loading fails
       _customColor = const Color(0xFF0468cc);
+    }
+  }
+
+  /// Set whether the app should attempt to keep the device screen awake
+  /// while active. Persisted via SharedPreferences.
+  Future<void> setDisableDeviceSleep(bool value) async {
+    if (_disableDeviceSleep != value) {
+      _disableDeviceSleep = value;
+      await _prefs?.setBool(_disableDeviceSleepKey, value);
+      notifyListeners();
     }
   }
 

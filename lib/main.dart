@@ -22,6 +22,7 @@ import 'core/services/database_change_service.dart';
 import 'core/services/sync_service_locator.dart';
 import 'services/import/share_import_service.dart';
 import 'services/midi/midi_service.dart';
+import 'services/device_sleep_service.dart';
 
 // Global debug configuration
 bool isDebug = true;
@@ -266,6 +267,9 @@ class NextChordApp extends StatelessWidget {
         ),
         ChangeNotifierProvider.value(
           value: MidiService(),
+        ),
+        ChangeNotifierProvider<DeviceSleepService>(
+          create: (_) => DeviceSleepService(),
         ),
       ],
       child: Consumer<ThemeProvider>(

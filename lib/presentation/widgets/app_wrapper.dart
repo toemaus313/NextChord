@@ -10,6 +10,8 @@ import 'global_sidebar.dart';
 import '../../core/widgets/responsive_config.dart';
 import '../../data/repositories/song_repository.dart';
 import '../../services/midi/midi_action_dispatcher.dart';
+import '../providers/appearance_provider.dart';
+import '../../services/device_sleep_service.dart';
 import '../../services/setlist_navigation_service.dart';
 
 /// Wrapper widget that contains the main app content and global sidebar in responsive layout
@@ -34,6 +36,15 @@ class _AppWrapperState extends State<AppWrapper> {
 
       // Initialize MidiActionDispatcher with all providers
       _initializeMidiDispatcher();
+
+      // Attach DeviceSleepService to AppearanceProvider so it can honor the
+      // persisted "Disable device sleep" preference and respond to changes.
+      final appearanceProvider = context.read<AppearanceProvider>();
+      final deviceSleepService = context.read<DeviceSleepService>();
+      deviceSleepService.attachToAppearanceProvider(
+        appearanceProvider,
+        () => appearanceProvider.disableDeviceSleep,
+      );
     });
   }
 
