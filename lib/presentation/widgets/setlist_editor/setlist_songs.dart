@@ -146,6 +146,32 @@ class _SetlistSongsState extends State<SetlistSongs> {
     return Consumer<SongProvider>(
       key: ValueKey('song_${item.id}'),
       builder: (context, songProvider, child) {
+        // Ensure songs are loaded before trying to resolve
+        if (songProvider.isLoading) {
+          return Container(
+            key: ValueKey('song_${item.id}'),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const SizedBox(width: 28), // Space for drag handle
+                const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Loading...',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         final song =
             songProvider.songs.where((s) => s.id == item.songId).firstOrNull;
 

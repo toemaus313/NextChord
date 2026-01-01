@@ -28,33 +28,57 @@ class SetlistSongItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = song?.title ?? 'Unknown song';
-    final artist = song?.artist ?? '';
+    // Ensure song is not null before proceeding
+    if (song == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.drag_indicator,
+              color: Colors.white54,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Loading song...',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final title = song!.title;
+    final artist = song!.artist;
 
     // Calculate effective key and capo
-    String displayKey = song?.key ?? '';
-    int capo = song?.capo ?? 0;
+    String displayKey = song!.key;
+    int capo = song!.capo;
 
-    if (song != null) {
-      if (item.transposeSteps != 0) {
-        // Apply transpose to key
-        displayKey = transposeKey(displayKey, item.transposeSteps);
-      }
-      if (item.capo != (song?.capo ?? 0)) {
-        capo = item.capo;
-      }
+    if (item.transposeSteps != 0) {
+      // Apply transpose to key
+      displayKey = transposeKey(displayKey, item.transposeSteps);
+    }
+    if (item.capo != song!.capo) {
+      capo = item.capo;
     }
 
     return GestureDetector(
       key: ValueKey('song_${item.songId}_$index'),
       onTap: () {
-        if (song != null) {
-          context.read<GlobalSidebarProvider>().navigateToSongInSetlist(
-                song!,
-                index,
-                item,
-              );
-        }
+        context.read<GlobalSidebarProvider>().navigateToSongInSetlist(
+              song!,
+              index,
+              item,
+            );
       },
       onSecondaryTap: onSecondaryTap,
       onLongPress: onLongPress,
