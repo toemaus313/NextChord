@@ -32,24 +32,12 @@ class SetlistService {
   Future<void> saveSetlist({
     required String name,
     required String description,
-    required List<SetlistSongItem> songs,
+    required List<SetlistItem> items,
     String? imagePath,
     String? id,
     DateTime? createdAt,
   }) async {
     try {
-      // Convert songs to SetlistItem format with order
-      final items = songs.asMap().entries.map((entry) {
-        return SetlistSongItem(
-          id: _uuid.v4(),
-          order: entry.key,
-          songId: entry.value.songId,
-          transposeSteps: entry.value.transposeSteps,
-          capo: entry.value.capo,
-          text: entry.value.text,
-        );
-      }).toList();
-
       final setlist = Setlist(
         id: id ?? _uuid.v4(),
         name: name,
@@ -279,13 +267,15 @@ class SetlistService {
   /// Validate setlist data
   String? validateSetlist({
     required String name,
-    required List<SetlistSongItem> songs,
+    required List<SetlistItem> items,
   }) {
     if (name.trim().isEmpty) {
       return 'Please enter a setlist name';
     }
 
-    if (songs.isEmpty) {
+    // Check if there are any song items
+    final hasSongs = items.any((item) => item is SetlistSongItem);
+    if (!hasSongs) {
       return 'Please add at least one song to the setlist';
     }
 

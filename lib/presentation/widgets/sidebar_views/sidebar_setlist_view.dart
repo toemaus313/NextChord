@@ -7,7 +7,6 @@ import '../../../domain/entities/setlist.dart';
 import '../../../domain/entities/song.dart';
 import '../sidebar_components/sidebar_header.dart';
 import '../../screens/song_editor_screen_refactored.dart';
-import '../tag_edit_dialog.dart';
 import '../setlist_editor_dialog.dart';
 import '../standard_wide_button.dart';
 import '../add_divider_modal.dart';
@@ -36,6 +35,51 @@ class SidebarSetlistView extends StatefulWidget {
 }
 
 class _SidebarSetlistViewState extends State<SidebarSetlistView> {
+  final ScrollController _scrollController = ScrollController();
+  double? _dragPointerY;
+  bool _isDragging = false;
+  
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+  
+  void _startAutoScroll() {
+    if (!_isDragging || _dragPointerY == null) return;
+    
+    const scrollZone = 80.0; // pixels from edge to trigger scroll
+    const scrollSpeed = 0.5; // pixels per frame
+    
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    
+    final localY = _dragPointerY!;
+    final viewportHeight = renderBox.size.height;
+    
+    // Check if near top
+    if (localY < scrollZone && _scrollController.hasClients) {
+      final newOffset = (_scrollController.offset - scrollSpeed).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(newOffset);
+      
+      // Continue scrolling
+      Future.delayed(const Duration(milliseconds: 16), _startAutoScroll);
+    }
+    // Check if near bottom
+    else if (localY > viewportHeight - scrollZone && _scrollController.hasClients) {
+      final newOffset = (_scrollController.offset + scrollSpeed).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(newOffset);
+      
+      // Continue scrolling
+      Future.delayed(const Duration(milliseconds: 16), _startAutoScroll);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Consumer<SetlistProvider>(
@@ -78,9 +122,25 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
             // Make the entire content scrollable so we don't overflow on
             // short screens or in compact sidebar layouts.
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
+              child: Listener(
+                onPointerMove: (event) {
+                  if (_isDragging) {
+                    setState(() {
+                      _dragPointerY = event.localPosition.dy;
+                    });
+                    _startAutoScroll();
+                  }
+                },
+                onPointerUp: (_) {
+                  setState(() {
+                    _isDragging = false;
+                    _dragPointerY = null;
+                  });
+                },
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Column(
+                    children: [
                     const SizedBox(height: 8),
                     // Logo area (200x200 placeholder)
                     Container(
@@ -178,6 +238,17 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                                   _reorderSetlistItems(oldIndex, newIndex,
                                       currentSetlist, setlistProvider),
                               buildDefaultDragHandles: false,
+                              onReorderStart: (index) {
+                                setState(() {
+                                  _isDragging = true;
+                                });
+                              },
+                              onReorderEnd: (index) {
+                                setState(() {
+                                  _isDragging = false;
+                                  _dragPointerY = null;
+                                });
+                              },
                               itemBuilder: (context, index) {
                                 final item = currentSetlist.items[index];
                                 if (item is SetlistSongItem) {
@@ -185,7 +256,7 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                                   return _buildSetlistSongItem(
                                       item, song, index);
                                 } else if (item is SetlistDividerItem) {
-                                  return _buildSetlistDividerItem(item, index);
+                                  return _buildSetlistDividerItem(item, index, currentSetlist, songsMap);
                                 }
                                 return const SizedBox.shrink();
                               },
@@ -207,12 +278,15 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                                 );
                               },
                             ),
+                            // Static Total divider (always shown)
+                            _buildTotalDivider(currentSetlist, songsMap),
                             _buildAddButton(context, currentSetlist),
                           ],
                         );
                       },
                     ),
                   ],
+                  ),
                 ),
               ),
             ),
@@ -390,8 +464,12 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
     );
   }
 
-  Widget _buildSetlistDividerItem(SetlistDividerItem item, int index) {
+  Widget _buildSetlistDividerItem(SetlistDividerItem item, int index, Setlist setlist, Map<String, Song> songsMap) {
     final dividerColor = _parseColor(item.color);
+
+    // Calculate duration for this divider
+    final duration = _calculateDividerDuration(setlist, index, songsMap);
+    final displayText = duration != null ? '${item.label} - $duration' : item.label;
 
     return GestureDetector(
       key: ValueKey('divider_${item.order}_${item.color}_$index'),
@@ -420,7 +498,7 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
             ),
             Expanded(
               child: Text(
-                item.label,
+                displayText,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _getContrastColor(dividerColor),
@@ -558,6 +636,14 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                   title: const Text('Edit Tags...'),
                   onTap: () {
                     Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.horizontal_rule),
+                  title: const Text('Add Divider'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addDividerBelowSong(index);
                   },
                 ),
                 ListTile(
@@ -737,32 +823,46 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
     }
   }
 
-  Future<void> _editSongTags(BuildContext context, dynamic song) async {
-    await showDialog<bool>(
-      context: context,
-      builder: (context) => TagEditDialog(
-        title: 'Edit Tags',
-        initialTags: song.tags.toSet(),
-        onTagsUpdated: (updatedTags) async {
-          try {
-            await context
-                .read<SongProvider>()
-                .updateSongTags(song.id, updatedTags);
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tags updated')),
-              );
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to update tags: $e')),
-              );
-            }
+  Future<void> _addDividerBelowSong(int songIndex) async {
+    final result = await AddDividerModal.show(context);
+    
+    if (result != null) {
+      final setlistProvider = context.read<SetlistProvider>();
+      final currentSetlist = setlistProvider.setlists
+          .where((s) => s.id == widget.setlistId)
+          .firstOrNull;
+
+      if (currentSetlist != null) {
+        // Create new divider
+        final newDivider = SetlistDividerItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          order: songIndex + 1, // Insert below the song
+          label: result['label']!,
+          color: result['color']!,
+        );
+        
+        // Insert divider at the correct position
+        final updatedItems = List<SetlistItem>.from(currentSetlist.items);
+        updatedItems.insert(songIndex + 1, newDivider);
+        
+        // Update orders for all items after the insertion point
+        for (int i = songIndex + 2; i < updatedItems.length; i++) {
+          final item = updatedItems[i];
+          if (item is SetlistSongItem) {
+            updatedItems[i] = item.copyWith(order: i);
+          } else if (item is SetlistDividerItem) {
+            updatedItems[i] = item.copyWith(order: i);
           }
-        },
-      ),
-    );
+        }
+        
+        final updatedSetlist = currentSetlist.copyWith(
+          items: updatedItems,
+          updatedAt: DateTime.now(),
+        );
+        
+        await setlistProvider.updateSetlist(updatedSetlist);
+      }
+    }
   }
 
   String _transposeKey(String key, int steps) {
@@ -819,6 +919,101 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
       default:
         return const Color(0xFF2196F3);
     }
+  }
+
+  /// Calculate total duration of songs between this divider and the NEXT divider (or end of list)
+  /// Returns null if no songs are found between this divider and the next divider
+  String? _calculateDividerDuration(Setlist setlist, int dividerIndex, Map<String, Song> songsMap) {
+    // Start index is right after this divider
+    final startIndex = dividerIndex + 1;
+    
+    // Find the end index (next divider or end of list)
+    int endIndex = setlist.items.length;
+    for (int i = dividerIndex + 1; i < setlist.items.length; i++) {
+      if (setlist.items[i] is SetlistDividerItem) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    // Sum durations of songs between startIndex and endIndex
+    int totalSeconds = 0;
+    bool foundSongs = false;
+    for (int i = startIndex; i < endIndex; i++) {
+      final item = setlist.items[i];
+      if (item is SetlistSongItem) {
+        final song = songsMap[item.songId];
+        if (song?.duration != null) {
+          totalSeconds += _parseDurationToSeconds(song!.duration!);
+          foundSongs = true;
+        }
+      }
+    }
+
+    // Return null if no songs were found between this divider and the next
+    if (!foundSongs) return null;
+
+    // Format as MM:SS
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// Parse duration string (MM:SS) to total seconds
+  int _parseDurationToSeconds(String duration) {
+    final parts = duration.split(':');
+    if (parts.length != 2) return 0;
+    
+    final minutes = int.tryParse(parts[0]) ?? 0;
+    final seconds = int.tryParse(parts[1]) ?? 0;
+    
+    return (minutes * 60) + seconds;
+  }
+
+  /// Calculate total duration of all songs in the setlist
+  String _calculateTotalSetlistDuration(Setlist setlist, Map<String, Song> songsMap) {
+    int totalSeconds = 0;
+    for (final item in setlist.items) {
+      if (item is SetlistSongItem) {
+        final song = songsMap[item.songId];
+        if (song?.duration != null) {
+          totalSeconds += _parseDurationToSeconds(song!.duration!);
+        }
+      }
+    }
+
+    // Format as HH:MM:SS
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildTotalDivider(Setlist setlist, Map<String, Song> songsMap) {
+    final totalDuration = _calculateTotalSetlistDuration(setlist, songsMap);
+
+    // Use default theme color (blue)
+    final dividerColor = const Color(0xFF2196F3);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      height: 36,
+      decoration: BoxDecoration(
+        color: dividerColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: Text(
+          'Total: $totalDuration',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _getContrastColor(dividerColor),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
 
   Color _getContrastColor(Color backgroundColor) {

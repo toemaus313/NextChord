@@ -10,6 +10,7 @@ import '../../services/setlist/setlist_service.dart';
 import 'templates/standard_modal_template.dart';
 import 'setlist_editor/image_picker.dart';
 import 'add_divider_modal.dart';
+import 'standard_wide_button.dart';
 
 /// Gradient-styled dialog for creating or editing a setlist
 class SetlistEditorDialog extends StatefulWidget {
@@ -196,8 +197,8 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
 
   late final SetlistService _setlistService;
 
-  List<SetlistSongItem> _songs = [];
-  Set<String> _selectedSongs = {}; // Track selected songs for bulk deletion
+  List<SetlistItem> _items = [];
+  Set<String> _selectedItems = {}; // Track selected items for bulk deletion
   bool _isSelectionMode = false; // Track if selection mode is active
   String? _imagePath;
   Uint8List? _imageBytes;
@@ -223,8 +224,8 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     if (widget.setlist != null) {
       setState(() {
         _nameController.text = widget.setlist!.name;
-        // Extract only song items from the setlist items
-        _songs = widget.setlist!.items.whereType<SetlistSongItem>().toList();
+        // Load all setlist items (songs and dividers)
+        _items = widget.setlist!.items;
         _imagePath = widget.setlist!.imagePath;
       });
       await _loadImageBytes();
@@ -286,7 +287,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
       await songProvider.loadSongs();
     }
 
-    final result = await SetlistEditorDialog.showAddSongs(context, _songs);
+    final result = await SetlistEditorDialog.showAddSongs(context, _items.whereType<SetlistSongItem>().toList());
     if (result != null && result.isNotEmpty) {
       final songProvider = Provider.of<SongProvider>(context, listen: false);
       final availableSongs = songProvider.songs;
@@ -294,7 +295,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
           _setlistService.createSetlistSongItems(result, availableSongs);
 
       setState(() {
-        _songs.addAll(newItems);
+        _items.addAll(newItems);
       });
     }
   }
@@ -382,26 +383,26 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     }
   }
 
-  void _removeSong(int index) {
+  void _removeItem(int index) {
     setState(() {
-      _songs.removeAt(index);
+      _items.removeAt(index);
     });
   }
 
-  void _moveSong(int oldIndex, int newIndex) {
+  void _moveItem(int oldIndex, int newIndex) {
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
     setState(() {
-      final item = _songs.removeAt(oldIndex);
-      _songs.insert(newIndex, item);
+      final item = _items.removeAt(oldIndex);
+      _items.insert(newIndex, item);
     });
   }
 
-  void _deleteSelectedSongs() {
+  void _deleteSelectedItems() {
     setState(() {
-      _songs.removeWhere((song) => _selectedSongs.contains(song.id));
-      _selectedSongs.clear();
+      _items.removeWhere((item) => _selectedItems.contains(item.id));
+      _selectedItems.clear();
       _isSelectionMode = false;
     });
   }
@@ -412,7 +413,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     // Validate setlist data
     final validationError = _setlistService.validateSetlist(
       name: _nameController.text,
-      songs: _songs,
+      items: _items,
     );
 
     if (validationError != null) {
@@ -426,7 +427,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         name: _nameController.text.trim(),
         description:
             '', // Empty description for now until database schema is updated
-        songs: _songs,
+        items: _items,
         imagePath: _imagePath,
         id: widget.setlist?.id,
         createdAt: widget.setlist?.createdAt,
@@ -539,7 +540,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
           for (final song in songProvider.songs) song.id: song,
         };
 
-        if (_songs.isEmpty) {
+        if (_items.isEmpty) {
           return Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -582,7 +583,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                         : () {
                             setState(() {
                               _isSelectionMode = !_isSelectionMode;
-                              _selectedSongs.clear();
+                              _selectedItems.clear();
                             });
                           },
                     style: ElevatedButton.styleFrom(
@@ -600,9 +601,9 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                   ),
                   const SizedBox(width: 8),
                   // Bulk delete button
-                  if (_isSelectionMode && _selectedSongs.isNotEmpty)
+                  if (_isSelectionMode && _selectedItems.isNotEmpty)
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _deleteSelectedSongs,
+                      onPressed: _isLoading ? null : _deleteSelectedItems,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.withAlpha(40),
                         foregroundColor: Colors.red,
@@ -615,7 +616,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                         children: [
                           const Icon(Icons.delete, size: 16),
                           const SizedBox(width: 4),
-                          Text('(${_selectedSongs.length})'),
+                          Text('(${_selectedItems.length})'),
                         ],
                       ),
                     ),
@@ -635,7 +636,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                 ],
               ),
             ),
-            // Songs list
+            // Items list
             Container(
               decoration: BoxDecoration(
                 color: Colors.white.withAlpha(10),
@@ -646,13 +647,18 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(8),
-                itemCount: _songs.length,
-                onReorder: _moveSong,
+                itemCount: _items.length,
+                onReorder: _moveItem,
                 buildDefaultDragHandles: false,
                 itemBuilder: (context, index) {
-                  final item = _songs[index];
-                  final song = songsMap[item.songId];
-                  return _buildSongItem(item, song, index);
+                  final item = _items[index];
+                  if (item is SetlistSongItem) {
+                    final song = songsMap[item.songId];
+                    return _buildSongItem(item, song, index);
+                  } else if (item is SetlistDividerItem) {
+                    return _buildDividerItem(item, index, songsMap);
+                  }
+                  return const SizedBox.shrink();
                 },
                 // Custom drag highlight color
                 proxyDecorator: (child, index, animation) {
@@ -671,6 +677,9 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                 },
               ),
             ),
+            // Static Total divider (always shown)
+            _buildTotalDivider(widget.setlist!, songsMap),
+            _buildAddButton(context),
           ],
         );
       },
@@ -704,15 +713,15 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
           // Selection checkbox or drag handle
           if (_isSelectionMode)
             Checkbox(
-              value: _selectedSongs.contains(item.id),
+              value: _selectedItems.contains(item.id),
               onChanged: _isLoading
                   ? null
                   : (bool? value) {
                       setState(() {
                         if (value == true) {
-                          _selectedSongs.add(item.id);
+                          _selectedItems.add(item.id);
                         } else {
-                          _selectedSongs.remove(item.id);
+                          _selectedItems.remove(item.id);
                         }
                       });
                     },
@@ -782,7 +791,7 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
           // Delete button (only in non-selection mode)
           if (!_isSelectionMode)
             IconButton(
-              onPressed: _isLoading ? null : () => _removeSong(index),
+              onPressed: _isLoading ? null : () => _removeItem(index),
               icon: const Icon(
                 Icons.remove_circle,
                 size: 18,
@@ -794,6 +803,158 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
         ],
       ),
     );
+  }
+
+  Widget _buildDividerItem(SetlistDividerItem item, int index, Map<String, Song> songsMap) {
+    final dividerColor = _parseColor(item.color);
+
+    // Calculate duration for this divider
+    final duration = _calculateDividerDuration(item, index, songsMap);
+    final displayText = duration != null ? '${item.label} - $duration' : item.label;
+
+    return Container(
+      key: ValueKey('divider_${item.id}_$index'),
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      height: 36,
+      decoration: BoxDecoration(
+        color: dividerColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          // Selection checkbox or drag handle
+          if (_isSelectionMode)
+            Checkbox(
+              value: _selectedItems.contains(item.id),
+              onChanged: _isLoading
+                  ? null
+                  : (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedItems.add(item.id);
+                        } else {
+                          _selectedItems.remove(item.id);
+                        }
+                      });
+                    },
+              activeColor: Colors.white,
+              checkColor: const Color(0xFF0468cc),
+            )
+          else
+            ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(
+                  Icons.drag_indicator,
+                  color: _getContrastColor(dividerColor),
+                  size: 16,
+                ),
+              ),
+            ),
+          Expanded(
+            child: Text(
+              displayText,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _getContrastColor(dividerColor),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          // Delete button (only in non-selection mode)
+          if (!_isSelectionMode)
+            IconButton(
+              onPressed: _isLoading ? null : () => _removeItem(index),
+              icon: Icon(
+                Icons.remove_circle,
+                size: 18,
+                color: _getContrastColor(dividerColor),
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Calculate total duration of songs between this divider and the NEXT divider (or end of list)
+  /// Returns null if no songs are found between this divider and the next divider
+  String? _calculateDividerDuration(SetlistDividerItem divider, int dividerIndex, Map<String, Song> songsMap) {
+    // Start index is right after this divider
+    final startIndex = dividerIndex + 1;
+    
+    // Find the end index (next divider or end of list)
+    int endIndex = _items.length;
+    for (int i = dividerIndex + 1; i < _items.length; i++) {
+      if (_items[i] is SetlistDividerItem) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    // Sum durations of songs between startIndex and endIndex
+    int totalSeconds = 0;
+    bool foundSongs = false;
+    for (int i = startIndex; i < endIndex; i++) {
+      final item = _items[i];
+      if (item is SetlistSongItem) {
+        final song = songsMap[item.songId];
+        if (song?.duration != null) {
+          totalSeconds += _parseDurationToSeconds(song!.duration!);
+          foundSongs = true;
+        }
+      }
+    }
+
+    // Return null if no songs were found between this divider and the next
+    if (!foundSongs) return null;
+
+    // Format as MM:SS
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  int _parseDurationToSeconds(String duration) {
+    final parts = duration.split(':');
+    if (parts.length != 2) return 0;
+    
+    final minutes = int.tryParse(parts[0]) ?? 0;
+    final seconds = int.tryParse(parts[1]) ?? 0;
+    
+    return (minutes * 60) + seconds;
+  }
+
+  Color _parseColor(String colorString) {
+    // Convert color name to Color object
+    switch (colorString.toLowerCase()) {
+      case 'red':
+        return const Color(0xFFF44336);
+      case 'green':
+        return const Color(0xFF4CAF50);
+      case 'orange':
+        return const Color(0xFFFF9800);
+      case 'purple':
+        return const Color(0xFF9C27B0);
+      case 'teal':
+        return const Color(0xFF009688);
+      case 'yellow':
+        return const Color(0xFFFFEB3B);
+      case 'pink':
+        return const Color(0xFFE91E63);
+      case 'blue':
+      default:
+        return const Color(0xFF2196F3);
+    }
+  }
+
+  Color _getContrastColor(Color backgroundColor) {
+    // Calculate luminance to determine if we should use white or black text
+    final luminance = backgroundColor.computeLuminance();
+    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 
   String _transposeKey(String key, int semitones) {
@@ -824,5 +985,67 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     if (newIndex < 0) newIndex += 12;
 
     return keys[newIndex] + suffix;
+  }
+
+  Widget _buildTotalDivider(Setlist? setlist, Map<String, Song> songsMap) {
+    if (setlist == null) return const SizedBox.shrink();
+    
+    final totalDuration = _calculateTotalSetlistDuration(setlist, songsMap);
+
+    // Use default theme color (blue)
+    final dividerColor = const Color(0xFF2196F3);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      height: 36,
+      decoration: BoxDecoration(
+        color: dividerColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: Text(
+          'Total: $totalDuration',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _getContrastColor(dividerColor),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Calculate total duration of all songs in the setlist
+  String _calculateTotalSetlistDuration(Setlist setlist, Map<String, Song> songsMap) {
+    int totalSeconds = 0;
+    for (final item in setlist.items) {
+      if (item is SetlistSongItem) {
+        final song = songsMap[item.songId];
+        if (song?.duration != null) {
+          totalSeconds += _parseDurationToSeconds(song!.duration!);
+        }
+      }
+    }
+
+    // Format as HH:MM:SS
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildAddButton(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: StandardWideButton(
+        label: 'Add...',
+        icon: Icons.add,
+        onPressed: () async {
+          if (_isLoading) return;
+          _showAddDrawer();
+        },
+      ),
+    );
   }
 }
