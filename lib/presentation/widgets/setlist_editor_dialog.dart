@@ -9,6 +9,7 @@ import '../providers/appearance_provider.dart';
 import '../../services/setlist/setlist_service.dart';
 import 'templates/standard_modal_template.dart';
 import 'setlist_editor/image_picker.dart';
+import 'add_divider_modal.dart';
 
 /// Gradient-styled dialog for creating or editing a setlist
 class SetlistEditorDialog extends StatefulWidget {
@@ -298,6 +299,89 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
     }
   }
 
+  void _showAddDrawer() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text(
+                  'Add to Setlist',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.horizontal_rule),
+                title: const Text('Add Divider'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addDivider();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.music_note),
+                title: const Text('Add Songs To Setlist'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addSongs();
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addDivider() async {
+    final result = await AddDividerModal.show(context);
+    
+    if (result != null) {
+      // Create a divider item and add it to the original setlist's items
+      if (widget.setlist != null) {
+        final newDivider = SetlistDividerItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          order: widget.setlist!.items.length,
+          label: result['label']!,
+          color: result['color']!,
+        );
+        
+        // Update the original setlist with the divider
+        final updatedSetlist = widget.setlist!.copyWith(
+          items: [...widget.setlist!.items, newDivider],
+          updatedAt: DateTime.now(),
+        );
+        
+        // Update the setlist in the provider
+        final setlistProvider = Provider.of<SetlistProvider>(context, listen: false);
+        await setlistProvider.updateSetlist(updatedSetlist);
+      }
+    }
+  }
+
   void _removeSong(int index) {
     setState(() {
       _songs.removeAt(index);
@@ -467,9 +551,9 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Add Songs button for empty setlist
+                // Add button for empty setlist (shows drawer)
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _addSongs,
+                  onPressed: _isLoading ? null : _showAddDrawer,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white.withAlpha(20),
                     foregroundColor: Colors.white,
@@ -536,9 +620,9 @@ class _SetlistEditorDialogState extends State<SetlistEditorDialog> {
                       ),
                     ),
                   const Spacer(),
-                  // Add Songs button
+                  // Add button (shows drawer)
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _addSongs,
+                    onPressed: _isLoading ? null : _showAddDrawer,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white.withAlpha(20),
                       foregroundColor: Colors.white,

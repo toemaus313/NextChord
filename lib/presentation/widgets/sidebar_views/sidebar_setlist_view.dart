@@ -10,9 +10,9 @@ import '../../screens/song_editor_screen_refactored.dart';
 import '../tag_edit_dialog.dart';
 import '../setlist_editor_dialog.dart';
 import '../standard_wide_button.dart';
+import '../add_divider_modal.dart';
 import '../../../services/setlist/setlist_service.dart';
 import 'dart:io';
-import '../../../main.dart' as main;
 
 /// Setlist view for the sidebar
 class SidebarSetlistView extends StatefulWidget {
@@ -399,46 +399,37 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
       onLongPress: () => _showDividerContextMenu(context, item, index),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        height: 36,
+        decoration: BoxDecoration(
+          color: dividerColor,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
           children: [
-            Container(
-              width: double.infinity,
-              height: 1,
-              color: dividerColor,
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                // Drag handle
-                ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(
-                    Icons.drag_indicator,
-                    color: Colors.white54,
-                    size: 16,
-                  ),
+            // Drag handle
+            ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(
+                  Icons.drag_indicator,
+                  color: _getContrastColor(dividerColor),
+                  size: 16,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    item.label,
-                    style: TextStyle(
-                      color: dividerColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                item.label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _getContrastColor(dividerColor),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              height: 1,
-              color: dividerColor,
-            ),
+            const SizedBox(width: 44), // Balance the drag handle
           ],
         ),
       ),
@@ -602,7 +593,7 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                 title: const Text('Edit Divider'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Divider edit functionality not yet implemented
+                  _editDivider(divider, index);
                 },
               ),
               ListTile(
@@ -663,6 +654,41 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _editDivider(SetlistDividerItem divider, int index) async {
+    final result = await AddDividerModal.show(
+      context,
+      initialLabel: divider.label,
+      initialColor: divider.color,
+      isEdit: true,
+    );
+    
+    if (result != null) {
+      final setlistProvider = context.read<SetlistProvider>();
+      final currentSetlist = setlistProvider.setlists
+          .where((s) => s.id == widget.setlistId)
+          .firstOrNull;
+
+      if (currentSetlist != null) {
+        // Create updated divider
+        final updatedDivider = divider.copyWith(
+          label: result['label']!,
+          color: result['color']!,
+        );
+        
+        // Update the items list
+        final updatedItems = List<SetlistItem>.from(currentSetlist.items);
+        updatedItems[index] = updatedDivider;
+        
+        final updatedSetlist = currentSetlist.copyWith(
+          items: updatedItems,
+          updatedAt: DateTime.now(),
+        );
+        
+        await setlistProvider.updateSetlist(updatedSetlist);
       }
     }
   }
@@ -773,19 +799,31 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
   }
 
   Color _parseColor(String colorString) {
-    // Parse color string to Color object
-    try {
-      if (colorString.startsWith('#')) {
-        return Color(
-            int.parse(colorString.substring(1), radix: 16) + 0xFF000000);
-      } else if (colorString.startsWith('0x')) {
-        return Color(int.parse(colorString) + 0xFF000000);
-      } else {
-        // Default to white if parsing fails
-        return Colors.white;
-      }
-    } catch (e) {
-      return Colors.white;
+    // Convert color name to Color object
+    switch (colorString.toLowerCase()) {
+      case 'red':
+        return const Color(0xFFF44336);
+      case 'green':
+        return const Color(0xFF4CAF50);
+      case 'orange':
+        return const Color(0xFFFF9800);
+      case 'purple':
+        return const Color(0xFF9C27B0);
+      case 'teal':
+        return const Color(0xFF009688);
+      case 'yellow':
+        return const Color(0xFFFFEB3B);
+      case 'pink':
+        return const Color(0xFFE91E63);
+      case 'blue':
+      default:
+        return const Color(0xFF2196F3);
     }
+  }
+
+  Color _getContrastColor(Color backgroundColor) {
+    // Calculate luminance to determine if we should use white or black text
+    final luminance = backgroundColor.computeLuminance();
+    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 }

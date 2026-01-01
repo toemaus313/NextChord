@@ -105,11 +105,12 @@ class SetlistEditorController extends ChangeNotifier {
     }
   }
 
-  void addDivider(String text) {
+  void addDivider(String text, {String color = 'blue'}) {
     final divider = SetlistDividerItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       order: items.length,
       label: text,
+      color: color,
     );
     addItem(divider);
   }

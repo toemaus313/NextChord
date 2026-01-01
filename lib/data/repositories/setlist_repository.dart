@@ -48,18 +48,19 @@ class SetlistRepository {
       if (item is SetlistSongItem) {
         return {
           'type': 'song',
+          'id': item.id,
           'songId': item.songId,
           'order': item.order,
           'transposeSteps': item.transposeSteps,
           'capo': item.capo,
         };
       } else if (item is SetlistDividerItem) {
-        final colorValue = item.color;
         return {
           'type': 'divider',
+          'id': item.id,
           'label': item.label,
           'order': item.order,
-          'color': colorValue,
+          'color': item.color,
         };
       }
       throw Exception('Unknown SetlistItem type');
@@ -83,13 +84,12 @@ class SetlistRepository {
                 capo: item['capo'] as int? ?? 0,
               );
             } else if (type == 'divider') {
-              final colorValue = item['color'] as int? ?? 0xFFFFFFFF;
-              final color = '#${colorValue.toRadixString(16).padLeft(8, '0')}';
+              final colorValue = item['color'] as String? ?? 'blue';
               return SetlistDividerItem(
                 id: item['id'] as String? ?? Uuid().v4(),
                 label: item['label'] as String,
                 order: item['order'] as int,
-                color: color,
+                color: colorValue,
               );
             }
             return null as SetlistItem?;

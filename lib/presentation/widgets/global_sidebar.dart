@@ -17,6 +17,8 @@ import 'storage_settings_modal.dart';
 import 'app_control_modal.dart';
 import 'action_test_modal.dart';
 import 'appearance_settings_modal.dart';
+import 'add_divider_modal.dart';
+import '../../domain/entities/setlist.dart';
 import 'sidebar_views/sidebar_menu_view.dart';
 import 'sidebar_views/sidebar_all_songs_view.dart';
 import 'sidebar_views/sidebar_setlist_view.dart';
@@ -321,7 +323,7 @@ class _GlobalSidebarState extends State<GlobalSidebar>
           setlistId: _controller.selectedSetlistId ?? '',
           onBack: () => _controller.navigateToMenu(),
           onAddSong: () => _showAddSongsToSetlist(),
-          onAddDivider: () {}, // TODO: Implement add divider functionality
+          onAddDivider: () => _showAddDividerToSetlist(),
           showHeader: !isPhone, // Hide header on mobile, show on desktop
         );
         return isPhone
@@ -421,7 +423,38 @@ class _GlobalSidebarState extends State<GlobalSidebar>
     AppearanceSettingsModal.show(context);
   }
 
-  void _showAddSongsToSetlist() {
-    // Implementation would go here
+  void _showAddSongsToSetlist() async {
+    final songProvider = Provider.of<SongProvider>(context, listen: false);
+    
+    if (songProvider.songs.isEmpty && !songProvider.isLoading) {
+      await songProvider.loadSongs();
+    }
+    
+    // TODO: Show song selection dialog
+    // For now, this is a placeholder
+  }
+
+  void _showAddDividerToSetlist() async {
+    final setlistProvider = Provider.of<SetlistProvider>(context, listen: false);
+    final result = await AddDividerModal.show(context);
+    
+    if (result != null) {
+      final setlist = setlistProvider.setlists
+          .firstWhere((s) => s.id == _controller.selectedSetlistId);
+      
+      final newDivider = SetlistDividerItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        order: setlist.items.length,
+        label: result['label']!,
+        color: result['color']!,
+      );
+      
+      final updatedSetlist = setlist.copyWith(
+        items: [...setlist.items, newDivider],
+        updatedAt: DateTime.now(),
+      );
+      
+      await setlistProvider.updateSetlist(updatedSetlist);
+    }
   }
 }
