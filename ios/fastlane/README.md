@@ -21,7 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane ios beta
 ```
 
-Build and upload a beta version to TestFlight
+Build Flutter iOS IPA and upload to TestFlight
 
 ----
 

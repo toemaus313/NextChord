@@ -270,36 +270,36 @@ class _SidebarMenuViewState extends State<SidebarMenuView> {
 
   /// Mobile-only branding block shown when all sections are collapsed
   Widget _buildMobileBranding(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.sizeOf(context).width;
 
     final logoWidth = (screenWidth * 0.6).clamp(250.0, 360.0);
     final titleFontSize = (screenWidth * 0.06).clamp(60.0, 70.0);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/images/NextChord-Logo-transparent.png',
-            width: logoWidth,
-            fit: BoxFit.contain,
-            semanticLabel: 'NextChord logo',
-          ),
-          const SizedBox(height: 40),
-          Text(
-            'NextChord',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              height: 0.1,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/NextChord-Logo-transparent.png',
+              width: logoWidth,
+              fit: BoxFit.contain,
+              semanticLabel: 'NextChord logo',
             ),
-          ),
-        ],
+            const SizedBox(height: 40),
+            Text(
+              'NextChord',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 0.1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

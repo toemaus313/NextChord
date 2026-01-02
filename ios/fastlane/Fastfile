@@ -1,47 +1,43 @@
-# Fastlane configuration for NextChord iOS
-# Run from the ios/ directory with: fastlane beta
-
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload a beta version to TestFlight"
+  desc "Build Flutter iOS IPA and upload to TestFlight"
   lane :beta do
-    # 1. Build Flutter iOS app without codesign
-    sh "cd .. && flutter pub get"
-    sh "cd .. && flutter build ios --release --no-codesign"
 
-    # 2. App Store Connect API key (your existing key)
-    api_key = app_store_connect_api_key(
-      key_id: "D28W2YBXS9",
+    app_store_connect_api_key(
+      key_id: "9W2QUW6M6C",
       issuer_id: "a5176732-64f6-441d-8ed0-0db127470dda",
-      key_filepath: "../AuthKeys/AuthKey_D28W2YBXS9.p8"
+      key_filepath: "../AuthKeys/AuthKey_9W2QUW6M6C.p8",
+      duration: 1200,
+      in_house: false
     )
 
-    # 3. Bump build number in Xcode project
-    increment_build_number(
-      xcodeproj: "Runner.xcodeproj"
+    latest = latest_testflight_build_number(
+      app_identifier: "us.antonovich.nextchord"
+    )
+    next_build = latest.to_i + 1
+    UI.message("Latest TestFlight build: #{latest} → Next build: #{next_build}")
+
+    sh("cd .. && flutter pub get")
+    sh("cd .. && flutter build ipa --release --build-number=#{next_build}")
+
+    # -------------------------------------------------
+    # CORRECT PROJECT ROOT (fastlane runs from ios/fastlane)
+    # -------------------------------------------------
+    project_root = File.expand_path("../..", Dir.pwd)
+
+    ipa_candidates = Dir.glob(
+      File.join(project_root, "build/ios/ipa/*.ipa")
     )
 
-    # 4. Archive + export IPA using Xcode workspace and automatic signing
-    build_app(
-      workspace: "Runner.xcworkspace",
-      scheme: "Runner",
-      export_method: "app-store",                 # or "app-store-connect" if you prefer
-      export_xcargs: "-allowProvisioningUpdates"  # lets Xcode create/download profiles
-    )
+    UI.user_error!("No IPA found in build/ios/ipa") if ipa_candidates.empty?
 
-    # 5. Get the IPA path produced by build_app
-    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH]
+    ipa_abs = ipa_candidates.first
+    UI.message("Uploading IPA: #{ipa_abs}")
 
-    # 6. Upload to TestFlight
     upload_to_testflight(
-      api_key: api_key,
-      ipa: ipa_path,
-      app_identifier: "us.antonovich.nextchord",
-      skip_submission: true,                  # don't auto-submit for beta review
-      skip_waiting_for_build_processing: false,
-      distribute_external: false,             # internal only
-      groups: ["Int"]                         # your internal TestFlight group
+      ipa: ipa_abs,
+      skip_waiting_for_build_processing: true
     )
   end
 end

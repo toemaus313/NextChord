@@ -68,7 +68,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildMainContent(ThemeData theme, bool isDarkMode) {
     // Always show welcome screen now since we navigate to song viewer
     // Welcome screen when no song is selected
-    final viewInsets = MediaQuery.viewInsetsOf(context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final screenHeight = MediaQuery.sizeOf(context).height;
 
@@ -80,40 +79,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       color: isDarkMode ? Colors.grey[900] : Colors.white,
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            24 + viewInsets.bottom,
+          padding: const EdgeInsets.symmetric(
+            vertical: 24,
           ),
           child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: screenWidth * 0.9, // Limit max width to 90% of screen
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Responsive logo
-                  Image.asset(
-                    'assets/images/NextChord-Logo-transparent.png',
-                    width: logoWidth,
-                    height: logoHeight,
-                    fit: BoxFit.contain,
-                    semanticLabel: 'NextChord logo',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Responsive logo
+                Image.asset(
+                  'assets/images/NextChord-Logo-transparent.png',
+                  width: logoWidth,
+                  height: logoHeight,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'NextChord logo',
+                ),
+                const SizedBox(height: 24),
+                // Responsive title text
+                Text(
+                  'NextChord',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: (screenWidth * 0.08)
+                        .clamp(24.0, 48.0), // Responsive font size
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
-                  const SizedBox(height: 24),
-                  // Responsive title text
-                  Text(
-                    'NextChord',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: (screenWidth * 0.08)
-                          .clamp(24.0, 48.0), // Responsive font size
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black87,
-                    ),
-                  ),
+                ),
                   const SizedBox(height: 16),
                   // Responsive subtitle text
                   Text(
@@ -148,7 +140,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ],
               ),
             ),
-          ),
         ),
       ),
     );

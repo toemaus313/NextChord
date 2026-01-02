@@ -17,7 +17,7 @@ import 'presentation/providers/song_provider.dart';
 import 'presentation/providers/setlist_provider.dart';
 import 'presentation/providers/share_import_provider.dart';
 import 'providers/sync_provider.dart';
-import 'presentation/widgets/app_wrapper.dart';
+import 'presentation/screens/splash_screen.dart';
 import 'core/services/database_change_service.dart';
 import 'core/services/sync_service_locator.dart';
 import 'services/import/share_import_service.dart';
@@ -206,7 +206,7 @@ class NextChordApp extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.done) {
           return _buildProviderTree(context);
         }
-        return MaterialApp(
+        return const MaterialApp(
           home: Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
@@ -284,7 +284,7 @@ class NextChordApp extends StatelessWidget {
                 : (themeProvider.themeMode == ThemeModeType.dark
                     ? ThemeMode.dark
                     : ThemeMode.light),
-            home: const AppWrapper(),
+            home: const SplashScreen(),
           );
         },
       ),
