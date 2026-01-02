@@ -83,3 +83,4 @@ SCRATCHPAD.md
 
 android/fastlane/report.xml
 ios/Runner.app.dSYM.zip
+ios/fastlane/report.xml
