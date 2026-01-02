@@ -11,6 +11,7 @@ import '../setlist_editor_dialog.dart';
 import '../standard_wide_button.dart';
 import '../add_divider_modal.dart';
 import '../../../services/setlist/setlist_service.dart';
+import '../../../services/setlist/setlist_pdf_service.dart';
 import 'dart:io';
 
 /// Setlist view for the sidebar
@@ -181,6 +182,74 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Save as PDF button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Consumer<SongProvider>(
+                        builder: (context, songProvider, child) {
+                          return ElevatedButton.icon(
+                            onPressed: () async {
+                              // Ensure songs are loaded before PDF generation
+                              if (songProvider.songs.isEmpty && !songProvider.isLoading) {
+                                await songProvider.loadSongs();
+                              }
+
+                              // Show loading indicator
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const AlertDialog(
+                                  content: Row(
+                                    children: [
+                                      CircularProgressIndicator(),
+                                      SizedBox(width: 20),
+                                      Text('Generating PDF...'),
+                                    ],
+                                  ),
+                                ),
+                              );
+                              
+                              try {
+                                final songsMap = {
+                                  for (final song in songProvider.songs) song.id: song,
+                                };
+                                final pdfService = SetlistPdfService();
+                                
+                                // Generate PDF in a compute isolate to prevent blocking
+                                await pdfService.generateAndSaveSetlistPdf(
+                                  setlist: currentSetlist,
+                                  songsMap: songsMap,
+                                );
+                                
+                                // Close loading dialog
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              } catch (e) {
+                                // Close loading dialog
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to generate PDF: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.picture_as_pdf, size: 16),
+                            label: const Text('Save as PDF'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withAlpha(20),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(double.infinity, 36),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 8),

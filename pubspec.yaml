@@ -79,6 +79,10 @@ dependencies:
   crypto: ^3.0.3
   wakelock_plus: ^1.1.1
   
+  # PDF Generation
+  pdf: ^3.10.0
+  printing: ^5.11.0
+  
   # HTTP & Web Scraping
   http: ^1.1.0
   html: ^0.15.4
