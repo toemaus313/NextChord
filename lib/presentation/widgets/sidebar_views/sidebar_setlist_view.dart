@@ -197,41 +197,20 @@ class _SidebarSetlistViewState extends State<SidebarSetlistView> {
                                 await songProvider.loadSongs();
                               }
 
-                              // Show loading indicator
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const AlertDialog(
-                                  content: Row(
-                                    children: [
-                                      CircularProgressIndicator(),
-                                      SizedBox(width: 20),
-                                      Text('Generating PDF...'),
-                                    ],
-                                  ),
-                                ),
-                              );
-                              
                               try {
                                 final songsMap = {
                                   for (final song in songProvider.songs) song.id: song,
                                 };
                                 final pdfService = SetlistPdfService();
-                                
-                                // Generate PDF in a compute isolate to prevent blocking
+
+                                // Generate PDF - native UI will show progress
                                 await pdfService.generateAndSaveSetlistPdf(
                                   setlist: currentSetlist,
                                   songsMap: songsMap,
                                 );
-                                
-                                // Close loading dialog
-                                if (context.mounted) {
-                                  Navigator.of(context).pop();
-                                }
                               } catch (e) {
-                                // Close loading dialog
+                                // Show error if PDF generation fails
                                 if (context.mounted) {
-                                  Navigator.of(context).pop();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text('Failed to generate PDF: $e'),
